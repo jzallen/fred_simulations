@@ -1,0 +1,12 @@
+{
+  "name": "FRED Simulation Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-vscode.cpptools"]
+    }
+  },
+  "remoteUser": "fred"
+}
