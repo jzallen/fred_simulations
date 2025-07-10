@@ -1,0 +1,5 @@
+tasks:
+    run:
+        name: Run Simulation
+        description: runs FRED simulation
+        command: echo "Hello Simulation"
