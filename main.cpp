@@ -1,25 +1,29 @@
 #include <iostream>
-#include "Fred.h"
+#include "Global.h"
 
 int main(int argc, char* argv[]) {
-    Fred::Global::initialize(argc, argv);
-    
     std::cout << "Starting FRED Simulation..." << std::endl;
 
-    // Initialize simulation parameters (basic example)
-    Fred::Simulation* simulation = new Fred::Simulation();
-    simulation->setup();
+    // Since FRED is designed as a complete simulation framework with its own main,
+    // we'll just demonstrate accessing FRED's Global variables and functions
     
-    // Run simulation steps (basic example)
-    for (int day = 0; day < 10; day++) {
-        simulation->run_day(day);
-        std::cout << "Day " << day << " completed." << std::endl;
+    // Initialize some basic Global properties
+    Global::Simulation_Day = 0;
+    Global::Simulation_Days = 10;
+    
+    std::cout << "FRED Global variables accessible:" << std::endl;
+    std::cout << "Simulation Day: " << Global::Simulation_Day << std::endl;
+    std::cout << "Simulation Days: " << Global::Simulation_Days << std::endl;
+    std::cout << "Days per week: " << Global::DAYS_PER_WEEK << std::endl;
+    std::cout << "Adult age: " << Global::ADULT_AGE << std::endl;
+
+    // Simulate a simple loop
+    for(int day = 0; day < 5; day++) {
+        Global::Simulation_Day = day;
+        std::cout << "Simulated day " << day << " completed." << std::endl;
     }
 
-    simulation->finish();
-    delete simulation;
-
-    std::cout << "FRED Simulation Completed." << std::endl;
+    std::cout << "FRED Integration Demo Completed." << std::endl;
 
     return 0;
 }

@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build FRED Simulation",
+			"type": "shell",
+			"command": "make",
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"args": []
+		},
+		{
+			"label": "Run FRED Simulation",
+			"type": "shell",
+			"command": "./simulation",
+			"group": "test",
+			"dependsOn": "Build FRED Simulation",
+			"args": []
+		}
+	]
+}
