@@ -1,0 +1,3 @@
+[submodule "fred-framework"]
+	path = fred-framework
+	url = https://github.com/PublicHealthDynamicsLab/FRED.git
