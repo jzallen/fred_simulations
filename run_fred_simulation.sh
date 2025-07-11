@@ -5,9 +5,14 @@
 
 echo "Starting FRED Simulation via CLI..."
 
-# Set up FRED environment
-export FRED_HOME="/workspaces/fred_simulations/fred-framework"
-export PATH="$FRED_HOME/bin:$PATH"
+# Check if FRED_HOME is set (should be set by devcontainer)
+if [ -z "$FRED_HOME" ]; then
+    echo "FRED_HOME not set, setting default..."
+    export FRED_HOME="/workspaces/fred_simulations/fred-framework"
+    export PATH="$FRED_HOME/bin:$PATH"
+else
+    echo "Using FRED_HOME: $FRED_HOME"
+fi
 
 # Create output directory
 OUTPUT_DIR="output"
