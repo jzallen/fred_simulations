@@ -5,11 +5,7 @@
   
   // Environment variables available in the container
   "containerEnv": {
-    "FRED_HOME": "/workspaces/fred_simulations/fred-framework"
-  },
-  
-  // Update PATH to include FRED binaries
-  "remoteEnv": {
+    "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
     "PATH": "${containerEnv:PATH}:/workspaces/fred_simulations/fred-framework/bin"
   },
   
