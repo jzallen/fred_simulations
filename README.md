@@ -19,6 +19,20 @@ make run-fred
 ./run_fred_simulation.sh
 ```
 
+Analyze simulation results with Python:
+
+```bash
+make analyze
+# or directly:
+python3 analyze_results.py
+```
+
+Run simulation and analyze in one command:
+
+```bash
+make run-and-analyze
+```
+
 ## FRED CLI Commands
 
 The FRED framework provides many CLI utilities:
@@ -70,6 +84,8 @@ The framework includes sample data for these locations:
 
 Available make targets:
 - `make run-fred` - Run FRED simulation via CLI
+- `make analyze` - Analyze simulation results with Python/pandas
+- `make run-and-analyze` - Run simulation and analyze results
 - `make build-fred` - Build the FRED framework
 - `make clean` - Remove generated output files
 - `make help` - Show available targets
@@ -79,4 +95,22 @@ Available make targets:
 Configured tasks:
 - **Build FRED Framework** - Compiles the FRED framework
 - **Run FRED Simulation (CLI)** - Runs the simulation
+- **Analyze FRED Results** - Runs Python analysis on results
+- **Run FRED and Analyze** - Complete workflow from simulation to analysis
 - **Clean FRED Output** - Removes generated files
+
+## Data Analysis
+
+The project includes a Python script (`analyze_results.py`) that uses pandas and matplotlib to:
+- Load and analyze FRED simulation output
+- Create visualizations of population and disease dynamics
+- Generate summary statistics
+- Save plots as PNG files
+
+Required Python packages (automatically installed in devcontainer):
+- pandas
+- matplotlib
+- seaborn
+- numpy
+- jupyter
+- plotly

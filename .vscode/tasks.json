@@ -19,6 +19,20 @@
 			"args": ["run-fred"]
 		},
 		{
+			"label": "Analyze FRED Results",
+			"type": "shell",
+			"command": "make",
+			"group": "test",
+			"args": ["analyze"]
+		},
+		{
+			"label": "Run FRED and Analyze",
+			"type": "shell",
+			"command": "make",
+			"group": "test",
+			"args": ["run-and-analyze"]
+		},
+		{
 			"label": "Clean FRED Output",
 			"type": "shell",
 			"command": "make",
