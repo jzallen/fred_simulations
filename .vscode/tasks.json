@@ -2,22 +2,14 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "Build FRED Simulation",
+			"label": "Build FRED Framework",
 			"type": "shell",
 			"command": "make",
 			"group": "build",
+			"args": ["build-fred"],
 			"problemMatcher": [
 				"$gcc"
-			],
-			"args": []
-		},
-		{
-			"label": "Run FRED Simulation (C++)",
-			"type": "shell",
-			"command": "./simulation",
-			"group": "test",
-			"dependsOn": "Build FRED Simulation",
-			"args": []
+			]
 		},
 		{
 			"label": "Run FRED Simulation (CLI)",
@@ -25,6 +17,12 @@
 			"command": "make",
 			"group": "test",
 			"args": ["run-fred"]
+		},
+		{
+			"label": "Clean FRED Output",
+			"type": "shell",
+			"command": "make",
+			"args": ["clean"]
 		}
 	]
 }

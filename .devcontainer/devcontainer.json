@@ -2,28 +2,4 @@
   "name": "FRED Dev",
   "image": "mcr.microsoft.com/devcontainers/cpp",
   "remoteUser": "vscode",
-  
-  // Environment variables available in the container
-  "containerEnv": {
-    "FRED_HOME": "/workspaces/fred_simulations/fred-framework"
-  },
-  
-  // Update PATH to include FRED binaries
-  "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/workspaces/fred_simulations/fred-framework/bin"
-  },
-  
-  // Post-create command to build FRED framework
-  "postCreateCommand": "cd fred-framework/src && make",
-  
-  // VS Code extensions for C++ development
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-vscode.cpptools",
-        "ms-vscode.cmake-tools",
-        "ms-vscode.makefile-tools"
-      ]
-    }
-  }
 }

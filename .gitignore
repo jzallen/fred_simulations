@@ -10,10 +10,6 @@ fred-framework/src/FRED.md5
 fred-framework/bin/FRED
 fred-framework/bin/FRED_API
 
-# Custom simulation binary
-simulation
-*.exe
-
 # Build directories
 build/
 dist/
