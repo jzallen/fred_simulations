@@ -20,11 +20,23 @@ LDFLAGS = -pthread -ldl
 
 all: simulation
 
+# Build the C++ simulation (keeping for reference)
 simulation: main.cpp $(FRED_OBJECTS)
 	$(CXX) $(CXXFLAGS) -o simulation main.cpp $(FRED_OBJECTS) $(LDFLAGS)
 
+# Run the C++ simulation
 run: simulation
 	./simulation
 
+# Run FRED via CLI (recommended approach)
+run-fred:
+	./run_fred_simulation.sh
+
+# Build FRED framework if needed
+build-fred:
+	cd fred-framework/src && make
+
 clean:
-	rm -f simulation
+	rm -f simulation *.o
+	rm -rf output/
+	rm -f simulation_config.fred

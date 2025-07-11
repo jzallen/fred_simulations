@@ -12,12 +12,19 @@
 			"args": []
 		},
 		{
-			"label": "Run FRED Simulation",
+			"label": "Run FRED Simulation (C++)",
 			"type": "shell",
 			"command": "./simulation",
 			"group": "test",
 			"dependsOn": "Build FRED Simulation",
 			"args": []
+		},
+		{
+			"label": "Run FRED Simulation (CLI)",
+			"type": "shell",
+			"command": "make",
+			"group": "test",
+			"args": ["run-fred"]
 		}
 	]
 }
