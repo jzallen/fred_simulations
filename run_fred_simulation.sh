@@ -47,10 +47,18 @@ echo "Created configuration file: $CONFIG_FILE"
 
 # Run the FRED simulation
 echo "Running FRED simulation for 10 days..."
-RUN_NUMBER=1
+# Determine RUN_NUMBER dynamically or accept as argument
+if [ -z "$1" ]; then
+    echo "RUN_NUMBER not provided as argument, auto-incrementing..."
+    RUN_NUMBER=$(ls "$OUTPUT_DIR" | grep -E '^run_[0-9]+$' | sed 's/run_//' | sort -n | tail -1)
+    RUN_NUMBER=$((RUN_NUMBER + 1))
+else
+    RUN_NUMBER=$1
+fi
+echo "Using RUN_NUMBER: $RUN_NUMBER"
 
 # Execute FRED with our configuration
-"$FRED_HOME/bin/FRED" -p "$CONFIG_FILE" -r "$RUN_NUMBER" -d "$OUTPUT_DIR"
+"$FRED_HOME/bin/FRED" -p "$CONFIG_FILE" -r "$RUN_NUMBER" -d "$OUTPUT_DIR/run_$RUN_NUMBER"
 
 # Check if simulation completed successfully
 if [ $? -eq 0 ]; then
