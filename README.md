@@ -37,7 +37,7 @@ FRED simulations are configured using `.fred` files. Example:
 
 ```
 # Basic configuration
-locations = 42003
+locations = Allegheny_County_PA
 days = 10
 verbose = 1
 enable_health_records = 1
@@ -55,14 +55,16 @@ condition Influenza {
 ## Output
 
 Simulation results are stored in the `output/` directory:
-- `output/RUN1/health_records.txt` - Health records
-- `output/errors.txt` - Error log
+- `output/RUN1/out.csv` - Daily population and epidemic statistics
+- `output/RUN1/Influenza.csv` - Disease-specific metrics
+- `output/RUN1/health_records.txt` - Individual health records
+- `output/warnings.txt` - Warnings log
 
 ## Available Locations
 
 The framework includes sample data for these locations:
-- `42003` - Allegheny County, PA
-- `42065` - Jefferson County, PA
+- `Allegheny_County_PA` - Allegheny County, PA (Pittsburgh area, ~1.2M people)
+- `Jefferson_County_PA` - Jefferson County, PA (rural area)
 
 ## Make Targets
 

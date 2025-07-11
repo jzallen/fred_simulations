@@ -22,7 +22,7 @@ mkdir -p "$OUTPUT_DIR"
 CONFIG_FILE="simulation_config.fred"
 cat > "$CONFIG_FILE" << EOF
 # Basic FRED Simulation Configuration using available test data
-locations = 42003
+locations = Allegheny_County_PA
 days = 10
 quality_control = 0
 verbose = 1
