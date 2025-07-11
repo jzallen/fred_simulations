@@ -1,0 +1,66 @@
+# FRED Simulation Project .gitignore
+
+# FRED compiled binaries and build artifacts
+fred-framework/src/FRED
+fred-framework/src/FRED_API
+fred-framework/src/*.o
+fred-framework/src/*.a
+fred-framework/src/FRED.tar.gz
+fred-framework/src/FRED.md5
+fred-framework/bin/FRED
+fred-framework/bin/FRED_API
+
+# Build directories
+build/
+dist/
+cmake-build-*/
+
+# FRED output and results
+output/
+OUT/
+RESULTS/
+RUN*/
+*.out
+simulation_config.fred
+
+# Log files
+*.log
+logs/
+errors.txt
+
+# Analysis outputs
+fred_analysis.png
+*.png
+*.pdf
+
+# Python cache and artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Python virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
