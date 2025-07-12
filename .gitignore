@@ -64,3 +64,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Poetry virtual environments
+.venv/
+poetry.toml  # Poetry local config (not poetry.lock which should be committed)

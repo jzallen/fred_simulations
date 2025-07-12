@@ -2,6 +2,22 @@
 
 This project demonstrates how to work with the FRED (Framework for Reconstructing Epidemiological Dynamics) simulation framework using its CLI interface.
 
+## Dependencies
+
+This project uses Poetry for Python dependency management. The dependencies are locked in `poetry.lock` for reproducible builds.
+
+### Installing Dependencies
+
+Poetry is automatically installed in the devcontainer. If you're running locally:
+
+```bash
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install dependencies
+poetry install --no-root
+```
+
 ## Project Structure
 
 - `run_fred_simulation.sh` - **Main simulation script**: Uses FRED's CLI interface
