@@ -11,7 +11,7 @@ from pact.matchers import Like, EachLike
 # Add the root directory to the Python path to allow imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from jobs.agent_info_job import info_job
+from simulations.agent_info_demo.agent_info_job import info_job
 
 os.environ["PACT_VERIFIER_LOG_LEVEL"] = "DEBUG"
 
@@ -157,7 +157,7 @@ class TestAgentInfoJob(unittest.TestCase):
                             "flag": Like("-p"),
                             "value": Like("main.fred")
                         }),
-                        "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info.fred")
+                        "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred")
                     })
                 }
             )
@@ -182,7 +182,7 @@ class TestAgentInfoJob(unittest.TestCase):
                                 "flag": Like("-p"),
                                 "value": Like("main.fred")
                             }),
-                            "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info.fred")
+                            "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred")
                         }
                     }]
                 }
@@ -283,7 +283,7 @@ class TestAgentInfoJob(unittest.TestCase):
                                     "flag": "-p",
                                     "value": "main.fred"
                                 }],
-                                "fredFiles": ["/workspaces/fred_simulations/simulations/agent_info.fred"]
+                                "fredFiles": ["/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"]
                             },
                             "podPhase": "Running",
                             "containerStatus": None,

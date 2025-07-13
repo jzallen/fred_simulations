@@ -1,0 +1,57 @@
+{
+  "consumer": {
+    "name": "Consumer"
+  },
+  "provider": {
+    "name": "S3"
+  },
+  "interactions": [
+    {
+      "description": "a job input upload request",
+      "request": {
+        "method": "PUT",
+        "path": "/pre-signed-url"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+        }
+      }
+    },
+    {
+      "description": "a run config upload request",
+      "request": {
+        "method": "PUT",
+        "path": "/pre-signed-url-run"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+        }
+      }
+    },
+    {
+      "description": "a job config upload request",
+      "request": {
+        "method": "PUT",
+        "path": "/pre-signed-url-job-config"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  }
+}
