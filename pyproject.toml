@@ -2,7 +2,7 @@
 name = "fred-simulations"
 version = "0.1.0"
 description = "FRED epidemiological modeling simulations"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Zach Allen <j.zachary.allen@gmail.com>"]
 readme = "README.md"
 package-mode = false
 
