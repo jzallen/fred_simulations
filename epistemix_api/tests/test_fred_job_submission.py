@@ -21,19 +21,27 @@ EPISTEMIX_MOCK_PORT = 5000
 S3_MOCK_HOST = "localhost"  # Changed to localhost since it's a mock
 S3_MOCK_PORT = 5001
 
+EPISTEMIX_API_FOLDER = Path(__file__).parent.parent
+EPISTEMIX_PACTS_DIR = EPISTEMIX_API_FOLDER / "pacts"
+EPISTEMIX_LOGS_DIR = EPISTEMIX_API_FOLDER / "logs"
+
 
 # Define mock server for epistemix api
 epistemix_pact = Consumer('Consumer').has_pact_with(
     Provider('Epistemix'),
     host_name=EPISETEMIX_MOCK_HOST,
-    port=EPISTEMIX_MOCK_PORT
+    port=EPISTEMIX_MOCK_PORT,
+    pact_dir=EPISTEMIX_PACTS_DIR,
+    log_dir=EPISTEMIX_LOGS_DIR,
 )
 
 # Define mock server for S3 api
 s3_pact = Consumer('Consumer').has_pact_with(
     Provider('S3'),
     host_name=S3_MOCK_HOST,
-    port=S3_MOCK_PORT
+    port=S3_MOCK_PORT,
+    pact_dir=EPISTEMIX_PACTS_DIR,
+    log_dir=EPISTEMIX_LOGS_DIR,
 )
 
 
