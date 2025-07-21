@@ -15,7 +15,7 @@ from simulations.agent_info_demo.agent_info_job import info_job
 
 os.environ["PACT_VERIFIER_LOG_LEVEL"] = "DEBUG"
 
-EPISETEMIX_MOCK_HOST = "localhost"
+EPISTEMIX_MOCK_HOST = "localhost"
 EPISTEMIX_MOCK_PORT = 5000
 
 S3_MOCK_HOST = "localhost"  # Changed to localhost since it's a mock
