@@ -85,7 +85,7 @@ class TestAgentInfoJob(unittest.TestCase):
             )
         )
 
-        # Defin job input submission response
+        # Define job input submission response
         (
             epistemix_pact
             .upon_receiving("a job submission request")
