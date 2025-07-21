@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin"
+            }
+        },
+        {
+            "name": "Python: agent_info_job.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/jobs/agent_info_job.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin"
+            }
+        },
+        {
+            "name": "Python: Test Poetry Setup",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_poetry_setup.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin"
+            }
+        }
+    ]
+}

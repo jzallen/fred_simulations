@@ -2,17 +2,14 @@
   "name": "FRED Dev with Python",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "remoteUser": "vscode",
-  
-  // Environment variables available in the container
+
   "containerEnv": {
     "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
     "PATH": "${containerEnv:PATH}:/workspaces/fred_simulations/fred-framework/bin"
   },
-  
-  // Install C++ tools, build FRED framework, and install Python packages
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential g++ make && cd fred-framework/src && make && pip install --user pandas matplotlib seaborn numpy jupyter plotly",
-  
-  // VS Code extensions for Python, C++, and data analysis
+
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential g++ make && cd fred-framework/src && make && curl -sSL https://install.python-poetry.org | python3 - && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && poetry install --no-root",
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -24,23 +21,12 @@
         "ms-vscode.makefile-tools",
         "timonwong.shellcheck",
         "foxundermoon.shell-format"
-      ]
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true
+      }
     }
-  },
-  
-  // Python-specific settings
-  "settings": {
-    "python.defaultInterpreterPath": "/usr/local/bin/python",
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-    "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-    "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-    "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-    "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-    "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-    "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-    "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-    "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
   }
 }
