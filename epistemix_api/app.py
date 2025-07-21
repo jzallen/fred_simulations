@@ -1,6 +1,6 @@
 """
 Flask app that implements the Epistemix API based on the Pact contract.
-This app mocks the behavior defined in epx-epistemix.json.
+This app follows Clean Architecture principles with proper separation of concerns.
 """
 
 from flask import Flask, request, jsonify
@@ -9,14 +9,24 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Any
+import logging
+
+# Import our business models and services
+from .models.job import Job, JobStatus, JobTag
+from .services.job_service import JobService, JobRepository
 
 app = Flask(__name__)
 CORS(app)
 
-# In-memory storage for demo purposes
-jobs_storage: Dict[int, Dict[str, Any]] = {}
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize services (Dependency Injection in a real app)
+job_service = JobService(JobRepository())
+
+# Legacy in-memory storage for runs (to be refactored later)
 runs_storage: Dict[int, Dict[str, Any]] = {}
-next_job_id = 123
 next_run_id = 978
 
 
@@ -33,9 +43,8 @@ def register_job():
     """
     Register a new job.
     Implements the job registration interaction from the Pact contract.
+    Uses Clean Architecture with business models and services.
     """
-    global next_job_id
-    
     # Validate required headers
     required_headers = ['Offline-Token', 'content-type', 'fredcli-version', 'user-agent']
     if not validate_headers(required_headers):
@@ -50,23 +59,22 @@ def register_job():
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
         
-        # Create job record
-        job_id = next_job_id
+        # Extract business data
+        tags = data.get("tags", [])
         user_id = 456  # Mock user ID as per Pact contract
         
-        job = {
-            "id": job_id,
-            "userId": user_id,
-            "tags": data.get("tags", [])
-        }
+        # Use business service to register the job
+        job = job_service.register_job(user_id=user_id, tags=tags)
         
-        jobs_storage[job_id] = job
-        next_job_id += 1
+        # Return response matching Pact contract
+        return jsonify(job.to_dict()), 200
         
-        return jsonify(job), 200
-        
+    except ValueError as e:
+        logger.warning(f"Validation error in job registration: {e}")
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Unexpected error in job registration: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route('/jobs', methods=['POST'])
@@ -74,6 +82,7 @@ def submit_job():
     """
     Submit a job for processing.
     Implements the job submission interaction from the Pact contract.
+    Uses Clean Architecture with business services.
     """
     # Validate required headers
     required_headers = ['Offline-Token', 'content-type', 'fredcli-version', 'user-agent']
@@ -85,19 +94,25 @@ def submit_job():
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
         
+        # Extract business data
         job_id = data.get("jobId")
-        if not job_id or job_id not in jobs_storage:
-            return jsonify({"error": "Invalid job ID"}), 400
+        context = data.get("context", "job")
+        job_type = data.get("type", "input")
         
-        # Return pre-signed URL as per Pact contract
-        response = {
-            "url": "http://localhost:5001/pre-signed-url"
-        }
+        if not job_id:
+            return jsonify({"error": "Missing jobId"}), 400
+        
+        # Use business service to submit the job
+        response = job_service.submit_job(job_id=job_id, context=context, job_type=job_type)
         
         return jsonify(response), 200
         
+    except ValueError as e:
+        logger.warning(f"Validation error in job submission: {e}")
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Unexpected error in job submission: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route('/runs', methods=['POST'])
@@ -204,18 +219,34 @@ def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()}), 200
 
 
+@app.route('/jobs/statistics', methods=['GET'])
+def get_job_statistics():
+    """
+    Get job statistics endpoint.
+    Demonstrates Clean Architecture by using business services.
+    """
+    try:
+        stats = job_service.get_job_statistics()
+        return jsonify(stats), 200
+    except Exception as e:
+        logger.error(f"Error getting job statistics: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint with API information."""
     return jsonify({
         "name": "Epistemix API Mock",
         "version": "1.0.0",
-        "description": "Mock implementation of Epistemix API based on Pact contract",
+        "description": "Mock implementation of Epistemix API based on Pact contract with Clean Architecture",
+        "architecture": "Clean Architecture with Domain Models and Services",
         "endpoints": {
             "POST /jobs/register": "Register a new job",
             "POST /jobs": "Submit a job for processing", 
             "POST /runs": "Submit run requests",
             "GET /runs": "Get runs by job_id",
+            "GET /jobs/statistics": "Get job statistics",
             "GET /health": "Health check"
         }
     }), 200
