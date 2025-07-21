@@ -1,6 +1,6 @@
 {
   "consumer": {
-    "name": "Consumer"
+    "name": "epx"
   },
   "provider": {
     "name": "S3"

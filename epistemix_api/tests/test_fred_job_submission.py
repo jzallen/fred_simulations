@@ -27,7 +27,7 @@ EPISTEMIX_LOGS_DIR = EPISTEMIX_API_FOLDER / "logs"
 
 
 # Define mock server for epistemix api
-epistemix_pact = Consumer('Consumer').has_pact_with(
+epistemix_pact = Consumer('epx').has_pact_with(
     Provider('Epistemix'),
     host_name=EPISTEMIX_MOCK_HOST,
     port=EPISTEMIX_MOCK_PORT,
@@ -36,7 +36,7 @@ epistemix_pact = Consumer('Consumer').has_pact_with(
 )
 
 # Define mock server for S3 api
-s3_pact = Consumer('Consumer').has_pact_with(
+s3_pact = Consumer('epx').has_pact_with(
     Provider('S3'),
     host_name=S3_MOCK_HOST,
     port=S3_MOCK_PORT,
