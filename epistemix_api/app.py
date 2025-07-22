@@ -76,12 +76,7 @@ def register_job():
 
 @app.route('/jobs', methods=['POST'])
 def submit_job():
-    """
-    Submit a job for processing.
-    Implements the job submission interaction from the Pact contract.
-    Uses Clean Architecture with business services.
-    """
-    # Validate required headers
+    """Submit registered job for processing to Epistemix platform."""
     required_headers = ['Offline-Token', 'content-type', 'fredcli-version', 'user-agent']
     if not validate_headers(required_headers):
         return jsonify({"error": "Missing required headers"}), 400
@@ -91,7 +86,6 @@ def submit_job():
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
         
-        # Extract business data
         job_id = data.get("jobId")
         context = data.get("context", "job")
         job_type = data.get("type", "input")
@@ -99,14 +93,16 @@ def submit_job():
         if not job_id:
             return jsonify({"error": "Missing jobId"}), 400
         
-        # Use business service to submit the job
-        response = job_service.submit_job(job_id=job_id, context=context, job_type=job_type)
+        job_submission_result = job_service.submit_job(job_id=job_id, context=context, job_type=job_type)
         
-        return jsonify(response), 200
+        if is_successful(job_submission_result):
+            response = job_submission_result.unwrap()
+            return jsonify(response), 200
+        else:
+            error_message = job_submission_result.failure()
+            logger.warning(f"Business logic error in job submission: {error_message}")
+            return jsonify({"error": error_message}), 400
         
-    except ValueError as e:
-        logger.warning(f"Validation error in job submission: {e}")
-        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(f"Unexpected error in job submission: {e}")
         return jsonify({"error": "Internal server error"}), 500

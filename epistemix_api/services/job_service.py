@@ -11,7 +11,11 @@ from returns.result import Result, Success, Failure
 
 from ..models.job import Job, JobStatus
 from ..repositories.interfaces import IJobRepository
-from ..use_cases.job_use_cases import register_job as register_job_use_case, validate_tags
+from ..use_cases.job_use_cases import (
+    register_job as register_job_use_case, 
+    submit_job as submit_job_use_case,
+    validate_tags
+)
 
 
 logger = logging.getLogger(__name__)
@@ -65,11 +69,12 @@ class JobService:
             logger.error(f"Unexpected error in register_job: {e}")
             return Failure("An unexpected error occurred while registering the job")
     
-    def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Dict[str, str]:
+    def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Result[Dict[str, str], str]:
         """
         Submit a job for processing.
         
-        This implements the business logic for the /jobs endpoint.
+        This is a public interface that delegates to the submit_job use case.
+        The service layer orchestrates the call to the business use case.
         
         Args:
             job_id: ID of the job to submit
@@ -77,32 +82,23 @@ class JobService:
             job_type: Type of the job submission
             
         Returns:
-            Dictionary containing submission response (e.g., pre-signed URL)
-            
-        Raises:
-            ValueError: If job doesn't exist or can't be submitted
+            Result containing either the submission response dict (Success) 
+            or an error message (Failure)
         """
-        # Find the job
-        job = self._job_repository.find_by_id(job_id)
-        if not job:
-            raise ValueError(f"Job {job_id} not found")
-        
-        # Business rule: Only created jobs can be submitted
-        if job.status != JobStatus.CREATED:
-            raise ValueError(f"Job {job_id} must be in CREATED status to be submitted, current status: {job.status.value}")
-        
-        # Update job status
-        job.update_status(JobStatus.SUBMITTED)
-        self._job_repository.save(job)
-        
-        # Return mock response as per Pact contract
-        response = {
-            "url": "http://localhost:5001/pre-signed-url"
-        }
-        
-        logger.info(f"Job {job_id} submitted with context {context} and type {job_type}")
-        
-        return response
+        try:
+            response = submit_job_use_case(
+                job_repository=self._job_repository,
+                job_id=job_id,
+                context=context,
+                job_type=job_type
+            )
+            return Success(response)
+        except ValueError as e:
+            return Failure(str(e))
+        except Exception as e:
+            # Log unexpected errors
+            logger.error(f"Unexpected error in submit_job: {e}")
+            return Failure("An unexpected error occurred while submitting the job")
     
     def get_job(self, job_id: int) -> Optional[Job]:
         """
