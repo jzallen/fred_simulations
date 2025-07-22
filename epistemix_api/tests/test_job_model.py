@@ -56,6 +56,31 @@ class TestJob:
         assert job.user_id == 456
         assert job.tags == ["info_job"]
         assert job.status == JobStatus.CREATED
+    
+    def test_create_persisted_with_all_parameters(self):
+        """Test create_persisted with all optional parameters."""
+        from datetime import datetime
+        created_time = datetime(2023, 1, 1, 12, 0, 0)
+        updated_time = datetime(2023, 1, 2, 12, 0, 0)
+        metadata = {"key": "value"}
+        
+        job = Job.create_persisted(
+            job_id=123, 
+            user_id=456, 
+            tags=["info_job"],
+            status=JobStatus.SUBMITTED,
+            created_at=created_time,
+            updated_at=updated_time,
+            metadata=metadata
+        )
+        
+        assert job.id == 123
+        assert job.user_id == 456
+        assert job.tags == ["info_job"]
+        assert job.status == JobStatus.SUBMITTED
+        assert job.created_at == created_time
+        assert job.updated_at == updated_time
+        assert job.metadata == metadata
 
     def test_to_dict_unpersisted_job_raises_error(self):
         """Test that to_dict raises error for unpersisted jobs."""

@@ -6,6 +6,8 @@ Shows how the JobService can work with different repository implementations.
 import pytest
 from typing import Dict, List, Optional
 
+from returns.pipeline import is_successful
+
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.services.job_service import JobService
 from epistemix_api.repositories.interfaces import IJobRepository
@@ -79,16 +81,18 @@ class TestDependencyInversion:
         service = JobService(repository)
         
         # Register a job
-        job = service.register_job(user_id=456, tags=["test_job"])
+        result = service.register_job(user_id=456, tags=["test_job"])
+        assert is_successful(result)
+        job_dict = result.unwrap()
         
         # Verify it uses the repository's ID generation
-        assert job.id == 500
-        assert job.user_id == 456
-        assert job.tags == ["test_job"]
+        assert job_dict["id"] == 500
+        assert job_dict["userId"] == 456
+        assert job_dict["tags"] == ["test_job"]
         
         # Verify we can retrieve it
-        retrieved_job = service.get_job(job.id)
-        assert retrieved_job == job
+        retrieved_job = service.get_job(job_dict["id"])
+        assert retrieved_job.id == job_dict["id"]
     
     def test_service_works_with_mock_repository(self):
         """Test that service works with MockJobRepository."""
@@ -96,19 +100,21 @@ class TestDependencyInversion:
         service = JobService(repository)
         
         # Register a job
-        job = service.register_job(user_id=456, tags=["mock_test"])
+        result = service.register_job(user_id=456, tags=["mock_test"])
+        assert is_successful(result)
+        job_dict = result.unwrap()
         
         # Verify it uses the mock repository's ID generation
-        assert job.id == 1000  # MockJobRepository starts at 1000
-        assert job.user_id == 456
-        assert job.tags == ["mock_test"]
+        assert job_dict["id"] == 1000  # MockJobRepository starts at 1000
+        assert job_dict["userId"] == 456
+        assert job_dict["tags"] == ["mock_test"]
         
         # Verify repository method calls were tracked
         assert repository.save_calls == 1
         
         # Retrieve the job
-        retrieved_job = service.get_job(job.id)
-        assert retrieved_job == job
+        retrieved_job = service.get_job(job_dict["id"])
+        assert retrieved_job.id == job_dict["id"]
         assert repository.find_calls == 1
     
     def test_service_interface_compliance(self):
@@ -117,14 +123,19 @@ class TestDependencyInversion:
         service = JobService(repository)
         
         # Register and submit a job
-        job = service.register_job(user_id=456, tags=["interface_test"])
-        response = service.submit_job(job.id)
+        register_result = service.register_job(user_id=456, tags=["interface_test"])
+        assert is_successful(register_result)
+        job_dict = register_result.unwrap()
+        
+        submit_result = service.submit_job(job_dict["id"])
+        assert is_successful(submit_result)
+        response = submit_result.unwrap()
         
         # Verify business logic works regardless of repository implementation
         assert response["url"] == "http://localhost:5001/pre-signed-url"
         
         # Verify job status was updated
-        updated_job = service.get_job(job.id)
+        updated_job = service.get_job(job_dict["id"])
         assert updated_job.status == JobStatus.SUBMITTED
     
     def test_repository_swapping(self):
@@ -137,27 +148,39 @@ class TestDependencyInversion:
         service2 = JobService(mock_repo)
         
         # Register jobs with both services
-        job1 = service1.register_job(user_id=456, tags=["repo1"])
-        job2 = service2.register_job(user_id=456, tags=["repo2"])
+        result1 = service1.register_job(user_id=456, tags=["repo1"])
+        result2 = service2.register_job(user_id=456, tags=["repo2"])
+        
+        assert is_successful(result1)
+        assert is_successful(result2)
+        
+        job1_dict = result1.unwrap()
+        job2_dict = result2.unwrap()
         
         # They should have different IDs based on their repository
-        assert job1.id == 100  # InMemoryJobRepository starting ID
-        assert job2.id == 1000  # MockJobRepository starting ID
+        assert job1_dict["id"] == 100  # InMemoryJobRepository starting ID
+        assert job2_dict["id"] == 1000  # MockJobRepository starting ID
         
         # But same business logic
-        assert job1.user_id == job2.user_id == 456
-        assert job1.status == job2.status == JobStatus.CREATED
+        assert job1_dict["userId"] == job2_dict["userId"] == 456
+        assert job1_dict["status"] == job2_dict["status"] == "created"
         
         # Submit both jobs
-        response1 = service1.submit_job(job1.id)
-        response2 = service2.submit_job(job2.id)
+        submit_result1 = service1.submit_job(job1_dict["id"])
+        submit_result2 = service2.submit_job(job2_dict["id"])
+        
+        assert is_successful(submit_result1)
+        assert is_successful(submit_result2)
+        
+        response1 = submit_result1.unwrap()
+        response2 = submit_result2.unwrap()
         
         # Both should return the same business response
         assert response1 == response2
         
         # Both jobs should be submitted
-        updated_job1 = service1.get_job(job1.id)
-        updated_job2 = service2.get_job(job2.id)
+        updated_job1 = service1.get_job(job1_dict["id"])
+        updated_job2 = service2.get_job(job2_dict["id"])
         
         assert updated_job1.status == JobStatus.SUBMITTED
         assert updated_job2.status == JobStatus.SUBMITTED
@@ -171,8 +194,11 @@ class TestDependencyInversion:
         service1 = JobService(repo1)
         
         # Register some jobs
-        service1.register_job(user_id=456, tags=["stats_test"])
-        service1.register_job(user_id=789, tags=["stats_test"])
+        result1 = service1.register_job(user_id=456, tags=["stats_test"])
+        result2 = service1.register_job(user_id=789, tags=["stats_test"])
+        
+        assert is_successful(result1)
+        assert is_successful(result2)
         
         # Get statistics
         stats1 = service1.get_job_statistics()
@@ -187,8 +213,11 @@ class TestDependencyInversion:
         service2 = JobService(repo2)
         
         # Register some jobs
-        service2.register_job(user_id=456, tags=["stats_test"])
-        service2.register_job(user_id=789, tags=["stats_test"])
+        result3 = service2.register_job(user_id=456, tags=["stats_test"])
+        result4 = service2.register_job(user_id=789, tags=["stats_test"])
+        
+        assert is_successful(result3)
+        assert is_successful(result4)
         
         # Get statistics
         stats2 = service2.get_job_statistics()
@@ -209,14 +238,19 @@ class TestRepositoryAbstraction:
         service = JobService(repository)
         
         # Use service methods that should only call interface methods
-        job = service.register_job(user_id=456, tags=["interface_only"])
-        service.submit_job(job.id)
-        service.get_job(job.id)
+        register_result = service.register_job(user_id=456, tags=["interface_only"])
+        assert is_successful(register_result)
+        job_dict = register_result.unwrap()
+        
+        submit_result = service.submit_job(job_dict["id"])
+        assert is_successful(submit_result)
+        
+        service.get_job(job_dict["id"])
         service.get_jobs_for_user(456)
         stats = service.get_job_statistics()
         
         # Verify that the service worked without accessing private repository details
-        assert job.id == 1000  # MockJobRepository behavior
+        assert job_dict["id"] == 1000  # MockJobRepository behavior
         assert stats["total_jobs"] == 1
         
         # The fact that this test passes means the service is properly

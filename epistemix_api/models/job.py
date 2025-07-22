@@ -167,7 +167,16 @@ class Job:
         return job
     
     @classmethod
-    def create_persisted(cls, job_id: int, user_id: int, tags: List[str] = None, status: JobStatus = JobStatus.CREATED) -> 'Job':
+    def create_persisted(
+        cls, 
+        job_id: int, 
+        user_id: int, 
+        tags: List[str] = None, 
+        status: JobStatus = JobStatus.CREATED,
+        created_at: datetime = None,
+        updated_at: datetime = None,
+        metadata: Dict[str, Any] = None,
+    ) -> 'Job':
         """
         Factory method to create a job with an existing ID (for loading from repository).
         
@@ -178,18 +187,31 @@ class Job:
             job_id: Existing ID assigned by the repository
             user_id: ID of the user who owns the job
             tags: Optional list of tags for the job
+            status: Job status (defaults to CREATED)
+            created_at: Creation timestamp (defaults to current time)
+            updated_at: Last update timestamp (defaults to current time)
+            metadata: Job metadata (defaults to empty dict)
             
         Returns:
             A new Job instance with the specified ID (persisted)
         """
         if tags is None:
             tags = []
+        if created_at is None:
+            created_at = datetime.utcnow()
+        if updated_at is None:
+            updated_at = datetime.utcnow()
+        if metadata is None:
+            metadata = {}
         
         job = cls(
             id=job_id,
             user_id=user_id,
             tags=tags.copy(),
-            status=status
+            status=status,
+            created_at=created_at,
+            updated_at=updated_at,
+            metadata=metadata
         )
         
         return job

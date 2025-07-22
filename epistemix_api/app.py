@@ -12,7 +12,6 @@ import logging
 from returns.pipeline import is_successful
 
 # Import our business models and services
-from .models.job import Job, JobStatus, JobTag
 from .services.job_service import JobService
 from .repositories.job_repository import JobRepository
 
