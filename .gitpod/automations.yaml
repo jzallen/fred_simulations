@@ -5,3 +5,18 @@ tasks:
         command: echo "Hello Simulation"
         triggeredBy:
             - postEnvironmentStart
+    
+    setup_epx_config:
+        name: Setup EPX Configuration
+        description: generates ~/.epx/config.json with API configuration
+        command: |
+            mkdir -p ~/.epx
+            cat > ~/.epx/config.json << 'EOF'
+            {
+             "api-url": "http://localhost:5000",
+             "bearer-token": "fake-token"
+            }
+            EOF
+            echo "Generated ~/.epx/config.json"
+        triggeredBy:
+            - postEnvironmentStart
