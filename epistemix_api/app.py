@@ -5,11 +5,11 @@ This app follows Clean Architecture principles with proper separation of concern
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import json
 import os
 from datetime import datetime
 from typing import Dict, List, Any
 import logging
+from returns.pipeline import is_successful
 
 # Import our business models and services
 from .models.job import Job, JobStatus, JobTag
@@ -57,19 +57,18 @@ def register_job():
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
         
-        # Extract business data
         tags = data.get("tags", [])
         user_id = 456  # Mock user ID as per Pact contract
+        job_result = job_service.register_job(user_id=user_id, tags=tags)
         
-        # Use business service to register the job
-        job = job_service.register_job(user_id=user_id, tags=tags)
+        if is_successful(job_result):
+            job_dict = job_result.unwrap()
+            return jsonify(job_dict), 200
+        else:
+            error_message = job_result.failure()
+            logger.warning(f"Business logic error in job registration: {error_message}")
+            return jsonify({"error": error_message}), 400
         
-        # Return response matching Pact contract
-        return jsonify(job.to_dict()), 200
-        
-    except ValueError as e:
-        logger.warning(f"Validation error in job registration: {e}")
-        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(f"Unexpected error in job registration: {e}")
         return jsonify({"error": "Internal server error"}), 500

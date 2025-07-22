@@ -38,16 +38,19 @@ class TestJobRoutes:
         body = {"tags": ["info_job"]}
         
         response = client.post('/jobs/register', headers=headers, json=body)
-        
         assert response.status_code == 200
+        
+        epxected_registered_job_data = {
+            "id": 123,
+            "userId": 456,  # Mock user ID as per Pact contract
+            "tags": ["info_job"],
+            "status": JobStatus.CREATED.value,
+            "createdAt": response.json['createdAt'],
+            "updatedAt": response.json['updatedAt'],
+            "metadata": {}
+        }
         data = response.get_json()
-        # Just verify the key fields, since the exact format may vary
-        assert 'id' in data
-        assert 'userId' in data
-        assert data['tags'] == ['info_job']
-        assert 'status' in data
-        assert 'createdAt' in data
-        assert 'updatedAt' in data
+        assert data == epxected_registered_job_data
     
     def test_job_submission__valid_request__returns_successful_response(self, client):
         headers = {

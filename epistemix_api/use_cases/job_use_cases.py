@@ -6,7 +6,7 @@ These functions implement the core business logic for job operations.
 from typing import List
 import logging
 
-from ..models.job import Job, JobStatus, JobTag
+from ..models.job import Job, JobTag
 from ..repositories.interfaces import IJobRepository
 
 

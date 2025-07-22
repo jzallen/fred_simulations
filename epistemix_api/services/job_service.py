@@ -5,11 +5,11 @@ the web layer and domain models.
 """
 
 from typing import Dict, List, Any, Optional
-from datetime import datetime
 import logging
 
-from ..models.job import Job, JobStatus, JobTag
-from ..models.user import User
+from returns.result import Result, Success, Failure
+
+from ..models.job import Job, JobStatus
 from ..repositories.interfaces import IJobRepository
 from ..use_cases.job_use_cases import register_job as register_job_use_case, validate_tags
 
@@ -36,7 +36,7 @@ class JobService:
         """
         self._job_repository = job_repository
     
-    def register_job(self, user_id: int, tags: List[str] = None) -> Job:
+    def register_job(self, user_id: int, tags: List[str] = None) -> Result[Dict[str, Any], str]:
         """
         Register a new job for a user.
         
@@ -48,16 +48,22 @@ class JobService:
             tags: Optional list of tags for the job
             
         Returns:
-            The created Job entity
-            
-        Raises:
-            ValueError: If user_id is invalid or business rules are violated
+            Result containing either the created Job entity as a dict (Success) 
+            or an error message (Failure)
         """
-        return register_job_use_case(
-            job_repository=self._job_repository,
-            user_id=user_id,
-            tags=tags
-        )
+        try:
+            job = register_job_use_case(
+                job_repository=self._job_repository,
+                user_id=user_id,
+                tags=tags
+            )
+            return Success(job.to_dict())
+        except ValueError as e:
+            return Failure(str(e))
+        except Exception as e:
+            # Log unexpected errors
+            logger.error(f"Unexpected error in register_job: {e}")
+            return Failure("An unexpected error occurred while registering the job")
     
     def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Dict[str, str]:
         """
