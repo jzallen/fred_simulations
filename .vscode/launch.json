@@ -12,7 +12,8 @@
             "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
             "env": {
                 "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
-                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin"
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
             }
         },
         {
@@ -42,6 +43,74 @@
                 "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
                 "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin"
             }
+        },
+        {
+            "name": "Debug pytest: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}",
+                "-v",
+                "-s"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Debug pytest: All Epistemix API Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "epistemix_api/tests/",
+                "-v",
+                "-s"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Debug pytest: Selected Test Method",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${input:testPath}",
+                "-v",
+                "-s"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testPath",
+            "description": "Enter the test path (e.g., epistemix_api/tests/test_clean_architecture.py::TestJobRegistrationRoute::test_job_registration_creates_business_model)",
+            "default": "epistemix_api/tests/test_clean_architecture.py",
+            "type": "promptString"
         }
     ]
 }

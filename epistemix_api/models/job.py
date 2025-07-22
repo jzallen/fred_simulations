@@ -13,7 +13,6 @@ import uuid
 class JobStatus(Enum):
     """Enumeration of possible job statuses."""
     CREATED = "created"
-    REGISTERED = "registered"
     SUBMITTED = "submitted"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -36,12 +35,18 @@ class Job:
     
     This is a core business entity that encapsulates the essential
     properties and behaviors of a job.
+    
+    A Job can exist in two states:
+    - Unpersisted: id is None (job has not been saved to repository)
+    - Persisted: id is an integer (job has been saved and assigned an ID by repository)
     """
     
     # Required fields
-    id: int
     user_id: int
     tags: List[str] = field(default_factory=list)
+    
+    # Repository-managed field (None until persisted)
+    id: Optional[int] = None
     
     # Optional fields with defaults
     status: JobStatus = JobStatus.CREATED
@@ -55,8 +60,8 @@ class Job:
     
     def _validate(self):
         """Validate the job entity according to business rules."""
-        if self.id <= 0:
-            raise ValueError("Job ID must be positive")
+        if self.id is not None and self.id <= 0:
+            raise ValueError("Job ID must be positive when set")
         
         if self.user_id <= 0:
             raise ValueError("User ID must be positive")
@@ -92,8 +97,8 @@ class Job:
         """Validate if a status transition is allowed according to business rules."""
         # Define valid transitions
         valid_transitions = {
-            JobStatus.CREATED: [JobStatus.REGISTERED, JobStatus.CANCELLED],
-            JobStatus.REGISTERED: [JobStatus.SUBMITTED, JobStatus.CANCELLED],
+            JobStatus.CREATED: [JobStatus.SUBMITTED, JobStatus.CANCELLED],
+            JobStatus.SUBMITTED: [JobStatus.PROCESSING, JobStatus.CANCELLED],
             JobStatus.SUBMITTED: [JobStatus.PROCESSING, JobStatus.CANCELLED],
             JobStatus.PROCESSING: [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED],
             JobStatus.COMPLETED: [],  # Terminal state
@@ -107,6 +112,10 @@ class Job:
         """Update the updated_at timestamp."""
         self.updated_at = datetime.utcnow()
     
+    def is_persisted(self) -> bool:
+        """Check if the job has been persisted (has an ID assigned by repository)."""
+        return self.id is not None
+    
     def is_active(self) -> bool:
         """Check if the job is in an active (non-terminal) state."""
         terminal_states = {JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED}
@@ -118,6 +127,9 @@ class Job:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert the job to a dictionary representation."""
+        if not self.is_persisted():
+            raise ValueError("Cannot convert unpersisted job to dict - job must be saved first")
+        
         return {
             "id": self.id,
             "userId": self.user_id,  # Note: API uses camelCase
@@ -129,23 +141,24 @@ class Job:
         }
     
     @classmethod
-    def create_new(cls, job_id: int, user_id: int, tags: List[str] = None) -> 'Job':
+    def create_new(cls, user_id: int, tags: List[str] = None) -> 'Job':
         """
-        Factory method to create a new job with proper initialization.
+        Factory method to create a new unpersisted job.
+        
+        This creates a job without an ID. The ID will be assigned by the repository
+        when the job is persisted via repository.save().
         
         Args:
-            job_id: Unique identifier for the job
             user_id: ID of the user creating the job
             tags: Optional list of tags for the job
             
         Returns:
-            A new Job instance with CREATED status
+            A new Job instance with CREATED status and no ID (unpersisted)
         """
         if tags is None:
             tags = []
         
         job = cls(
-            id=job_id,
             user_id=user_id,
             tags=tags.copy(),  # Defensive copy
             status=JobStatus.CREATED
@@ -154,17 +167,20 @@ class Job:
         return job
     
     @classmethod
-    def register(cls, job_id: int, user_id: int, tags: List[str] = None) -> 'Job':
+    def create_persisted(cls, job_id: int, user_id: int, tags: List[str] = None, status: JobStatus = JobStatus.CREATED) -> 'Job':
         """
-        Factory method to create a registered job (as per the /jobs/register endpoint).
+        Factory method to create a job with an existing ID (for loading from repository).
+        
+        This method should only be used by repository implementations when
+        reconstructing jobs from persistent storage.
         
         Args:
-            job_id: Unique identifier for the job
-            user_id: ID of the user registering the job
+            job_id: Existing ID assigned by the repository
+            user_id: ID of the user who owns the job
             tags: Optional list of tags for the job
             
         Returns:
-            A new Job instance with REGISTERED status
+            A new Job instance with the specified ID (persisted)
         """
         if tags is None:
             tags = []
@@ -173,21 +189,30 @@ class Job:
             id=job_id,
             user_id=user_id,
             tags=tags.copy(),
-            status=JobStatus.REGISTERED
+            status=status
         )
         
         return job
     
     def __eq__(self, other) -> bool:
-        """Check equality based on job ID."""
+        """Check equality based on job ID for persisted jobs, object identity for unpersisted."""
         if not isinstance(other, Job):
             return False
-        return self.id == other.id
+        
+        # For persisted jobs, compare by ID
+        if self.is_persisted() and other.is_persisted():
+            return self.id == other.id
+        
+        # For unpersisted jobs, use object identity
+        return self is other
     
     def __hash__(self) -> int:
-        """Hash based on job ID."""
-        return hash(self.id)
+        """Hash based on job ID for persisted jobs, object ID for unpersisted."""
+        if self.is_persisted():
+            return hash(self.id)
+        return hash(id(self))  # Use object ID for unpersisted jobs
     
     def __repr__(self) -> str:
         """String representation for debugging."""
-        return f"Job(id={self.id}, user_id={self.user_id}, status={self.status.value}, tags={self.tags})"
+        id_str = str(self.id) if self.is_persisted() else "unpersisted"
+        return f"Job(id={id_str}, user_id={self.user_id}, status={self.status.value}, tags={self.tags})"

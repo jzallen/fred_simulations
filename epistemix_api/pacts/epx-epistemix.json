@@ -37,7 +37,7 @@
       }
     },
     {
-      "description": "a job submission request",
+      "description": "a job input submission request",
       "request": {
         "method": "POST",
         "path": "/jobs",
@@ -248,6 +248,59 @@
           "$.body.runResponses[0].runRequest.fredFiles[*].*": {
             "match": "type"
           }
+        }
+      }
+    },
+    {
+      "description": "a job run config submission request",
+      "request": {
+        "method": "POST",
+        "path": "/jobs",
+        "headers": {
+          "Offline-Token": "Bearer fake-token",
+          "content-type": "application/json",
+          "fredcli-version": "0.4.0",
+          "user-agent": "epx_client_1.2.2"
+        },
+        "body": {
+          "jobId": 123,
+          "context": "run",
+          "type": "config",
+          "runId": 978
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+          "url": "http://localhost:5001/pre-signed-url-run"
+        }
+      }
+    },
+    {
+      "description": "a job config submission request",
+      "request": {
+        "method": "POST",
+        "path": "/jobs",
+        "headers": {
+          "Offline-Token": "Bearer fake-token",
+          "content-type": "application/json",
+          "fredcli-version": "0.4.0",
+          "user-agent": "epx_client_1.2.2"
+        },
+        "body": {
+          "jobId": 123,
+          "context": "job",
+          "type": "config"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+          "url": "http://localhost:5001/pre-signed-url-job-config"
         }
       }
     },

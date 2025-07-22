@@ -38,22 +38,31 @@ class TestJob:
             Job(id=123, user_id=-1)
     
     def test_create_new_factory_method(self):
-        """Test the create_new factory method."""
-        job = Job.create_new(job_id=123, user_id=456, tags=["info_job"])
+        """Test the create_new factory method creates unpersisted jobs."""
+        job = Job.create_new(user_id=456, tags=["info_job"])
         
-        assert job.id == 123
+        assert job.id is None  # Should be unpersisted
+        assert not job.is_persisted()
         assert job.user_id == 456
         assert job.tags == ["info_job"]
         assert job.status == JobStatus.CREATED
-    
-    def test_register_factory_method(self):
-        """Test the register factory method."""
-        job = Job.register(job_id=123, user_id=456, tags=["info_job"])
+
+    def test_create_persisted_factory_method(self):
+        """Test the create_persisted factory method creates persisted jobs."""
+        job = Job.create_persisted(job_id=123, user_id=456, tags=["info_job"])
         
         assert job.id == 123
+        assert job.is_persisted()
         assert job.user_id == 456
         assert job.tags == ["info_job"]
-        assert job.status == JobStatus.REGISTERED
+        assert job.status == JobStatus.CREATED
+
+    def test_to_dict_unpersisted_job_raises_error(self):
+        """Test that to_dict raises error for unpersisted jobs."""
+        job = Job.create_new(user_id=456, tags=["info_job"])
+        
+        with pytest.raises(ValueError, match="Cannot convert unpersisted job to dict"):
+            job.to_dict()
     
     def test_add_tag(self):
         """Test adding tags to a job."""
@@ -87,11 +96,7 @@ class TestJob:
         """Test valid status transitions."""
         job = Job(id=123, user_id=456)
         
-        # Valid transition: CREATED -> REGISTERED
-        job.update_status(JobStatus.REGISTERED)
-        assert job.status == JobStatus.REGISTERED
-        
-        # Valid transition: REGISTERED -> SUBMITTED
+        # Valid transition: CREATED -> SUBMITTED
         job.update_status(JobStatus.SUBMITTED)
         assert job.status == JobStatus.SUBMITTED
         
@@ -112,7 +117,6 @@ class TestJob:
             job.update_status(JobStatus.COMPLETED)
         
         # Invalid transition from terminal state
-        job.update_status(JobStatus.REGISTERED)
         job.update_status(JobStatus.SUBMITTED)
         job.update_status(JobStatus.PROCESSING)
         job.update_status(JobStatus.COMPLETED)
@@ -126,9 +130,6 @@ class TestJob:
         
         # Non-terminal states should be active
         assert job.is_active()  # CREATED
-        
-        job.update_status(JobStatus.REGISTERED)
-        assert job.is_active()
         
         job.update_status(JobStatus.SUBMITTED)
         assert job.is_active()
@@ -149,8 +150,8 @@ class TestJob:
         assert not job.has_tag("non_existent_tag")
     
     def test_to_dict(self):
-        """Test the to_dict method."""
-        job = Job(id=123, user_id=456, tags=["info_job"])
+        """Test the to_dict method with persisted job."""
+        job = Job.create_persisted(job_id=123, user_id=456, tags=["info_job"])
         job_dict = job.to_dict()
         
         assert job_dict["id"] == 123
@@ -161,10 +162,11 @@ class TestJob:
         assert "updatedAt" in job_dict
     
     def test_equality_and_hash(self):
-        """Test equality and hash methods."""
-        job1 = Job(id=123, user_id=456)
-        job2 = Job(id=123, user_id=789)  # Different user_id but same job id
-        job3 = Job(id=124, user_id=456)  # Different job id
+        """Test equality and hash methods for persisted and unpersisted jobs."""
+        # Test persisted jobs - equality based on ID
+        job1 = Job.create_persisted(job_id=123, user_id=456)
+        job2 = Job.create_persisted(job_id=123, user_id=789)  # Different user_id but same job id
+        job3 = Job.create_persisted(job_id=124, user_id=456)  # Different job id
         
         # Jobs with same ID should be equal
         assert job1 == job2
@@ -173,13 +175,35 @@ class TestJob:
         # Jobs with different ID should not be equal
         assert job1 != job3
         assert hash(job1) != hash(job3)
+        
+        # Test unpersisted jobs - equality based on object identity
+        unpersisted1 = Job.create_new(user_id=456)
+        unpersisted2 = Job.create_new(user_id=456)  # Same user but different object
+        
+        # Different unpersisted job objects should not be equal
+        assert unpersisted1 != unpersisted2
+        assert hash(unpersisted1) != hash(unpersisted2)
+        
+        # Same object should be equal to itself
+        assert unpersisted1 == unpersisted1
+        assert hash(unpersisted1) == hash(unpersisted1)
     
     def test_repr(self):
-        """Test string representation."""
-        job = Job(id=123, user_id=456, tags=["info_job"])
-        repr_str = repr(job)
+        """Test string representation for persisted and unpersisted jobs."""
+        # Test persisted job
+        persisted_job = Job.create_persisted(job_id=123, user_id=456, tags=["info_job"])
+        repr_str = repr(persisted_job)
         
         assert "Job(" in repr_str
         assert "id=123" in repr_str
         assert "user_id=456" in repr_str
+        assert "status=created" in repr_str
+        
+        # Test unpersisted job
+        unpersisted_job = Job.create_new(user_id=789, tags=["test_job"])
+        repr_str = repr(unpersisted_job)
+        
+        assert "Job(" in repr_str
+        assert "id=unpersisted" in repr_str
+        assert "user_id=789" in repr_str
         assert "status=created" in repr_str

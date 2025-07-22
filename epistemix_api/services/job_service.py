@@ -10,104 +10,54 @@ import logging
 
 from ..models.job import Job, JobStatus, JobTag
 from ..models.user import User
+from ..repositories.interfaces import IJobRepository
+from ..use_cases.job_use_cases import register_job as register_job_use_case, validate_tags
 
 
 logger = logging.getLogger(__name__)
-
-
-class JobRepository:
-    """
-    Repository interface for job persistence.
-    In a real application, this would be implemented with database operations.
-    """
-    
-    def __init__(self):
-        self._jobs: Dict[int, Job] = {}
-        self._next_id = 123  # Starting from Pact contract value
-    
-    def save(self, job: Job) -> Job:
-        """Save a job to the repository."""
-        self._jobs[job.id] = job
-        logger.info(f"Job {job.id} saved to repository")
-        return job
-    
-    def find_by_id(self, job_id: int) -> Optional[Job]:
-        """Find a job by its ID."""
-        return self._jobs.get(job_id)
-    
-    def find_by_user_id(self, user_id: int) -> List[Job]:
-        """Find all jobs for a specific user."""
-        return [job for job in self._jobs.values() if job.user_id == user_id]
-    
-    def find_by_status(self, status: JobStatus) -> List[Job]:
-        """Find all jobs with a specific status."""
-        return [job for job in self._jobs.values() if job.status == status]
-    
-    def get_next_id(self) -> int:
-        """Get the next available job ID."""
-        current_id = self._next_id
-        self._next_id += 1
-        return current_id
-    
-    def exists(self, job_id: int) -> bool:
-        """Check if a job exists."""
-        return job_id in self._jobs
-    
-    def delete(self, job_id: int) -> bool:
-        """Delete a job from the repository."""
-        if job_id in self._jobs:
-            del self._jobs[job_id]
-            logger.info(f"Job {job_id} deleted from repository")
-            return True
-        return False
 
 
 class JobService:
     """
     Service for job-related business operations.
     Implements use cases and business logic for job management.
+    
+    This service depends on the IJobRepository interface, following
+    the Dependency Inversion Principle.
     """
     
-    def __init__(self, job_repository: JobRepository = None):
-        self.job_repository = job_repository or JobRepository()
+    def __init__(self, job_repository: IJobRepository):
+        """
+        Initialize the job service.
+        
+        Args:
+            job_repository: Repository implementation for job persistence.
+                          Defaults to InMemoryJobRepository if not provided.
+        """
+        self._job_repository = job_repository
     
     def register_job(self, user_id: int, tags: List[str] = None) -> Job:
         """
         Register a new job for a user.
         
-        This implements the business logic for the /jobs/register endpoint.
+        This is a public interface that delegates to the register_job use case.
+        The service layer orchestrates the call to the business use case.
         
         Args:
             user_id: ID of the user registering the job
             tags: Optional list of tags for the job
             
         Returns:
-            The registered Job entity
+            The created Job entity
             
         Raises:
             ValueError: If user_id is invalid or business rules are violated
         """
-        if user_id <= 0:
-            raise ValueError("User ID must be positive")
-        
-        if tags is None:
-            tags = []
-        
-        # Validate tags against known values (business rule)
-        self._validate_tags(tags)
-        
-        # Generate new job ID
-        job_id = self.job_repository.get_next_id()
-        
-        # Create and register the job
-        job = Job.register(job_id=job_id, user_id=user_id, tags=tags)
-        
-        # Save to repository
-        saved_job = self.job_repository.save(job)
-        
-        logger.info(f"Job {job_id} registered for user {user_id} with tags {tags}")
-        
-        return saved_job
+        return register_job_use_case(
+            job_repository=self._job_repository,
+            user_id=user_id,
+            tags=tags
+        )
     
     def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Dict[str, str]:
         """
@@ -127,17 +77,17 @@ class JobService:
             ValueError: If job doesn't exist or can't be submitted
         """
         # Find the job
-        job = self.job_repository.find_by_id(job_id)
+        job = self._job_repository.find_by_id(job_id)
         if not job:
             raise ValueError(f"Job {job_id} not found")
         
-        # Business rule: Only registered jobs can be submitted
-        if job.status != JobStatus.REGISTERED:
-            raise ValueError(f"Job {job_id} must be in REGISTERED status to be submitted, current status: {job.status.value}")
+        # Business rule: Only created jobs can be submitted
+        if job.status != JobStatus.CREATED:
+            raise ValueError(f"Job {job_id} must be in CREATED status to be submitted, current status: {job.status.value}")
         
         # Update job status
         job.update_status(JobStatus.SUBMITTED)
-        self.job_repository.save(job)
+        self._job_repository.save(job)
         
         # Return mock response as per Pact contract
         response = {
@@ -158,7 +108,7 @@ class JobService:
         Returns:
             The Job entity if found, None otherwise
         """
-        return self.job_repository.find_by_id(job_id)
+        return self._job_repository.find_by_id(job_id)
     
     def get_jobs_for_user(self, user_id: int) -> List[Job]:
         """
@@ -170,7 +120,7 @@ class JobService:
         Returns:
             List of Job entities for the user
         """
-        return self.job_repository.find_by_user_id(user_id)
+        return self._job_repository.find_by_user_id(user_id)
     
     def update_job_status(self, job_id: int, new_status: JobStatus) -> Job:
         """
@@ -186,12 +136,12 @@ class JobService:
         Raises:
             ValueError: If job doesn't exist or status transition is invalid
         """
-        job = self.job_repository.find_by_id(job_id)
+        job = self._job_repository.find_by_id(job_id)
         if not job:
             raise ValueError(f"Job {job_id} not found")
         
         job.update_status(new_status)
-        return self.job_repository.save(job)
+        return self._job_repository.save(job)
     
     def add_tag_to_job(self, job_id: int, tag: str) -> Job:
         """
@@ -207,36 +157,14 @@ class JobService:
         Raises:
             ValueError: If job doesn't exist or tag is invalid
         """
-        job = self.job_repository.find_by_id(job_id)
+        job = self._job_repository.find_by_id(job_id)
         if not job:
             raise ValueError(f"Job {job_id} not found")
         
-        self._validate_tags([tag])
+        # Use the use case validation function
+        validate_tags([tag])
         job.add_tag(tag)
-        return self.job_repository.save(job)
-    
-    def _validate_tags(self, tags: List[str]) -> None:
-        """
-        Validate tags according to business rules.
-        
-        Args:
-            tags: List of tags to validate
-            
-        Raises:
-            ValueError: If any tag is invalid
-        """
-        if not tags:
-            return
-        
-        valid_tag_values = [tag.value for tag in JobTag]
-        
-        for tag in tags:
-            if not isinstance(tag, str) or not tag.strip():
-                raise ValueError(f"Tag must be a non-empty string: {tag}")
-            
-            # For now, we'll allow unknown tags but could enforce strict validation
-            # if tag not in valid_tag_values:
-            #     raise ValueError(f"Invalid tag: {tag}. Valid tags are: {valid_tag_values}")
+        return self._job_repository.save(job)
     
     def get_job_statistics(self) -> Dict[str, Any]:
         """
@@ -245,7 +173,7 @@ class JobService:
         Returns:
             Dictionary containing job statistics
         """
-        all_jobs = list(self.job_repository._jobs.values())
+        all_jobs = self._job_repository.find_all()
         
         status_counts = {}
         for status in JobStatus:

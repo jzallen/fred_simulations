@@ -13,7 +13,8 @@ import logging
 
 # Import our business models and services
 from .models.job import Job, JobStatus, JobTag
-from .services.job_service import JobService, JobRepository
+from .services.job_service import JobService
+from .repositories.job_repository import JobRepository
 
 app = Flask(__name__)
 CORS(app)
@@ -22,8 +23,9 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize services (Dependency Injection in a real app)
-job_service = JobService(JobRepository())
+# Initialize services with dependency injection
+job_repository = JobRepository()
+job_service = JobService(job_repository)
 
 # Legacy in-memory storage for runs (to be refactored later)
 runs_storage: Dict[int, Dict[str, Any]] = {}
@@ -40,11 +42,7 @@ def validate_headers(required_headers: List[str]) -> bool:
 
 @app.route('/jobs/register', methods=['POST'])
 def register_job():
-    """
-    Register a new job.
-    Implements the job registration interaction from the Pact contract.
-    Uses Clean Architecture with business models and services.
-    """
+    """Persists a new job configuration."""
     # Validate required headers
     required_headers = ['Offline-Token', 'content-type', 'fredcli-version', 'user-agent']
     if not validate_headers(required_headers):
@@ -219,28 +217,13 @@ def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()}), 200
 
 
-@app.route('/jobs/statistics', methods=['GET'])
-def get_job_statistics():
-    """
-    Get job statistics endpoint.
-    Demonstrates Clean Architecture by using business services.
-    """
-    try:
-        stats = job_service.get_job_statistics()
-        return jsonify(stats), 200
-    except Exception as e:
-        logger.error(f"Error getting job statistics: {e}")
-        return jsonify({"error": "Internal server error"}), 500
-
-
 @app.route('/', methods=['GET'])
 def root():
     """Root endpoint with API information."""
     return jsonify({
-        "name": "Epistemix API Mock",
+        "name": "Epistemix API",
         "version": "1.0.0",
-        "description": "Mock implementation of Epistemix API based on Pact contract with Clean Architecture",
-        "architecture": "Clean Architecture with Domain Models and Services",
+        "description": "Interface for creating and running jobs on Epistemix platform",
         "endpoints": {
             "POST /jobs/register": "Register a new job",
             "POST /jobs": "Submit a job for processing", 
