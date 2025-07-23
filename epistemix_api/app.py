@@ -3,7 +3,7 @@ Flask app that implements the Epistemix API based on the Pact contract.
 This app follows Clean Architecture principles with proper separation of concerns.
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 import os
 from datetime import datetime
@@ -14,6 +14,7 @@ from returns.pipeline import is_successful
 # Import our business models and services
 from .services.job_service import JobService
 from .repositories.job_repository import JobRepository
+from .repositories.database import get_database_manager
 
 app = Flask(__name__)
 CORS(app)
@@ -22,9 +23,39 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize services with dependency injection
-job_repository = JobRepository()
-job_service = JobService(job_repository)
+# Configure database
+app.config['DATABASE_URL'] = os.getenv('DATABASE_URL', 'sqlite:///epistemix_jobs.db')
+
+
+@app.before_request
+def before_request():
+    """Initialize database session for each request."""
+    database_url = app.config['DATABASE_URL']
+    db_manager = get_database_manager(database_url)
+    g.db_session = db_manager.get_session()
+
+
+@app.teardown_appcontext
+def close_db_session(error):
+    """Close database session after each request."""
+    db_session = getattr(g, 'db_session', None)
+    if db_session is not None:
+        if error:
+            db_session.rollback()
+        else:
+            try:
+                db_session.commit()
+            except Exception:
+                db_session.rollback()
+                raise
+        db_session.close()
+
+
+def get_job_service():
+    """Get a JobService instance with the current request's database session."""
+    session_factory = lambda: g.db_session
+    job_repository = JobRepository(session_factory)
+    return JobService(job_repository)
 
 # Legacy in-memory storage for runs (to be refactored later)
 runs_storage: Dict[int, Dict[str, Any]] = {}
@@ -58,6 +89,7 @@ def register_job():
         
         tags = data.get("tags", [])
         user_id = 456  # Mock user ID as per Pact contract
+        job_service = get_job_service()
         job_result = job_service.register_job(user_id=user_id, tags=tags)
         
         if is_successful(job_result):
@@ -92,6 +124,7 @@ def submit_job():
         if not job_id:
             return jsonify({"error": "Missing jobId"}), 400
         
+        job_service = get_job_service()
         job_submission_result = job_service.submit_job(job_id=job_id, context=context, job_type=job_type)
         
         if is_successful(job_submission_result):

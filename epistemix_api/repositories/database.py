@@ -59,18 +59,9 @@ class DatabaseManager:
         Base.metadata.drop_all(bind=self.engine)
 
 
-# Global database manager instance
-_db_manager = None
-
-
 def get_database_manager(database_url: str = "sqlite:///epistemix_jobs.db") -> DatabaseManager:
-    """Get or create the global database manager instance."""
-    global _db_manager
-    if _db_manager is None:
-        _db_manager = DatabaseManager(database_url)
-        _db_manager.create_tables()
-    return _db_manager
-
+    """Get or create a database manager instance for the given URL."""
+    return DatabaseManager(database_url)
 
 def get_db_session():
     """Get a new database session."""

@@ -18,7 +18,7 @@ from ..models.job import Job, JobStatus
 logger = logging.getLogger(__name__)
 
 
-class SQLAlchemyJobRepository(IJobRepository):
+class SQLAlchemyJobRepository:
     """
     SQLAlchemy-based implementation of the job repository.
     
@@ -26,9 +26,9 @@ class SQLAlchemyJobRepository(IJobRepository):
     It provides the same interface as the in-memory repository but with persistent storage.
     """
     
-    def __init__(self):
+    def __init__(self, get_db_session_fn: callable = get_db_session):
         """Initialize the repository."""
-        self._session_factory = get_db_session
+        self._session_factory = get_db_session_fn
     
     @contextmanager
     def _get_session(self):
@@ -83,7 +83,7 @@ class SQLAlchemyJobRepository(IJobRepository):
                     job_record.user_id = job.user_id
                     job_record.tags = job.tags
                     job_record.status = self._domain_to_record(job).status
-                    job_record.updated_at = datetime.utcnow()
+                    job_record.updated_at = datetime.datetime.utcnow()
                     job_record.job_metadata = job.metadata
                     session.add(job_record)
                     session.flush()
@@ -225,6 +225,30 @@ class SQLAlchemyJobRepository(IJobRepository):
         except SQLAlchemyError as e:
             logger.error(f"Database error counting jobs: {e}")
             raise
+    
+    def _record_to_domain(self, job_record: JobRecord) -> Job:
+        """Convert a JobRecord database record to a Job domain object."""
+        return Job.create_persisted(
+            job_id=job_record.id,
+            user_id=job_record.user_id,
+            tags=job_record.tags,
+            status=JobStatus(job_record.status.value),
+            created_at=job_record.created_at,
+            updated_at=job_record.updated_at,
+            metadata=job_record.job_metadata,
+        )
+    
+    def _domain_to_record(self, job: Job) -> JobRecord:
+        """Convert a Job domain object to a JobRecord database record."""
+        return JobRecord(
+            id=job.id,
+            user_id=job.user_id,
+            tags=job.tags,
+            status=JobStatusEnum(job.status.value),
+            created_at=job.created_at,
+            updated_at=job.updated_at,
+            job_metadata=job.metadata or {}
+        )
 
 
 # Keep the old in-memory implementation for backwards compatibility and testing
