@@ -67,18 +67,6 @@ class IJobRepository(Protocol):
         """
         ...
     
-    def get_next_id(self) -> int:
-        """
-        Get the next available job ID.
-        
-        This method is used internally by the repository implementation
-        to assign IDs to new jobs. External callers should not need to
-        call this method directly - use save() with an unpersisted job instead.
-        
-        Returns:
-            The next available ID
-        """
-        ...
     
     def exists(self, job_id: int) -> bool:
         """

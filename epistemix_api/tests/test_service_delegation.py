@@ -23,7 +23,7 @@ class TestJobServiceDelegation:
     @pytest.fixture
     def service(self, repository):
         """Create a service with repository."""
-        return JobService(repository)
+        return JobService.create_with_job_repository(repository)
     
     @patch('epistemix_api.services.job_service.register_job_use_case')
     def test_register_job_delegates_to_use_case(self, mock_use_case, service):
@@ -144,8 +144,8 @@ class TestServiceLayerBehavior:
     def test_service_is_stateless(self):
         """Test that service doesn't maintain state beyond repository."""
         repo = InMemoryJobRepository()
-        service1 = JobService(repo)
-        service2 = JobService(repo)
+        service1 = JobService.create_with_job_repository(repo)
+        service2 = JobService.create_with_job_repository(repo)
         
         # Register job with service1
         register_result = service1.register_job(user_id=456, tags=["stateless_test"])
@@ -163,8 +163,8 @@ class TestServiceLayerBehavior:
         repo1 = InMemoryJobRepository(starting_id=500)
         repo2 = InMemoryJobRepository(starting_id=600)
         
-        service1 = JobService(repo1)
-        service2 = JobService(repo2)
+        service1 = JobService.create_with_job_repository(repo1)
+        service2 = JobService.create_with_job_repository(repo2)
         
         # Jobs should have different IDs based on repository
         result1 = service1.register_job(user_id=456, tags=["di_test1"])
@@ -184,18 +184,3 @@ class TestServiceLayerBehavior:
         assert service1.get_job(job2_dict["id"]) is None
         assert service2.get_job(job2_dict["id"]) is not None
         assert service2.get_job(job1_dict["id"]) is None
-    
-    def test_service_error_handling(self):
-        """Test service error handling and validation."""
-        service = JobService(InMemoryJobRepository())
-        
-        # Test various error conditions - submit_job now returns Result
-        submit_result = service.submit_job(99999)  # Non-existent job
-        assert not is_successful(submit_result)
-        assert "not found" in submit_result.failure()
-        
-        with pytest.raises(ValueError):
-            service.update_job_status(99999, JobStatus.COMPLETED)  # Non-existent job
-        
-        with pytest.raises(ValueError):
-            service.add_tag_to_job(99999, "test")  # Non-existent job

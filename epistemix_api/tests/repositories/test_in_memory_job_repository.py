@@ -1,12 +1,11 @@
 """
-Tests for the job repository implementations.
+Tests for in-memory job repository implementation.
 """
 
 import pytest
-from datetime import datetime
 
-from epistemix_api.models.job import Job, JobStatus, JobTag
-from epistemix_api.repositories.job_repository import InMemoryJobRepository
+from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.repositories import InMemoryJobRepository
 from epistemix_api.repositories.interfaces import IJobRepository
 
 
@@ -40,10 +39,15 @@ class TestInMemoryJobRepository:
         
         # Find by ID
         found_job = repository.find_by_id(100)
-        assert found_job is not None
-        assert found_job.id == 100
-        assert found_job.user_id == 456
-        assert found_job.tags == ["info_job"]
+        expected_job = Job.create_persisted(
+            job_id=100,
+            user_id=456,
+            tags=["info_job"],
+            status=JobStatus.CREATED,
+            created_at=saved_job.created_at,
+            updated_at=saved_job.updated_at
+        )
+        assert found_job == expected_job
     
     def test_find_by_id_not_found(self, repository):
         """Test finding a job that doesn't exist."""
@@ -116,9 +120,9 @@ class TestInMemoryJobRepository:
     def test_find_by_status(self, repository):
         """Test finding jobs by status."""
         # Create unpersisted jobs with different statuses
-        job1 = Job.create_new(user_id=456, tags=["job1"])  # CREATED
-        job2 = Job.create_new(user_id=456, tags=["job2"])  # CREATED
-        job3 = Job.create_new(user_id=456, tags=["job3"])  # CREATED
+        job1 = Job.create_new(user_id=456, tags=["job1"])
+        job2 = Job.create_new(user_id=456, tags=["job2"])
+        job3 = Job.create_new(user_id=456, tags=["job3"])
         
         # Update one job to SUBMITTED before saving
         job1.update_status(JobStatus.SUBMITTED)

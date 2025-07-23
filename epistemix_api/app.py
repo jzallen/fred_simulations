@@ -13,7 +13,7 @@ from returns.pipeline import is_successful
 
 # Import our business models and services
 from .services.job_service import JobService
-from .repositories.job_repository import JobRepository
+from .repositories.job_repository import SQLAlchemyJobRepository
 from .repositories.database import get_database_manager
 
 app = Flask(__name__)
@@ -54,8 +54,8 @@ def close_db_session(error):
 def get_job_service():
     """Get a JobService instance with the current request's database session."""
     session_factory = lambda: g.db_session
-    job_repository = JobRepository(session_factory)
-    return JobService(job_repository)
+    job_repository = SQLAlchemyJobRepository(session_factory)
+    return JobService.create_with_job_repository(job_repository)
 
 # Legacy in-memory storage for runs (to be refactored later)
 runs_storage: Dict[int, Dict[str, Any]] = {}

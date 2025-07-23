@@ -11,7 +11,6 @@ from pathlib import Path
 current_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(current_dir))
 
-from epistemix_api.app import app
 from epistemix_api.services.job_service import JobService
 from epistemix_api.repositories.job_repository import InMemoryJobRepository
 from epistemix_api.models.job import Job, JobStatus
@@ -20,7 +19,7 @@ from epistemix_api.models.job import Job, JobStatus
 @pytest.fixture
 def service():
     """Create a service instance for testing."""
-    return JobService(InMemoryJobRepository())
+    return JobService.create_with_job_repository(InMemoryJobRepository())
 
 class TestJobService:
     """Test the job service business logic."""

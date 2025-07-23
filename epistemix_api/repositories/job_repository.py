@@ -67,7 +67,9 @@ class SQLAlchemyJobRepository:
                         user_id=job.user_id,
                         tags=job.tags,
                         status=JobStatusEnum(job.status.value),
-                        job_metadata=job.metadata or {}
+                        job_metadata=job.metadata or {},
+                        created_at=datetime.datetime.utcnow(),
+                        updated_at=datetime.datetime.utcnow()
                     )
                     session.add(job_record)
                     session.flush()  # Get the assigned ID
@@ -144,26 +146,6 @@ class SQLAlchemyJobRepository:
                 return [self._record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding jobs with status {status}: {e}")
-            raise
-    
-    def get_next_id(self) -> int:
-        """
-        Get the next available job ID.
-        
-        Note: This method is included for interface compliance but is not used
-        in the SQLAlchemy implementation since the database handles ID generation
-        automatically through auto-increment.
-        
-        Returns:
-            The next ID that would be assigned by the database
-        """
-        try:
-            with self._get_session() as session:
-                # Get the highest current ID and add 1
-                max_id = session.query(JobRecord.id).order_by(JobRecord.id.desc()).first()
-                return (max_id[0] + 1) if max_id and max_id[0] else 1
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting next ID: {e}")
             raise
     
     def exists(self, job_id: int) -> bool:
@@ -251,7 +233,6 @@ class SQLAlchemyJobRepository:
         )
 
 
-# Keep the old in-memory implementation for backwards compatibility and testing
 class InMemoryJobRepository(IJobRepository):
     """
     In-memory implementation of the job repository.
@@ -328,7 +309,3 @@ class InMemoryJobRepository(IJobRepository):
         """Reset the ID counter (for testing)."""
         self._next_id = starting_id
         logger.info(f"ID counter reset to {starting_id}")
-
-
-# Default to SQLAlchemy implementation
-JobRepository = SQLAlchemyJobRepository

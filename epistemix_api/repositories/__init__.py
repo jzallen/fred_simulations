@@ -4,10 +4,10 @@ Contains data persistence abstractions and implementations.
 """
 
 from .interfaces import IJobRepository
-from .job_repository import InMemoryJobRepository, JobRepository
+from .job_repository import InMemoryJobRepository, SQLAlchemyJobRepository
 
 __all__ = [
     'IJobRepository',
     'InMemoryJobRepository', 
-    'JobRepository'
+    'SQLAlchemyJobRepository'
 ]

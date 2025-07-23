@@ -50,8 +50,8 @@ class Job:
     
     # Optional fields with defaults
     status: JobStatus = JobStatus.CREATED
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    updated_at: datetime = field(default_factory=lambda: datetime.utcnow())
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
@@ -221,13 +221,8 @@ class Job:
         if not isinstance(other, Job):
             return False
         
-        # For persisted jobs, compare by ID
-        if self.is_persisted() and other.is_persisted():
-            return self.id == other.id
-        
-        # For unpersisted jobs, use object identity
-        return self is other
-    
+        return self.to_dict() == other.to_dict()
+
     def __hash__(self) -> int:
         """Hash based on job ID for persisted jobs, object ID for unpersisted."""
         if self.is_persisted():
