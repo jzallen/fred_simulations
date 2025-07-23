@@ -4,7 +4,7 @@ Defines contracts for data persistence using Protocol for type safety.
 """
 
 from typing import Protocol, Optional, List, runtime_checkable
-from ..models.job import Job, JobStatus
+from epistemix_api.models.job import Job, JobStatus
 
 
 @runtime_checkable
@@ -89,14 +89,5 @@ class IJobRepository(Protocol):
             
         Returns:
             True if the job was deleted, False if it didn't exist
-        """
-        ...
-    
-    def find_all(self) -> List[Job]:
-        """
-        Find all jobs in the repository.
-        
-        Returns:
-            List of all jobs
         """
         ...

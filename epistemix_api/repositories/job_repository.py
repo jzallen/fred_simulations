@@ -171,43 +171,6 @@ class SQLAlchemyJobRepository:
             logger.error(f"Database error deleting job {job_id}: {e}")
             raise
     
-    def find_all(self) -> List[Job]:
-        """Find all jobs in the database."""
-        try:
-            with self._get_session() as session:
-                job_records = session.query(JobRecord).all()
-                return [self._record_to_domain(record) for record in job_records]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding all jobs: {e}")
-            raise
-    
-    def clear(self) -> None:
-        """
-        Clear all jobs from the database.
-        Useful for testing and development.
-        """
-        try:
-            with self._get_session() as session:
-                session.query(JobRecord).delete()
-                logger.info("All jobs cleared from database")
-        except SQLAlchemyError as e:
-            logger.error(f"Database error clearing jobs: {e}")
-            raise
-    
-    def count(self) -> int:
-        """
-        Get the total number of jobs in the database.
-        
-        Returns:
-            The number of jobs
-        """
-        try:
-            with self._get_session() as session:
-                return session.query(JobRecord).count()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error counting jobs: {e}")
-            raise
-    
     def _record_to_domain(self, job_record: JobRecord) -> Job:
         """Convert a JobRecord database record to a Job domain object."""
         return Job.create_persisted(
@@ -291,19 +254,6 @@ class InMemoryJobRepository(IJobRepository):
             logger.info(f"Job {job_id} deleted from in-memory repository")
             return True
         return False
-    
-    def find_all(self) -> List[Job]:
-        """Find all jobs in memory."""
-        return list(self._jobs.values())
-    
-    def clear(self) -> None:
-        """Clear all jobs from memory."""
-        self._jobs.clear()
-        logger.info("All jobs cleared from in-memory repository")
-    
-    def count(self) -> int:
-        """Get the total number of jobs in memory."""
-        return len(self._jobs)
     
     def reset_id_counter(self, starting_id: int = 123) -> None:
         """Reset the ID counter (for testing)."""
