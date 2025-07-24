@@ -127,9 +127,7 @@ class Job:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert the job to a dictionary representation."""
-        if not self.is_persisted():
-            raise ValueError("Cannot convert unpersisted job to dict - job must be saved first")
-        
+       
         return {
             "id": self.id,
             "userId": self.user_id,  # Note: API uses camelCase

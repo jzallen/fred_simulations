@@ -17,14 +17,12 @@ def repository():
     """Create a fresh repository for each test."""
     test_db_url = "sqlite:///test_sqlalchemy_job_repository.db"
     test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.drop_tables()
     test_db_manager.create_tables()
 
     # Create a repository with a session factory that uses the test database
     yield SQLAlchemyJobRepository(get_db_session_fn=test_db_manager.get_session)
 
     try:
-        test_db_manager.drop_tables()
         os.remove("test_sqlalchemy_job_repository.db")
     except FileNotFoundError:
         pass

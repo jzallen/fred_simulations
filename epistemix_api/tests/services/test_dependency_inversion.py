@@ -21,7 +21,6 @@ def job_service():
     
     # Clear and recreate tables for each test
     test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.drop_tables()
     test_db_manager.create_tables()
 
     job_repository = SQLAlchemyJobRepository(test_db_manager.get_session)
