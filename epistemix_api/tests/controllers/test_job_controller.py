@@ -9,7 +9,7 @@ from unittest.mock import Mock
 from freezegun import freeze_time
 from returns.pipeline import is_successful
 
-from epistemix_api.services.job_service import JobService, JobServiceDependencies
+from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
 from epistemix_api.models.job import Job, JobStatus, JobConfigLocation
 from epistemix_api.repositories import SQLAlchemyJobRepository, get_database_manager
 
@@ -19,15 +19,15 @@ def service():
     with freeze_time("2025-01-01 12:00:00"):
         job = Job.create_persisted(job_id=1, user_id=456, tags=["info_job"])
 
-    service = JobService()
-    service._dependencies = JobServiceDependencies(
+    service = JobController()
+    service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
         submit_job_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url")),
         get_job_fn=Mock()
     )
     return service
 
-class TestJobService:
+class TestJobController:
     
     def test_register_job__calls_register_job_fn_with_created_job(self, service):
         service.register_job(user_id=456, tags=["info_job"])
@@ -101,15 +101,15 @@ def job_repository():
         pass
 
 @pytest.fixture
-def job_service(job_repository):
-    return JobService.create_with_job_repository(job_repository)
+def job_controller(job_repository):
+    return JobController.create_with_job_repository(job_repository)
 
 
 @freeze_time("2025-01-01 12:00:00")
-class TestJobServiceIntegration:
+class TestJobControllerIntegration:
     
-    def test_register_job__returns_success_result_with_job_data(self, job_service):
-        result = job_service.register_job(user_id=456, tags=["test_job"])
+    def test_register_job__returns_success_result_with_job_data(self, job_controller):
+        result = job_controller.register_job(user_id=456, tags=["test_job"])
         assert is_successful(result)
         job_dict = result.unwrap()
         
@@ -124,8 +124,8 @@ class TestJobServiceIntegration:
         }
         assert job_dict == expected_job_data
 
-    def test_register_job__persists_job(self, job_service, job_repository):
-        result = job_service.register_job(user_id=456, tags=["mock_test"])
+    def test_register_job__persists_job(self, job_controller, job_repository):
+        result = job_controller.register_job(user_id=456, tags=["mock_test"])
         assert is_successful(result)
         job_dict = result.unwrap()
         
@@ -141,20 +141,20 @@ class TestJobServiceIntegration:
         retrieved_job = job_repository.find_by_id(job_dict["id"])
         assert retrieved_job.to_dict() == expected_job_data
 
-    def test_service__returns_success_result_with_job_config_url(self, job_service, job_repository):
-        register_result = job_service.register_job(user_id=456, tags=["interface_test"])
+    def test_service__returns_success_result_with_job_config_url(self, job_controller, job_repository):
+        register_result = job_controller.register_job(user_id=456, tags=["interface_test"])
         job_dict = register_result.unwrap()
 
-        submit_result = job_service.submit_job(job_dict["id"])
+        submit_result = job_controller.submit_job(job_dict["id"])
         assert is_successful(submit_result)
         response = submit_result.unwrap()
         
         assert response["url"] == "http://localhost:5001/pre-signed-url"
 
-    def test_submit_job__updates_job_status(self, job_service, job_repository):
-        register_result = job_service.register_job(user_id=123, tags=["status_test"])
+    def test_submit_job__updates_job_status(self, job_controller, job_repository):
+        register_result = job_controller.register_job(user_id=123, tags=["status_test"])
         job_dict = register_result.unwrap()
-        job_service.submit_job(job_dict["id"])
+        job_controller.submit_job(job_dict["id"])
         
         # Verify job status was updated
         updated_job = job_repository.find_by_id(job_dict["id"])

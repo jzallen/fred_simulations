@@ -11,8 +11,8 @@ from typing import Dict, List, Any
 import logging
 from returns.pipeline import is_successful
 
-# Import our business models and services
-from .services.job_service import JobService
+# Import our business models and controllers
+from .controllers.job_controller import JobController
 from .repositories.job_repository import SQLAlchemyJobRepository
 from .repositories.database import get_database_manager
 
@@ -51,11 +51,11 @@ def close_db_session(error):
         db_session.close()
 
 
-def get_job_service():
-    """Get a JobService instance with the current request's database session."""
+def get_job_controller():
+    """Get a JobController instance with the current request's database session."""
     session_factory = lambda: g.db_session
     job_repository = SQLAlchemyJobRepository(session_factory)
-    return JobService.create_with_job_repository(job_repository)
+    return JobController.create_with_job_repository(job_repository)
 
 # Legacy in-memory storage for runs (to be refactored later)
 runs_storage: Dict[int, Dict[str, Any]] = {}
@@ -89,8 +89,8 @@ def register_job():
         
         tags = data.get("tags", [])
         user_id = 456  # Mock user ID as per Pact contract
-        job_service = get_job_service()
-        job_result = job_service.register_job(user_id=user_id, tags=tags)
+        job_controller = get_job_controller()
+        job_result = job_controller.register_job(user_id=user_id, tags=tags)
         
         if is_successful(job_result):
             job_dict = job_result.unwrap()
@@ -124,8 +124,8 @@ def submit_job():
         if not job_id:
             return jsonify({"error": "Missing jobId"}), 400
         
-        job_service = get_job_service()
-        job_submission_result = job_service.submit_job(job_id=job_id, context=context, job_type=job_type)
+        job_controller = get_job_controller()
+        job_submission_result = job_controller.submit_job(job_id=job_id, context=context, job_type=job_type)
         
         if is_successful(job_submission_result):
             response = job_submission_result.unwrap()

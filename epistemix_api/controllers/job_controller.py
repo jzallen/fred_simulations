@@ -23,11 +23,11 @@ from epistemix_api.use_cases import (
 logger = logging.getLogger(__name__)
 
 
-class JobServiceDependencies:
+class JobControllerDependencies:
     """
-    Dependencies for the JobService.
+    Dependencies for the JobController.
     
-    This class encapsulates the dependencies required by the JobService,
+    This class encapsulates the dependencies required by the JobController,
     allowing for easier testing and dependency injection.
     """
     
@@ -40,11 +40,11 @@ class JobServiceDependencies:
         self.submit_job_fn = submit_job_fn
         self.get_job_fn = get_job_fn
 
-class JobService:
+class JobController:
     """Controller for job-related operations in epistemix platform."""
     
     def __init__(self):
-        """Initialize the job service without dependencies.
+        """Initialize the job controller without dependencies.
         This constructor is best for tests when you need to override dependencies. The dependencies
         are intended to be private so there is not public method to set them directly. 
 
@@ -52,8 +52,8 @@ class JobService:
         from mock import Mock
 
         mock_job = Job.create_persisted(job_id=1, user_id=123, tags=["test"])
-        job_service = JobService()
-        job_service._dependencies = JobServiceDependencies(
+        job_controller = JobController()
+        job_controller._dependencies = JobControllerDependencies(
             register_job_fn=Mock(return_value=mock_job),
             submit_job_fn=Mock(return_value={"url": "http://example.com/pre-signed-url"}),
             get_job_fn=Mock(return_value=mock_job)
@@ -66,7 +66,7 @@ class JobService:
     @classmethod
     def create_with_job_repository(cls, job_repository: IJobRepository) -> Self:
         service = cls()
-        service._dependencies = JobServiceDependencies(
+        service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository),
             get_job_fn=functools.partial(get_job_use_case, job_repository)
