@@ -12,9 +12,9 @@ import logging
 from returns.pipeline import is_successful
 
 # Import our business models and controllers
-from .controllers.job_controller import JobController
-from .repositories.job_repository import SQLAlchemyJobRepository
-from .repositories.database import get_database_manager
+from epistemix_api.controllers.job_controller import JobController
+from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
+from epistemix_api.repositories.database import get_database_manager
 
 app = Flask(__name__)
 CORS(app)
