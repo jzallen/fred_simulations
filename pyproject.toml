@@ -18,6 +18,7 @@ epx = "*"
 pact-python = "^2.0.0"
 returns = "^0.25.0"
 sqlalchemy = "^2.0.41"
+pydantic = "^2.11.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"

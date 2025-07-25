@@ -45,7 +45,7 @@ class TestJobRoutes:
             'user-agent': 'epx_client_1.2.2'
         }
         
-        body = {"tags": ["info_job"]}
+        body = {"userId": 456, "tags": ["info_job"]}
         
         response = client.post('/jobs/register', headers=headers, json=body)
         assert response.status_code == 200
@@ -70,8 +70,8 @@ class TestJobRoutes:
             'fredcli-version': '0.4.0',
             'user-agent': 'epx_client_1.2.2'
         }
-        
-        register_body = {"tags": ["info_job"]}
+
+        register_body = { "userId": 456, "tags": ["info_job"] }
         register_response = client.post('/jobs/register', headers=register_headers, json=register_body)
         assert register_response.status_code == 200
         job_id = register_response.get_json()['id']

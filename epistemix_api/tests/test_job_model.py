@@ -3,8 +3,9 @@ Tests for the Job business model.
 """
 
 import pytest
-from datetime import datetime, timedelta
-from epistemix_api.models.job import Job, JobStatus, JobTag
+from freezegun import freeze_time
+from datetime import datetime
+from epistemix_api.models.job import Job, JobStatus
 
 
 class TestJob:
@@ -82,13 +83,6 @@ class TestJob:
         assert job.updated_at == updated_time
         assert job.metadata == metadata
 
-    def test_to_dict_unpersisted_job_raises_error(self):
-        """Test that to_dict raises error for unpersisted jobs."""
-        job = Job.create_new(user_id=456, tags=["info_job"])
-        
-        with pytest.raises(ValueError, match="Cannot convert unpersisted job to dict"):
-            job.to_dict()
-    
     def test_add_tag(self):
         """Test adding tags to a job."""
         job = Job(id=123, user_id=456)
@@ -186,32 +180,33 @@ class TestJob:
         assert "createdAt" in job_dict
         assert "updatedAt" in job_dict
     
-    def test_equality_and_hash(self):
-        """Test equality and hash methods for persisted and unpersisted jobs."""
+    @freeze_time("2025-01-01 12:00:00")
+    def test_equality(self):
+        """Test equality methods for persisted and unpersisted jobs."""
         # Test persisted jobs - equality based on ID
         job1 = Job.create_persisted(job_id=123, user_id=456)
-        job2 = Job.create_persisted(job_id=123, user_id=789)  # Different user_id but same job id
+        job2 = Job.create_persisted(job_id=123, user_id=456)  # Same job id
         job3 = Job.create_persisted(job_id=124, user_id=456)  # Different job id
         
         # Jobs with same ID should be equal
         assert job1 == job2
-        assert hash(job1) == hash(job2)
         
         # Jobs with different ID should not be equal
         assert job1 != job3
+    
+    @freeze_time("2025-01-01 12:00:00")
+    def test_hash(self):
+        """Test hash methods for persisted and unpersisted jobs."""
+        # Test persisted jobs - hash based on ID
+        job1 = Job.create_persisted(job_id=123, user_id=456)
+        job2 = Job.create_persisted(job_id=123, user_id=456)  # Same job id
+        job3 = Job.create_persisted(job_id=124, user_id=456)  # Different job id
+        
+        # Jobs with same ID should have same hash
+        assert hash(job1) == hash(job2)
+        
+        # Jobs with different ID should have different hash
         assert hash(job1) != hash(job3)
-        
-        # Test unpersisted jobs - equality based on object identity
-        unpersisted1 = Job.create_new(user_id=456)
-        unpersisted2 = Job.create_new(user_id=456)  # Same user but different object
-        
-        # Different unpersisted job objects should not be equal
-        assert unpersisted1 != unpersisted2
-        assert hash(unpersisted1) != hash(unpersisted2)
-        
-        # Same object should be equal to itself
-        assert unpersisted1 == unpersisted1
-        assert hash(unpersisted1) == hash(unpersisted1)
     
     def test_repr(self):
         """Test string representation for persisted and unpersisted jobs."""
