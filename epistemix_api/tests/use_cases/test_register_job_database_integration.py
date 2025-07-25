@@ -8,8 +8,7 @@ from freezegun import freeze_time
 from datetime import datetime
 
 from epistemix_api.models.job import Job, JobStatus
-from epistemix_api.repositories import SQLAlchemyJobRepository
-from epistemix_api.repositories.database import get_database_manager
+from epistemix_api.repositories import SQLAlchemyJobRepository, get_database_manager
 from epistemix_api.use_cases.job_use_cases import register_job
 
 

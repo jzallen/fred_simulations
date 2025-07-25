@@ -97,7 +97,7 @@ class JobService:
         except ValueError as e:
             return Failure(str(e))
         except Exception as e:
-            logger.error(f"Unexpected error in register_job: {e}")
+            logger.exception(f"Unexpected error in register_job")
             return Failure("An unexpected error occurred while registering the job")
     
     def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Result[Dict[str, str], str]:
@@ -117,16 +117,15 @@ class JobService:
             or an error message (Failure)
         """
         try:
-            response = self._dependencies.submit_job_fn(
+            job_configuration_location = self._dependencies.submit_job_fn(
                 job_id=job_id,
                 context=context,
                 job_type=job_type
             )
-            return Success(response)
+            return Success(job_configuration_location.to_dict())
         except ValueError as e:
             return Failure(str(e))
         except Exception as e:
-            # Log unexpected errors
             logger.error(f"Unexpected error in submit_job: {e}")
             return Failure("An unexpected error occurred while submitting the job")
     

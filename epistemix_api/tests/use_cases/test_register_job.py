@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock
 from freezegun import freeze_time
 
-from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.models.job import Job
 from epistemix_api.repositories.interfaces import IJobRepository
 from epistemix_api.use_cases.job_use_cases import register_job
 

@@ -126,7 +126,7 @@ class Job:
         return tag in self.tags
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the job to a dictionary representation."""
+        """Serializes the job to a dictionary for API responses."""
        
         return {
             "id": self.id,
@@ -159,9 +159,10 @@ class Job:
         job = cls(
             user_id=user_id,
             tags=tags.copy(),  # Defensive copy
-            status=JobStatus.CREATED
+            status=JobStatus.CREATED,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
-        
         return job
     
     @classmethod
@@ -215,19 +216,33 @@ class Job:
         return job
     
     def __eq__(self, other) -> bool:
-        """Check equality based on job ID for persisted jobs, object identity for unpersisted."""
         if not isinstance(other, Job):
             return False
         
         return self.to_dict() == other.to_dict()
 
     def __hash__(self) -> int:
-        """Hash based on job ID for persisted jobs, object ID for unpersisted."""
         if self.is_persisted():
             return hash(self.id)
         return hash(id(self))  # Use object ID for unpersisted jobs
     
     def __repr__(self) -> str:
-        """String representation for debugging."""
         id_str = str(self.id) if self.is_persisted() else "unpersisted"
         return f"Job(id={id_str}, user_id={self.user_id}, status={self.status.value}, tags={self.tags})"
+
+
+@dataclass
+class JobConfigLocation:
+    """URL where job configuration is stored."""
+    url: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {"url": self.url}
+    
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, JobConfigLocation):
+            return False
+        return self.url == other.url
+    
+    def __repr__(self):
+        return f"JobConfigLocation(url={self.url})"
