@@ -126,7 +126,7 @@ class JobService:
         except ValueError as e:
             return Failure(str(e))
         except Exception as e:
-            logger.error(f"Unexpected error in submit_job: {e}")
+            logger.exception(f"Unexpected error in submit_job: {e}")
             return Failure("An unexpected error occurred while submitting the job")
     
     def get_job(self, job_id: int) -> Result[Optional[Dict[str, Any]], str]:
