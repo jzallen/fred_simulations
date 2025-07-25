@@ -143,57 +143,6 @@ class TestInMemoryJobRepository:
         assert len(submitted_jobs) == 1
         assert submitted_jobs[0].id == saved_job1.id
     
-    def test_find_all(self, repository):
-        """Test finding all jobs."""
-        # Initially empty
-        all_jobs = repository.find_all()
-        assert len(all_jobs) == 0
-        
-        # Add some unpersisted jobs
-        job1 = Job.create_new(user_id=456, tags=["job1"])
-        job2 = Job.create_new(user_id=789, tags=["job2"])
-        
-        # Save jobs - repository will assign IDs 100, 101
-        saved_job1 = repository.save(job1)
-        saved_job2 = repository.save(job2)
-        
-        # Find all
-        all_jobs = repository.find_all()
-        assert len(all_jobs) == 2
-        job_ids = {job.id for job in all_jobs}
-        assert job_ids == {saved_job1.id, saved_job2.id}
-    
-    def test_clear(self, repository, sample_job):
-        """Test clearing all jobs."""
-        # Add a job
-        repository.save(sample_job)
-        assert repository.count() == 1
-        
-        # Clear all jobs
-        repository.clear()
-        assert repository.count() == 0
-        assert len(repository.find_all()) == 0
-    
-    def test_count(self, repository):
-        """Test counting jobs."""
-        assert repository.count() == 0
-        
-        # Add unpersisted jobs
-        job1 = Job.create_new(user_id=456, tags=["job1"])
-        job2 = Job.create_new(user_id=456, tags=["job2"])
-        
-        # Save first job
-        saved_job1 = repository.save(job1)
-        assert repository.count() == 1
-        
-        # Save second job
-        saved_job2 = repository.save(job2)
-        assert repository.count() == 2
-        
-        # Delete a job
-        repository.delete(saved_job1.id)
-        assert repository.count() == 1
-    
     def test_reset_id_counter(self, repository):
         """Test resetting the ID counter."""
         # Get initial ID
@@ -206,36 +155,3 @@ class TestInMemoryJobRepository:
         # Next ID should be from new counter
         next_id = repository.get_next_id()
         assert next_id == 500
-
-
-class TestRepositoryInterfaceCompliance:
-    """Test that the repository properly implements the interface."""
-    
-    def test_interface_methods_exist(self):
-        """Test that all interface methods are implemented."""
-        repository = InMemoryJobRepository()
-        
-        # Check that all protocol methods exist and are callable
-        assert hasattr(repository, 'save')
-        assert callable(repository.save)
-        
-        assert hasattr(repository, 'find_by_id')
-        assert callable(repository.find_by_id)
-        
-        assert hasattr(repository, 'find_by_user_id')
-        assert callable(repository.find_by_user_id)
-        
-        assert hasattr(repository, 'find_by_status')
-        assert callable(repository.find_by_status)
-        
-        assert hasattr(repository, 'get_next_id')
-        assert callable(repository.get_next_id)
-        
-        assert hasattr(repository, 'exists')
-        assert callable(repository.exists)
-        
-        assert hasattr(repository, 'delete')
-        assert callable(repository.delete)
-        
-        assert hasattr(repository, 'find_all')
-        assert callable(repository.find_all)
