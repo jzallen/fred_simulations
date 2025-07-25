@@ -17,7 +17,7 @@ from pydantic import ValidationError
 from epistemix_api.controllers.job_controller import JobController
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_api.repositories.database import get_database_manager
-from epistemix_api.models.requests import RegisterJobRequest
+from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest
 
 app = Flask(__name__)
 CORS(app)
@@ -99,7 +99,6 @@ def validate_headers(required_headers: List[str]) -> bool:
 
 
 def require_headers(*headers):
-    """Decorator to validate required headers for a route."""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -112,7 +111,6 @@ def require_headers(*headers):
 
 
 def require_json(content_type='application/json'):
-    """Decorator to validate content type and JSON data, passing the parsed JSON to the route."""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -135,7 +133,7 @@ def require_json(content_type='application/json'):
 @require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
 @require_json('application/json')
 def register_job(json_data):
-    """Persists a new job configuration."""
+    """Persists a new job to Epistemix platform."""
     request_data = RegisterJobRequest(**json_data)
     
     job_controller = get_job_controller()
@@ -157,15 +155,14 @@ def register_job(json_data):
 @require_json('application/json')
 def submit_job(json_data):
     """Submit registered job for processing to Epistemix platform."""
-    job_id = json_data.get("jobId")
-    context = json_data.get("context", "job")
-    job_type = json_data.get("type", "input")
-    
-    if not job_id:
-        return jsonify({"error": "Missing jobId"}), 400
+    request_data = SubmitJobRequest(**json_data)
     
     job_controller = get_job_controller()
-    job_submission_result = job_controller.submit_job(job_id=job_id, context=context, job_type=job_type)
+    job_submission_result = job_controller.submit_job(
+        job_id=request_data.jobId, 
+        context=request_data.context, 
+        job_type=request_data.type
+    )
     
     if not is_successful(job_submission_result):
         error_message = job_submission_result.failure()
