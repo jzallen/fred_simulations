@@ -16,8 +16,9 @@ from pydantic import ValidationError
 # Import our business models and controllers
 from epistemix_api.controllers.job_controller import JobController
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
+from epistemix_api.repositories.run_repository import SQLAlchemyRunRepository
 from epistemix_api.repositories.database import get_database_manager
-from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest
+from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
 
 app = Flask(__name__)
 CORS(app)
@@ -60,6 +61,10 @@ def before_request():
     """Initialize database session for each request."""
     database_url = app.config['DATABASE_URL']
     db_manager = get_database_manager(database_url)
+    
+    # Ensure tables are created
+    db_manager.create_tables()
+    
     g.db_session = db_manager.get_session()
 
 
@@ -83,11 +88,8 @@ def get_job_controller():
     """Get a JobController instance with the current request's database session."""
     session_factory = lambda: g.db_session
     job_repository = SQLAlchemyJobRepository(session_factory)
-    return JobController.create_with_job_repository(job_repository)
-
-# Legacy in-memory storage for runs (to be refactored later)
-runs_storage: Dict[int, Dict[str, Any]] = {}
-next_run_id = 978
+    run_repository = SQLAlchemyRunRepository(session_factory)
+    return JobController.create_with_job_repository(job_repository, run_repository)
 
 
 def validate_headers(required_headers: List[str]) -> bool:
@@ -173,59 +175,28 @@ def submit_job(json_data):
 
 
 @app.route('/runs', methods=['POST'])
-@require_headers('Offline-Token', 'Fredcli-Version')
-def submit_runs():
+@require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
+@require_json('application/json')
+def submit_runs(json_data):
     """
     Submit run requests.
     Implements the run submission interaction from the Pact contract.
     """
-    global next_run_id
+    submit_runs_request = SubmitRunsRequest(**json_data)
+    run_requests = [run_request.model_dump() for run_request in submit_runs_request.runRequests]
+
     
-    data = request.get_json()
-    if not data or 'runRequests' not in data:
-        return jsonify({"error": "Invalid JSON or missing runRequests"}), 400
+    job_controller = get_job_controller()
+    run_submission_result = job_controller.submit_runs(
+        run_requests=run_requests,
+    )
     
-    run_requests = data['runRequests']
-    run_responses = []
+    if not is_successful(run_submission_result):
+        error_message = run_submission_result.failure()
+        logger.warning(f"Business logic error in run submission: {error_message}")
+        return jsonify({"error": error_message}), 400
     
-    for run_request in run_requests:
-        job_id = run_request.get('jobId')
-        if not job_id:
-            return jsonify({"error": "Missing jobId in run request"}), 400
-        
-        # Create run response
-        run_id = next_run_id
-        run_response = {
-            "runId": run_id,
-            "jobId": job_id,
-            "status": "Submitted",
-            "errors": None,
-            "runRequest": run_request
-        }
-        
-        # Store run for later retrieval
-        run_record = {
-            "id": run_id,
-            "jobId": job_id,
-            "userId": 555,  # Mock user ID
-            "createdTs": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "request": run_request,
-            "podPhase": "Running",
-            "containerStatus": None,
-            "status": "DONE",
-            "userDeleted": False,
-            "epxClientVersion": request.headers.get('User-Agent', 'epx_client_1.2.2').split('_')[-1] if '_' in request.headers.get('User-Agent', '') else "1.2.2"
-        }
-        
-        runs_storage[run_id] = run_record
-        run_responses.append(run_response)
-        next_run_id += 1
-    
-    response = {
-        "runResponses": run_responses
-    }
-    
-    return jsonify(response), 200
+    return jsonify(run_submission_result.unwrap()), 200
 
 
 @app.route('/runs', methods=['GET'])
@@ -244,11 +215,16 @@ def get_runs():
     except ValueError:
         return jsonify({"error": "Invalid job_id parameter"}), 400
     
-    # Filter runs by job ID
-    matching_runs = [run for run in runs_storage.values() if run['jobId'] == job_id]
+    job_controller = get_job_controller()
+    runs_result = job_controller.get_runs_by_job_id(job_id)
+    
+    if not is_successful(runs_result):
+        error_message = runs_result.failure()
+        logger.warning(f"Business logic error in get runs: {error_message}")
+        return jsonify({"error": error_message}), 400
     
     response = {
-        "runs": matching_runs
+        "runs": runs_result.unwrap()
     }
     
     return jsonify(response), 200

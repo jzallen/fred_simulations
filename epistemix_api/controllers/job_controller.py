@@ -11,13 +11,17 @@ import functools
 from returns.result import Result, Success, Failure
 
 from epistemix_api.models.job import Job, JobStatus
-from epistemix_api.repositories import IJobRepository
+from epistemix_api.models.requests import RunRequest
+from epistemix_api.repositories import IJobRepository, IRunRepository
 from epistemix_api.use_cases import (
     register_job as register_job_use_case, 
     submit_job as submit_job_use_case,
+    submit_runs as submit_runs_use_case,
     get_job as get_job_use_case,
+    get_runs_by_job_id as get_runs_by_job_id_use_case,
     validate_tags
 )
+
 
 
 logger = logging.getLogger(__name__)
@@ -34,11 +38,15 @@ class JobControllerDependencies:
     def __init__(
         self, register_job_fn: Callable[[int, List[str]], Job],
         submit_job_fn: Callable[[int, str, str], Dict[str, str]],
-        get_job_fn: Callable[[int], Optional[Job]]
+        submit_runs_fn: Callable[[IRunRepository, List[Dict[str, Any]], str], Dict[str, List[Dict[str, Any]]]],
+        get_job_fn: Callable[[int], Optional[Job]],
+        run_repository: IRunRepository
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
+        self.submit_runs_fn = submit_runs_fn
         self.get_job_fn = get_job_fn
+        self.run_repository = run_repository
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -56,7 +64,9 @@ class JobController:
         job_controller._dependencies = JobControllerDependencies(
             register_job_fn=Mock(return_value=mock_job),
             submit_job_fn=Mock(return_value={"url": "http://example.com/pre-signed-url"}),
-            get_job_fn=Mock(return_value=mock_job)
+            submit_runs_fn=Mock(return_value={"runResponses": []}),
+            get_job_fn=Mock(return_value=mock_job),
+            run_repository=Mock()
         )
 
         Use `create_with_job_repository` to instantiate with a repository for production use.
@@ -64,12 +74,14 @@ class JobController:
         self._dependencies = None
 
     @classmethod
-    def create_with_job_repository(cls, job_repository: IJobRepository) -> Self:
+    def create_with_job_repository(cls, job_repository: IJobRepository, run_repository: IRunRepository) -> Self:
         service = cls()
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository),
-            get_job_fn=functools.partial(get_job_use_case, job_repository)
+            submit_runs_fn=functools.partial(submit_runs_use_case),
+            get_job_fn=functools.partial(get_job_use_case, job_repository),
+            run_repository=run_repository
         )
         return service
 
@@ -128,6 +140,62 @@ class JobController:
         except Exception as e:
             logger.exception(f"Unexpected error in submit_job: {e}")
             return Failure("An unexpected error occurred while submitting the job")
+    
+    def submit_runs(self, run_requests: List[RunRequest], epx_version: str = "epx_client_1.2.2") -> Result[Dict[str, List[Dict[str, Any]]], str]:
+        """
+        Submit multiple run requests for processing.
+        
+        This is a public interface that delegates to the submit_runs use case.
+        The service layer orchestrates the call to the business use case.
+        
+        Args:
+            run_requests: List of run requests to process
+            user_agent: User agent from request headers for client version
+            
+        Returns:
+            Result containing either the run responses dict (Success) 
+            or an error message (Failure)
+        """
+        try:
+            # Convert Pydantic models to dictionaries for the use case
+            run_request_dicts = [run_request.model_dump() for run_request in run_requests]
+            run_responses = self._dependencies.submit_runs_fn(
+                run_repository=self._dependencies.run_repository,
+                run_requests=run_request_dicts,
+                epx_version=epx_version
+            )
+            return Success(run_responses)
+        except ValueError as e:
+            return Failure(str(e))
+        except Exception as e:
+            logger.exception(f"Unexpected error in submit_runs: {e}")
+            return Failure("An unexpected error occurred while submitting the runs")
+    
+    def get_runs_by_job_id(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
+        """
+        Get all runs for a specific job.
+        
+        This is a public interface that delegates to the get_runs_by_job_id use case.
+        The service layer orchestrates the call to the business use case.
+        
+        Args:
+            job_id: ID of the job to get runs for
+            
+        Returns:
+            Result containing either the list of runs (Success) 
+            or an error message (Failure)
+        """
+        try:
+            runs = get_runs_by_job_id_use_case(
+                run_repository=self._dependencies.run_repository,
+                job_id=job_id
+            )
+            return Success(runs)
+        except ValueError as e:
+            return Failure(str(e))
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
+            return Failure("An unexpected error occurred while retrieving the runs")
     
     def get_job(self, job_id: int) -> Result[Optional[Dict[str, Any]], str]:
         """

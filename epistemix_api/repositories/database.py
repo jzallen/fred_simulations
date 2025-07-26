@@ -20,6 +20,24 @@ class JobStatusEnum(enum.Enum):
     CANCELLED = "cancelled"
 
 
+class RunStatusEnum(enum.Enum):
+    """SQLAlchemy enum for run status."""
+    SUBMITTED = "Submitted"
+    RUNNING = "Running"
+    DONE = "DONE"
+    FAILED = "Failed"
+    CANCELLED = "Cancelled"
+
+
+class PodPhaseEnum(enum.Enum):
+    """SQLAlchemy enum for pod phase."""
+    PENDING = "Pending"
+    RUNNING = "Running"
+    SUCCEEDED = "Succeeded"
+    FAILED = "Failed"
+    UNKNOWN = "Unknown"
+
+
 class JobRecord(Base):
     """SQLAlchemy record for Job entities."""
     __tablename__ = 'jobs'
@@ -31,6 +49,22 @@ class JobRecord(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     job_metadata = Column(JSON, nullable=False, default=dict)  # Renamed from 'metadata' to avoid SQLAlchemy conflict
+
+
+class RunRecord(Base):
+    """SQLAlchemy record for Run entities."""
+    __tablename__ = 'runs'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
+    created_ts = Column(String, nullable=False)  # ISO timestamp string
+    request = Column(JSON, nullable=False)  # Full run request data
+    pod_phase = Column(Enum(PodPhaseEnum), nullable=False, default=PodPhaseEnum.RUNNING)
+    container_status = Column(String, nullable=True)
+    status = Column(Enum(RunStatusEnum), nullable=False, default=RunStatusEnum.SUBMITTED)
+    user_deleted = Column(Integer, nullable=False, default=0)  # SQLite doesn't have native boolean
+    epx_client_version = Column(String, nullable=False, default="1.2.2")
 
 
 class DatabaseManager:
