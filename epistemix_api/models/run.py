@@ -173,7 +173,7 @@ class Run:
             "id": self.id,
             "jobId": self.job_id,
             "userId": self.user_id,
-            "createdTs": self.created_at,
+            "createdTs": self.created_at.isoformat(),
             "request": self.request,
             "podPhase": self.pod_phase.value,
             "containerStatus": self.container_status,

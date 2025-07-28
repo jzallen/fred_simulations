@@ -42,7 +42,7 @@ def service():
         submit_job_config_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url-job-config")),
         submit_runs_fn=Mock(return_value=[run]),
         submit_run_config_fn=Mock(return_value=RunConfigLocation(url="http://example.com/pre-signed-url-run-config")),
-        get_job_fn=Mock()
+        get_runs_by_job_id_fn=Mock(return_value=[run]),
     )
     return service
 
@@ -200,6 +200,27 @@ class TestJobController:
         assert is_successful(job_result)
         assert job_result.unwrap() == expected_response
 
+    def test_get_runs__calls_get_runs_by_job_id_fn_with_correct_job_id(self, service):
+        service.get_runs(job_id=1)
+        service._dependencies.get_runs_by_job_id_fn.assert_called_once_with(job_id=1)
+
+    def test_get_runs__returns_success_result_with_run_data(self, service):
+        expected_run = Run.create_persisted(
+            run_id=1, 
+            job_id=1, 
+            user_id=456, 
+            status=RunStatus.SUBMITTED, 
+            pod_phase=PodPhase.PENDING, 
+            request={},
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+        )
+        service._dependencies.get_runs_by_job_id_fn.return_value = [expected_run]
+        
+        runs_result = service.get_runs(job_id=1)
+        assert is_successful(runs_result)
+        assert runs_result.unwrap() == [expected_run.to_dict()]
+
 
 @pytest.fixture
 def db_session():
@@ -340,3 +361,30 @@ class TestJobControllerIntegration:
         )
         saved_run = run_repository.find_by_id(1)
         assert saved_run == expected_run
+
+    def test_get_runs__givent_job_id__returns_success_result_with_run_data(self, job_controller, run_requests, bearer_token):
+        job_controller.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        
+        runs_result = job_controller.get_runs(job_id=1)
+        assert is_successful(runs_result)
+        
+        expected_run = Run.create_persisted(
+            run_id=1, 
+            job_id=1, 
+            user_id=123, 
+            status=RunStatus.SUBMITTED, 
+            pod_phase=PodPhase.PENDING, 
+            request=run_requests[0],
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+        )
+        assert runs_result.unwrap() == [expected_run.to_dict()]
+
+    def test_get_runs__when_no_runs_for_job__returns_empty_list(self, job_controller):
+        runs_result = job_controller.get_runs(job_id=999)
+        assert is_successful(runs_result)
+        assert runs_result.unwrap() == []

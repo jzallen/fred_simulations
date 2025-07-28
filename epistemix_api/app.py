@@ -244,7 +244,7 @@ def get_runs():
         return jsonify({"error": "Invalid job_id parameter"}), 400
     
     job_controller = get_job_controller()
-    runs_result = job_controller.get_runs_by_job_id(job_id)
+    runs_result = job_controller.get_runs(job_id=job_id)
     
     if not is_successful(runs_result):
         error_message = runs_result.failure()

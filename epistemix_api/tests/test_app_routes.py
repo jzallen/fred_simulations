@@ -6,6 +6,8 @@ import pytest
 import os
 import json
 import base64
+from freezegun import freeze_time
+from datetime import datetime
 
 from epistemix_api.app import app
 from epistemix_api.models.job import JobStatus
@@ -248,3 +250,88 @@ class TestJobRoutes:
             "url": "http://localhost:5001/pre-signed-url-run-config",
         }
         assert data == expected_run_submission_data
+    
+    @freeze_time("2025-01-01 12:00:00")
+    def test_get_runs_by_job_id__valid_job_id__returns_runs(self, client, bearer_token):
+        """Test getting runs by job ID."""
+        headers = {
+            'Offline-Token': bearer_token,
+            'content-type': 'application/json',
+            'fredcli-version': '0.4.0',
+            'user-agent': 'epx_client_1.2.2'
+        }
+        
+        # First register a job
+        client.post('/jobs/register', headers=headers, json={"tags": ["info_job"]})
+        
+        # Now submit a run for that job
+        run_requests = {
+          "runRequests": [
+            {
+              "jobId": 1,
+              "workingDir": "/workspaces/fred_simulations",
+              "size": "hot",
+              "fredVersion": "latest",
+              "population": {
+                "version": "US_2010.v5",
+                "locations": [
+                  "Loving_County_TX"
+                ]
+              },
+              "fredArgs": [
+                {
+                  "flag": "-p",
+                  "value": "main.fred"
+                }
+              ],
+              "fredFiles": [
+                "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+              ]
+            }
+          ]
+        }
+        
+        client.post('/runs', headers=headers, json=run_requests)
+        
+        # Now get runs by job ID
+        response = client.get('/runs', headers=headers, query_string={"job_id": 1})
+
+        assert response.status_code == 200
+        data = response.get_json()
+        expected_runs_data = {
+          "runs": [
+            {
+              "id": 1,
+              "jobId": 1,
+              "userId": 123,
+              "createdTs": datetime(2025, 1, 1, 12, 0, 0).isoformat(),
+              "request": {
+                "jobId": 1,
+                "workingDir": "/workspaces/fred_simulations",
+                "size": "hot",
+                "fredVersion": "latest",
+                "population": {
+                  "version": "US_2010.v5",
+                  "locations": [
+                    "Loving_County_TX"
+                  ]
+                },
+                "fredArgs": [
+                  {
+                    "flag": "-p",
+                    "value": "main.fred"
+                  }
+                ],
+                "fredFiles": [
+                  "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                ]
+              },
+              "podPhase": "Pending",
+              "containerStatus": None,
+              "status": "Submitted",
+              "userDeleted": False,
+              "epxClientVersion": "1.2.2"
+            }
+          ]
+        }
+        assert data == expected_runs_data

@@ -43,14 +43,14 @@ class JobControllerDependencies:
         submit_job_config_fn: Callable[[int, str, str], JobConfigLocation],
         submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
         submit_run_config_fn: Callable[[int, str, str, Optional[int]], RunConfigLocation],
-        get_job_fn: Callable[[int], Optional[Job]],
+        get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
         self.submit_job_config_fn = submit_job_config_fn
         self.submit_runs_fn = submit_runs_fn
         self.submit_run_config_fn = submit_run_config_fn
-        self.get_job_fn = get_job_fn
+        self.get_runs_by_job_id_fn = get_runs_by_job_id_fn
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -86,7 +86,7 @@ class JobController:
             submit_job_config_fn=submit_job_config_use_case,
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
             submit_run_config_fn=submit_run_config_use_case,
-            get_job_fn=functools.partial(get_job_use_case, job_repository),
+            get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository)
         )
         return service
 
@@ -193,7 +193,7 @@ class JobController:
             logger.exception(f"Unexpected error in submit_runs: {e}")
             return Failure("An unexpected error occurred while submitting the runs")
     
-    def get_runs_by_job_id(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
+    def get_runs(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
         """
         Get all runs for a specific job.
         
@@ -208,38 +208,10 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            runs = get_runs_by_job_id_use_case(
-                run_repository=self._dependencies.run_repository,
-                job_id=job_id
-            )
-            return Success(runs)
+            runs = self._dependencies.get_runs_by_job_id_fn(job_id=job_id)
+            return Success([run.to_dict() for run in runs])
         except ValueError as e:
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
             return Failure("An unexpected error occurred while retrieving the runs")
-    
-    def get_job(self, job_id: int) -> Result[Optional[Dict[str, Any]], str]:
-        """
-        Get a job by ID.
-        
-        This is a public interface that delegates to the get_job use case.
-        The service layer orchestrates the call to the business use case.
-        
-        Args:
-            job_id: ID of the job to retrieve
-            
-        Returns:
-            Result containing either the Job entity as a dict (Success) 
-            or an error message (Failure). Returns None if job not found.
-        """
-        try:
-            job = self._dependencies.get_job_fn(job_id=job_id)
-            if job:
-                return Success(job.to_dict())
-            return Success(None)
-        except ValueError as e:
-            return Failure(str(e))
-        except Exception as e:
-            logger.error(f"Unexpected error in get_job: {e}")
-            return Failure("An unexpected error occurred while retrieving the job")

@@ -3,10 +3,11 @@ Get runs use case for the Epistemix API.
 This module implements the core business logic for retrieving runs.
 """
 
-from typing import List, Dict, Any
+from typing import List
 import logging
 
 from epistemix_api.repositories.interfaces import IRunRepository
+from epistemix_api.models.run import Run
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 def get_runs_by_job_id(
     run_repository: IRunRepository,
     job_id: int
-) -> List[Dict[str, Any]]:
+) -> List[Run]:
     """
     Get all runs for a specific job.
     
@@ -27,7 +28,6 @@ def get_runs_by_job_id(
         job_id: ID of the job to get runs for
         
     Returns:
-        List of run dictionaries
+        List of run business models associated with the job ID.
     """
-    runs = run_repository.find_by_job_id(job_id)
-    return [run.to_dict() for run in runs]
+    return run_repository.find_by_job_id(job_id)

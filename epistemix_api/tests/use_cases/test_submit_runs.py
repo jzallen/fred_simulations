@@ -80,7 +80,7 @@ class TestSubmitRunsUseCase:
             submit_runs(mock_repository, [run_request], invalid_token)
 
 
-class TestSubmitRunsSLAlchemyRunRepositoryIntegration:
+class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
     """
     Integration tests for submit_runs use case with SQLAlchemy run repository.
     This class assumes the repository is properly set up in the test environment.
