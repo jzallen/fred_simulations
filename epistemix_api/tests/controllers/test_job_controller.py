@@ -13,7 +13,7 @@ from datetime import datetime
 from returns.pipeline import is_successful
 
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
-from epistemix_api.models.job import Job, JobStatus, JobConfigLocation
+from epistemix_api.models.job import Job, JobStatus, JobConfigLocation, JobInputLocation
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository, get_database_manager
@@ -38,7 +38,8 @@ def service():
     service = JobController()
     service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
-        submit_job_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url")),
+        submit_job_fn=Mock(return_value=JobInputLocation(url="http://example.com/pre-signed-url")),
+        submit_job_config_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url-job-config")),
         submit_runs_fn=Mock(return_value=[run]),
         get_job_fn=Mock()
     )
@@ -47,27 +48,29 @@ def service():
 
 @pytest.fixture
 def run_requests():
-    return [RunRequest(
-        jobId=1, 
-        workingDir="/tmp", 
-        size="hot",
-        fredVersion="latest",
-        population={
-            "version": "US_2010.v5", 
-            "locations": ["New York", "Los Angeles"]
-        },
-        fredArgs=[{"flag": "-p", "value": "param"}],
-        fredFiles=["/path/to/fred/file"]
-    )]
+    return [
+        RunRequest(
+            jobId=1, 
+            workingDir="/tmp", 
+            size="hot",
+            fredVersion="latest",
+            population={
+                "version": "US_2010.v5", 
+                "locations": ["New York", "Los Angeles"]
+            },
+            fredArgs=[{"flag": "-p", "value": "param"}],
+            fredFiles=["/path/to/fred/file"]
+        ).model_dump()
+    ]
 
 class TestJobController:
     
     def test_register_job__calls_register_job_fn_with_created_job(self, service):
-        service.register_job(user_id=456, tags=["info_job"])
-        service._dependencies.register_job_fn.assert_called_once_with(user_id=456, tags=["info_job"])
+        service.register_job(user_token_value="token", tags=["info_job"])
+        service._dependencies.register_job_fn.assert_called_once_with(user_token_value="token", tags=["info_job"])
 
     def test_register_job__returns_success_result_with_job_data(self, service):
-        job_result = service.register_job(user_id=456, tags=["info_job"])
+        job_result = service.register_job(user_token_value="token", tags=["info_job"])
         assert is_successful(job_result)
         expected_job_data = {
             "id": 1,
@@ -80,15 +83,15 @@ class TestJobController:
         }
         assert job_result.unwrap() == expected_job_data
 
-    def test_register_job__when_value_error_raised__returns_failure_result(self, service):
+    def test_register_job__when_value_error_raised__returns_failure_result(self, service, bearer_token):
         service._dependencies.register_job_fn.side_effect = ValueError("Invalid user ID")
-        job_result = service.register_job(user_id=0, tags=["info_job"])
+        job_result = service.register_job(user_token_value=bearer_token, tags=["info_job"])
         assert not is_successful(job_result)
         assert job_result.failure() == "Invalid user ID"
 
-    def test_register_job__when_exception_raised__returns_failure_result(self, service):
+    def test_register_job__when_exception_raised__returns_failure_result(self, service, bearer_token):
         service._dependencies.register_job_fn.side_effect = Exception("Unexpected error")
-        job_result = service.register_job(user_id=456, tags=["info_job"])
+        job_result = service.register_job(user_token_value=bearer_token, tags=["info_job"])
         assert not is_successful(job_result)
         assert job_result.failure() == "An unexpected error occurred while registering the job"
 
@@ -118,7 +121,7 @@ class TestJobController:
         bearer_token = "Bearer valid_token"
         service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
         service._dependencies.submit_runs_fn.assert_called_once_with(
-            run_requests=[run_request.model_dump() for run_request in run_requests], 
+            run_requests=run_requests, 
             user_token_value=bearer_token,
             epx_version="epx_client_1.2.2"
         )
@@ -167,6 +170,20 @@ class TestJobController:
         assert not is_successful(result)
         assert result.failure() == "An unexpected error occurred while submitting the runs"
 
+    def test_submit_job___type_config__calls_submit_job_config_fn_with_correct_parameters(self, service):
+        service.submit_job(job_id=1, context="job", job_type="config")
+        service._dependencies.submit_job_config_fn.assert_called_once_with(
+            job_id=1, 
+            context="job", 
+            job_type="config"
+        )
+
+    def test_submit_job__type_config__returns_success_result_with_response_data(self, service):
+        expected_response = {"url": "http://example.com/pre-signed-url-job-config"}
+        job_result = service.submit_job(job_id=1, context="job", job_type="config")
+        assert is_successful(job_result)
+        assert job_result.unwrap() == expected_response
+
 
 @pytest.fixture
 def db_session():
@@ -210,15 +227,15 @@ def bearer_token():
 
 @freeze_time("2025-01-01 12:00:00")
 class TestJobControllerIntegration:
-    
-    def test_register_job__returns_success_result_with_job_data(self, job_controller):
-        result = job_controller.register_job(user_id=456, tags=["test_job"])
+
+    def test_register_job__returns_success_result_with_job_data(self, job_controller, bearer_token):
+        result = job_controller.register_job(user_token_value=bearer_token, tags=["test_job"])
         assert is_successful(result)
         job_dict = result.unwrap()
         
         expected_job_data = {
             "id": 1,
-            "userId": 456,
+            "userId": 123,
             "tags": ["test_job"],
             "status": JobStatus.CREATED.value,
             "createdAt": job_dict["createdAt"],
@@ -227,14 +244,14 @@ class TestJobControllerIntegration:
         }
         assert job_dict == expected_job_data
 
-    def test_register_job__persists_job(self, job_controller, job_repository):
-        result = job_controller.register_job(user_id=456, tags=["mock_test"])
+    def test_register_job__persists_job(self, job_controller, job_repository, bearer_token):
+        result = job_controller.register_job(user_token_value=bearer_token, tags=["mock_test"])
         assert is_successful(result)
         job_dict = result.unwrap()
         
         expected_job_data = {
             "id": job_dict["id"],
-            "userId": 456,
+            "userId": 123,
             "tags": ["mock_test"],
             "status": JobStatus.CREATED.value,
             "createdAt": job_dict["createdAt"],
@@ -244,8 +261,8 @@ class TestJobControllerIntegration:
         retrieved_job = job_repository.find_by_id(job_dict["id"])
         assert retrieved_job.to_dict() == expected_job_data
 
-    def test_service__returns_success_result_with_job_config_url(self, job_controller):
-        register_result = job_controller.register_job(user_id=456, tags=["interface_test"])
+    def test_service__returns_success_result_with_job_config_url(self, job_controller, bearer_token):
+        register_result = job_controller.register_job(user_token_value=bearer_token, tags=["interface_test"])
         job_dict = register_result.unwrap()
 
         submit_result = job_controller.submit_job(job_dict["id"])
@@ -254,8 +271,8 @@ class TestJobControllerIntegration:
         
         assert response["url"] == "http://localhost:5001/pre-signed-url"
 
-    def test_submit_job__updates_job_status(self, job_controller, job_repository):
-        register_result = job_controller.register_job(user_id=123, tags=["status_test"])
+    def test_submit_job__updates_job_status(self, job_controller, job_repository, bearer_token):
+        register_result = job_controller.register_job(user_token_value=bearer_token, tags=["status_test"])
         job_dict = register_result.unwrap()
         job_controller.submit_job(job_dict["id"])
         
@@ -276,10 +293,10 @@ class TestJobControllerIntegration:
             Run.create_persisted(
                 run_id=1, 
                 job_id=1, 
-                user_id=456, 
+                user_id=123, 
                 status=RunStatus.SUBMITTED, 
                 pod_phase=PodPhase.PENDING, 
-                request=run_requests[0].model_dump(),
+                request=run_requests[0],
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
                 updated_at=datetime(2025, 1, 1, 12, 0, 0)
             ).to_run_response_dict()
@@ -298,10 +315,10 @@ class TestJobControllerIntegration:
         expected_run = Run.create_persisted(
             run_id=1,
             user_id=123,
-            job_id=run_requests[0].jobId,
+            job_id=1,
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
-            request=run_requests[0].model_dump(),
+            request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0)
         )

@@ -8,7 +8,7 @@ import pytest
 from freezegun import freeze_time
 from datetime import datetime
 
-from epistemix_api.models.job import Job, JobStatus, JobConfigLocation
+from epistemix_api.models.job import Job, JobStatus, JobInputLocation
 from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository, get_database_manager
 from epistemix_api.use_cases.submit_job import submit_job
 
@@ -44,13 +44,13 @@ class TestSubmitJobUseCase:
             updated_at=datetime(2025, 1, 1, 12, 0, 0)
         )
 
-    def test_submit_job_success__returns_job_config_location_for_submitted_job(self, mock_repository, created_job):
+    def test_submit_job_success__returns_job_input_location_for_submitted_job(self, mock_repository, created_job):
         mock_repository.find_by_id.return_value = created_job
         mock_repository.save.return_value = None
         
         result = submit_job(mock_repository, job_id=1)
         
-        assert isinstance(result, JobConfigLocation)
+        assert isinstance(result, JobInputLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
 
     def test_submit_job__when_job_not_found__raises_value_error(self, mock_repository):
@@ -87,13 +87,13 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         except FileNotFoundError:
             pass
 
-    def test_submit_job__returns_job_config_location(self, job_repository):
+    def test_submit_job__returns_job_input_location(self, job_repository):
         job = Job.create_new(user_id=123, tags=["test"])
         job_repository.save(job)
         result = submit_job(job_repository, job_id=job.id)
         
         # Assert
-        assert isinstance(result, JobConfigLocation)
+        assert isinstance(result, JobInputLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
 
     def test_submit_job__when_job_not_found__raises_value_error(self, job_repository):

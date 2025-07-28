@@ -10,13 +10,14 @@ import functools
 
 from returns.result import Result, Success, Failure
 
-from epistemix_api.models.job import Job
+from epistemix_api.models.job import Job, JobInputLocation, JobConfigLocation
 from epistemix_api.models.run import Run
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.repositories import IJobRepository, IRunRepository
 from epistemix_api.use_cases import (
     register_job as register_job_use_case, 
     submit_job as submit_job_use_case,
+    submit_job_config as submit_job_config_use_case,
     submit_runs as submit_runs_use_case,
     get_job as get_job_use_case,
     get_runs_by_job_id as get_runs_by_job_id_use_case,
@@ -37,12 +38,14 @@ class JobControllerDependencies:
     
     def __init__(
         self, register_job_fn: Callable[[int, List[str]], Job],
-        submit_job_fn: Callable[[int, str, str], Dict[str, str]],
+        submit_job_fn: Callable[[int, str, str], JobInputLocation],
+        submit_job_config_fn: Callable[[int, str, str], JobConfigLocation],
         submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
         get_job_fn: Callable[[int], Optional[Job]],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
+        self.submit_job_config_fn = submit_job_config_fn
         self.submit_runs_fn = submit_runs_fn
         self.get_job_fn = get_job_fn
 
@@ -77,7 +80,9 @@ class JobController:
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository),
+            submit_job_config_fn=submit_job_config_use_case,
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
+            # submit_run_config_fn=functools.partial(submit_runs_use_case),
             get_job_fn=functools.partial(get_job_use_case, job_repository),
         )
         return service
@@ -109,7 +114,7 @@ class JobController:
             logger.exception(f"Unexpected error in register_job")
             return Failure("An unexpected error occurred while registering the job")
     
-    def submit_job(self, job_id: int, context: str = "job", job_type: str = "input") -> Result[Dict[str, str], str]:
+    def submit_job(self, job_id: int, context: str = "job", job_type: str = "input", run_id: Optional[int] = None) -> Result[Dict[str, str], str]:
         """
         Submit a job for processing.
         
@@ -126,11 +131,28 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            job_configuration_location = self._dependencies.submit_job_fn(
-                job_id=job_id,
-                context=context,
-                job_type=job_type
-            )
+            match (context, job_type):
+                case ("job", "input"):
+                    job_configuration_location = self._dependencies.submit_job_fn(
+                        job_id=job_id,
+                        context=context,
+                        job_type=job_type
+                    )
+                case ("job", "config"):
+                    job_configuration_location = self._dependencies.submit_job_config_fn(
+                        job_id=job_id,
+                        context=context,
+                        job_type=job_type
+                    )
+                case ("run", "config"):
+                    job_configuration_location = self._dependencies.submit_run_config_fn(
+                        job_id=job_id,
+                        context=context,
+                        job_type=job_type,
+                        run_id=run_id
+                    )
+                case _:
+                    raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(job_configuration_location.to_dict())
         except ValueError as e:
             return Failure(str(e))

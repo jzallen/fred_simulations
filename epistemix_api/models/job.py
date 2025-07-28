@@ -232,6 +232,24 @@ class Job:
 
 
 @dataclass
+class JobInputLocation:
+    """URL where job input is stored."""
+    url: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {"url": self.url}
+    
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, JobInputLocation):
+            return False
+        return self.url == other.url
+    
+    def __repr__(self):
+        return f"JobInputLocation(url={self.url})"
+
+
+
+@dataclass
 class JobConfigLocation:
     """URL where job configuration is stored."""
     url: str

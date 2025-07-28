@@ -6,7 +6,7 @@ This module implements the core business logic for job submission operations.
 from typing import Dict, Any
 import logging
 
-from epistemix_api.models.job import JobStatus, JobConfigLocation
+from epistemix_api.models.job import JobStatus, JobInputLocation
 from epistemix_api.repositories.interfaces import IJobRepository
 
 
@@ -18,7 +18,7 @@ def submit_job(
     job_id: int,
     context: str = "job",
     job_type: str = "input"
-) -> JobConfigLocation:
+) -> JobInputLocation:
     """
     Submit a job for processing.
     
@@ -51,11 +51,11 @@ def submit_job(
     job_repository.save(job)
     
     # TODO: Generate pre-signed URL for job submission with S3
-    job_configuration_location = JobConfigLocation(
+    job_input_location = JobInputLocation(
         url=f"http://localhost:5001/pre-signed-url"  # Placeholder URL for example
     )
     
     # TODO: Understand why context and job_type are needed
     logger.info(f"Job {job_id} submitted with context {context} and type {job_type}")
-    
-    return job_configuration_location
+
+    return job_input_location

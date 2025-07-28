@@ -93,11 +93,9 @@ class TestJobRoutes:
             "context": "job",
             "type": "input"
         }
-        
-        response = client.post('/jobs',
-                             headers=headers,
-                             json=submit_body)
-        
+
+        response = client.post('/jobs', headers=headers, json=submit_body)
+
         assert response.status_code == 200
         data = response.get_json()
         expected_job_submission_data = {
@@ -120,11 +118,9 @@ class TestJobRoutes:
             "context": "job",
             "type": "input"
         }
-        
-        response = client.post('/jobs',
-                             headers=headers,
-                             json=submit_body)
-        
+
+        response = client.post('/jobs', headers=headers, json=submit_body)
+
         assert response.status_code == 400
         data = response.get_json()
         expected_error_data = {
@@ -204,3 +200,26 @@ class TestJobRoutes:
         data = response.get_json()
         assert data == expected_response
         
+    def test_job_config_submission__valid_request__returns_successful_response(self, client, bearer_token):
+        """Test submitting job configuration."""
+        headers = {
+            'Offline-Token': bearer_token,
+            'content-type': 'application/json',
+            'fredcli-version': '0.4.0',
+            'user-agent': 'epx_client_1.2.2'
+        }
+        
+        submit_body = {
+            "jobId": 1,
+            "context": "job",
+            "type": "config"
+        }
+
+        response = client.post('/jobs', headers=headers, json=submit_body)
+
+        assert response.status_code == 200
+        data = response.get_json()
+        expected_job_submission_data = {
+            "url": "http://localhost:5001/pre-signed-url-job-config",
+        }
+        assert data == expected_job_submission_data
