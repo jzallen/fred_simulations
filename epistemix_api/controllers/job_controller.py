@@ -19,7 +19,6 @@ from epistemix_api.use_cases import (
     submit_runs as submit_runs_use_case,
     get_job as get_job_use_case,
     get_runs_by_job_id as get_runs_by_job_id_use_case,
-    validate_tags
 )
 
 
@@ -38,15 +37,13 @@ class JobControllerDependencies:
     def __init__(
         self, register_job_fn: Callable[[int, List[str]], Job],
         submit_job_fn: Callable[[int, str, str], Dict[str, str]],
-        submit_runs_fn: Callable[[IRunRepository, List[Dict[str, Any]], str], Dict[str, List[Dict[str, Any]]]],
+        submit_runs_fn: Callable[[List[Dict[str, Any]], str], Dict[str, List[Dict[str, Any]]]],
         get_job_fn: Callable[[int], Optional[Job]],
-        run_repository: IRunRepository
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
         self.submit_runs_fn = submit_runs_fn
         self.get_job_fn = get_job_fn
-        self.run_repository = run_repository
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -79,9 +76,8 @@ class JobController:
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository),
-            submit_runs_fn=functools.partial(submit_runs_use_case),
+            submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
             get_job_fn=functools.partial(get_job_use_case, job_repository),
-            run_repository=run_repository
         )
         return service
 
@@ -141,7 +137,7 @@ class JobController:
             logger.exception(f"Unexpected error in submit_job: {e}")
             return Failure("An unexpected error occurred while submitting the job")
     
-    def submit_runs(self, run_requests: List[RunRequest], epx_version: str = "epx_client_1.2.2") -> Result[Dict[str, List[Dict[str, Any]]], str]:
+    def submit_runs(self, user_token_value: str, run_requests: List[RunRequest], epx_version: str = "epx_client_1.2.2") -> Result[Dict[str, List[Dict[str, Any]]], str]:
         """
         Submit multiple run requests for processing.
         
@@ -149,6 +145,7 @@ class JobController:
         The service layer orchestrates the call to the business use case.
         
         Args:
+            user_token_value: User token value for authentication
             run_requests: List of run requests to process
             user_agent: User agent from request headers for client version
             
@@ -157,11 +154,10 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            # Convert Pydantic models to dictionaries for the use case
             run_request_dicts = [run_request.model_dump() for run_request in run_requests]
             run_responses = self._dependencies.submit_runs_fn(
-                run_repository=self._dependencies.run_repository,
                 run_requests=run_request_dicts,
+                user_token_value=user_token_value,
                 epx_version=epx_version
             )
             return Success(run_responses)

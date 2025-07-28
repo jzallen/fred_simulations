@@ -131,6 +131,20 @@ def require_json(content_type='application/json'):
     return decorator
 
 
+def inject_user_token():
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Extract the Offline-Token header
+            user_token_value = request.headers.get('Offline-Token')
+            if not user_token_value:
+                return jsonify({"error": "Missing Offline-Token header"}), 400
+
+            return f(user_token_value, *args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 @app.route('/jobs/register', methods=['POST'])
 @require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
 @require_json('application/json')
@@ -176,8 +190,9 @@ def submit_job(json_data):
 
 @app.route('/runs', methods=['POST'])
 @require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
-@require_json('application/json')
-def submit_runs(json_data):
+@require_json()
+@inject_user_token()
+def submit_runs(user_token_value, json_data):
     """
     Submit run requests.
     Implements the run submission interaction from the Pact contract.
@@ -189,6 +204,7 @@ def submit_runs(json_data):
     job_controller = get_job_controller()
     run_submission_result = job_controller.submit_runs(
         run_requests=run_requests,
+        user_token_value=user_token_value
     )
     
     if not is_successful(run_submission_result):

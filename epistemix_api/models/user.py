@@ -8,6 +8,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
 import re
+import base64
+import json
+import binascii
 
 
 class UserRole(Enum):
@@ -24,6 +27,95 @@ class UserStatus(Enum):
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
     PENDING = "pending"
+
+
+@dataclass
+class UserToken:
+    """
+    User token model that handles bearer token parsing and validation.
+    
+    Extracts user_id and scopes_id from a base64-encoded bearer token.
+    """
+    
+    user_id: int
+    scopes_id: int
+    raw_token: str
+    
+    @classmethod
+    def from_bearer_token(cls, bearer_token: str) -> 'UserToken':
+        """
+        Create a UserToken from a bearer token string.
+        
+        Args:
+            bearer_token: The full bearer token string (e.g., "Bearer <base64-token>")
+            
+        Returns:
+            UserToken instance with parsed user_id and scopes_id
+            
+        Raises:
+            ValueError: If token format is invalid or decoding fails
+        """
+        if not bearer_token:
+            raise ValueError("Bearer token cannot be empty")
+        
+        # Split the "Bearer" keyword from the token
+        bearer_keyword, token = bearer_token.strip().split()
+        if bearer_keyword.lower() != "bearer":
+            raise ValueError("Invalid bearer token format. Expected 'Bearer <token>'")
+        
+        token = token
+        
+        try:
+            # Base64 decode the token
+            decoded_bytes = base64.b64decode(token)
+            decoded_str = decoded_bytes.decode('utf-8')
+            
+            # Parse the JSON
+            token_data = json.loads(decoded_str)
+            
+            # Validate required keys
+            if "user_id" not in token_data:
+                raise ValueError("Token missing required 'user_id' field")
+            if "scopes_id" not in token_data:
+                raise ValueError("Token missing required 'scopes_id' field")
+            
+            # Create and return UserToken instance
+            return cls(
+                user_id=int(token_data["user_id"]),
+                scopes_id=int(token_data["scopes_id"]),
+                raw_token=bearer_token
+            )
+            
+        except (binascii.Error, UnicodeDecodeError) as e:
+            raise ValueError(f"Failed to decode base64 token: {e}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse token JSON: {e}")
+        except (ValueError, TypeError) as e:
+            if "invalid literal for int()" in str(e):
+                raise ValueError("Token contains invalid user_id or scopes_id values")
+            raise
+    
+    def __init__(self, user_id: int, scopes_id: int, raw_token: str):
+        """Initialize UserToken with validated values."""
+        if user_id <= 0:
+            raise ValueError("user_id must be positive")
+        if scopes_id <= 0:
+            raise ValueError("scopes_id must be positive")
+        
+        self.user_id = user_id
+        self.scopes_id = scopes_id
+        self.raw_token = raw_token
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the token to a dictionary representation."""
+        return {
+            "user_id": self.user_id,
+            "scopes_id": self.scopes_id
+        }
+    
+    def __repr__(self) -> str:
+        """String representation for debugging."""
+        return f"UserToken(user_id={self.user_id}, scopes_id={self.scopes_id})"
 
 
 @dataclass

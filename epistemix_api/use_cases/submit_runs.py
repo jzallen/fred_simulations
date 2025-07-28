@@ -8,6 +8,7 @@ from datetime import datetime
 import logging
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.models.user import UserToken
 from epistemix_api.repositories.interfaces import IRunRepository
 
 
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 def submit_runs(
     run_repository: IRunRepository,
     run_requests: List[RunRequestDict],
+    user_token_value: str,
     epx_version: str = "epx_client_1.2.2"
 ) -> Dict[str, List[Dict[str, Any]]]:
     """
@@ -51,11 +53,13 @@ def submit_runs(
     Args:
         run_repository: Repository for run persistence
         run_requests: List of run request dictionaries to process
-        user_agent: User agent from request headers for client version
-        
+        user_token_value: The bearer token string containing user authentication
+        epx_version: The epx client version used by the user
+
     Returns:
         Dictionary containing run responses
     """
+    user_token = UserToken.from_bearer_token(user_token_value)
     run_responses = []
     
     for run_request in run_requests:
@@ -65,7 +69,7 @@ def submit_runs(
         # Create a new Run domain object
         run = Run.create_unpersisted(
             job_id=run_request["jobId"],
-            user_id=555,  # Mock user ID - should come from authentication
+            user_id=user_token.user_id,
             created_ts=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             request=run_request,
             pod_phase=PodPhase.RUNNING,
