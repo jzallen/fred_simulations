@@ -223,3 +223,28 @@ class TestJobRoutes:
             "url": "http://localhost:5001/pre-signed-url-job-config",
         }
         assert data == expected_job_submission_data
+
+    def test_run_config_submission__valid_request__returns_successful_response(self, client, bearer_token):
+        """Test submitting run configuration."""
+        headers = {
+            'Offline-Token': bearer_token,
+            'content-type': 'application/json',
+            'fredcli-version': '0.4.0',
+            'user-agent': 'epx_client_1.2.2'
+        }
+        
+        submit_body = {
+          "jobId": 1,
+          "context": "run",
+          "type": "config",
+          "runId": 1
+        }
+
+        response = client.post('/jobs', headers=headers, json=submit_body)
+
+        assert response.status_code == 200
+        data = response.get_json()
+        expected_run_submission_data = {
+            "url": "http://localhost:5001/pre-signed-url-run-config",
+        }
+        assert data == expected_run_submission_data

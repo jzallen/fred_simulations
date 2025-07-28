@@ -15,7 +15,7 @@ from returns.pipeline import is_successful
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
 from epistemix_api.models.job import Job, JobStatus, JobConfigLocation, JobInputLocation
 from epistemix_api.models.requests import RunRequest
-from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.models.run import Run, RunStatus, PodPhase, RunConfigLocation
 from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository, get_database_manager
 
 
@@ -41,6 +41,7 @@ def service():
         submit_job_fn=Mock(return_value=JobInputLocation(url="http://example.com/pre-signed-url")),
         submit_job_config_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url-job-config")),
         submit_runs_fn=Mock(return_value=[run]),
+        submit_run_config_fn=Mock(return_value=RunConfigLocation(url="http://example.com/pre-signed-url-run-config")),
         get_job_fn=Mock()
     )
     return service
@@ -181,6 +182,21 @@ class TestJobController:
     def test_submit_job__type_config__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url-job-config"}
         job_result = service.submit_job(job_id=1, context="job", job_type="config")
+        assert is_successful(job_result)
+        assert job_result.unwrap() == expected_response
+
+    def test_submit_job__context_run_type_config__calls_submit_run_config_fn_with_correct_parameters(self, service):
+        service.submit_job(job_id=1, run_id=2, context="run", job_type="config")
+        service._dependencies.submit_run_config_fn.assert_called_once_with(
+            job_id=1,
+            run_id=2, 
+            context="run", 
+            job_type="config"
+        )
+
+    def test_submit_job__context_run_type_config__returns_success_result_with_response_data(self, service):
+        expected_response = {"url": "http://example.com/pre-signed-url-run-config"}
+        job_result = service.submit_job(job_id=1, run_id=2, context="run", job_type="config")
         assert is_successful(job_result)
         assert job_result.unwrap() == expected_response
 

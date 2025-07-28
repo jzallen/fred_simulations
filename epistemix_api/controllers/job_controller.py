@@ -11,7 +11,7 @@ import functools
 from returns.result import Result, Success, Failure
 
 from epistemix_api.models.job import Job, JobInputLocation, JobConfigLocation
-from epistemix_api.models.run import Run
+from epistemix_api.models.run import Run, RunConfigLocation
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.repositories import IJobRepository, IRunRepository
 from epistemix_api.use_cases import (
@@ -19,6 +19,7 @@ from epistemix_api.use_cases import (
     submit_job as submit_job_use_case,
     submit_job_config as submit_job_config_use_case,
     submit_runs as submit_runs_use_case,
+    submit_run_config as submit_run_config_use_case,    
     get_job as get_job_use_case,
     get_runs_by_job_id as get_runs_by_job_id_use_case,
 )
@@ -41,12 +42,14 @@ class JobControllerDependencies:
         submit_job_fn: Callable[[int, str, str], JobInputLocation],
         submit_job_config_fn: Callable[[int, str, str], JobConfigLocation],
         submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
+        submit_run_config_fn: Callable[[int, str, str, Optional[int]], RunConfigLocation],
         get_job_fn: Callable[[int], Optional[Job]],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
         self.submit_job_config_fn = submit_job_config_fn
         self.submit_runs_fn = submit_runs_fn
+        self.submit_run_config_fn = submit_run_config_fn
         self.get_job_fn = get_job_fn
 
 class JobController:
@@ -82,7 +85,7 @@ class JobController:
             submit_job_fn=functools.partial(submit_job_use_case, job_repository),
             submit_job_config_fn=submit_job_config_use_case,
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
-            # submit_run_config_fn=functools.partial(submit_runs_use_case),
+            submit_run_config_fn=submit_run_config_use_case,
             get_job_fn=functools.partial(get_job_use_case, job_repository),
         )
         return service
