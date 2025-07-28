@@ -4,15 +4,16 @@ This is a concrete implementation of the IJobRepository interface using SQLite.
 """
 
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Callable
 import logging
 from contextlib import contextmanager
 
+from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from .database import get_db_session, JobRecord, JobStatusEnum
-from .interfaces import IJobRepository
-from ..models.job import Job, JobStatus
+from epistemix_api.repositories.database import get_db_session, JobRecord, JobStatusEnum
+from epistemix_api.repositories.interfaces import IJobRepository
+from epistemix_api.models.job import Job, JobStatus
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class SQLAlchemyJobRepository:
     It provides the same interface as the in-memory repository but with persistent storage.
     """
     
-    def __init__(self, get_db_session_fn: callable = get_db_session):
+    def __init__(self, get_db_session_fn: Callable[[], Session] = get_db_session):
         """Initialize the repository."""
         self._session_factory = get_db_session_fn
     

@@ -6,28 +6,27 @@ from typing import Optional, List, Callable
 from sqlalchemy.orm import Session
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
-from epistemix_api.repositories.database import RunRecord, RunStatusEnum, PodPhaseEnum
+from epistemix_api.repositories.database import RunRecord, RunStatusEnum, PodPhaseEnum, get_db_session
 from epistemix_api.repositories.interfaces import IRunRepository
 
 
 class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
     
-    def __init__(self, session_factory: Callable[[], Session]):
+    def __init__(self, get_db_session_fn: Callable[[], Session] = get_db_session):
         """
         Initialize the repository with a session factory.
         
         Args:
             session_factory: A callable that returns a SQLAlchemy Session
         """
-        self.session_factory = session_factory
+        self.session_factory = get_db_session_fn
     
     def save(self, run: Run) -> Run:
         """Save a run to the database."""
         session = self.session_factory()
         
         if run.is_persisted():
-            # Update existing run
             run_record = session.query(RunRecord).filter_by(id=run.id).first()
             if not run_record:
                 raise ValueError(f"Run with ID {run.id} not found")
@@ -95,7 +94,8 @@ class SQLAlchemyRunRepository:
         return RunRecord(
             job_id=run.job_id,
             user_id=run.user_id,
-            created_ts=run.created_ts,
+            created_at=run.created_at,
+            updated_at=run.updated_at,
             request=run.request,
             pod_phase=self._pod_phase_to_enum(run.pod_phase),
             container_status=run.container_status,
@@ -108,7 +108,8 @@ class SQLAlchemyRunRepository:
         """Update a RunRecord from a Run domain object."""
         record.job_id = run.job_id
         record.user_id = run.user_id
-        record.created_ts = run.created_ts
+        record.created_at = run.created_at
+        record.updated_at = run.updated_at
         record.request = run.request
         record.pod_phase = self._pod_phase_to_enum(run.pod_phase)
         record.container_status = run.container_status
@@ -122,7 +123,8 @@ class SQLAlchemyRunRepository:
             run_id=record.id,
             job_id=record.job_id,
             user_id=record.user_id,
-            created_ts=record.created_ts,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
             request=record.request,
             pod_phase=self._enum_to_pod_phase(record.pod_phase),
             container_status=record.container_status,
@@ -139,7 +141,7 @@ class SQLAlchemyRunRepository:
         """Convert RunStatusEnum to RunStatus."""
         return RunStatus(status_enum.value)
     
-    def _pod_phase_to_enum(self, pod_phase: PodPhase) -> PodPhaseEnum:
+    def _pod_phase_to_enum(self, pod_phase: str) -> PodPhaseEnum:
         """Convert PodPhase to PodPhaseEnum."""
         return PodPhaseEnum(pod_phase.value)
     

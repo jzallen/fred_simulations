@@ -3,6 +3,7 @@ Run domain model for the Epistemix API.
 Contains the core business logic and rules for run entities.
 """
 
+from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Dict, Any
@@ -42,8 +43,10 @@ class Run:
     # Required fields
     job_id: int
     user_id: int
-    created_ts: str  # ISO timestamp string
+    created_at: str  # ISO timestamp string
+    updated_at: str  # ISO timestamp string
     request: Dict[str, Any]  # Full run request data
+    pod_phase: PodPhase = PodPhase.RUNNING
     
     # Repository-managed field (None until persisted)
     id: Optional[int] = None
@@ -60,7 +63,6 @@ class Run:
         cls,
         job_id: int,
         user_id: int,
-        created_ts: str,
         request: Dict[str, Any],
         pod_phase: PodPhase = PodPhase.RUNNING,
         container_status: Optional[str] = None,
@@ -74,7 +76,6 @@ class Run:
         Args:
             job_id: ID of the associated job
             user_id: ID of the user who created the run
-            created_ts: ISO timestamp string
             request: Full run request data
             pod_phase: Phase of the pod
             container_status: Status of the container
@@ -88,7 +89,8 @@ class Run:
         return cls(
             job_id=job_id,
             user_id=user_id,
-            created_ts=created_ts,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
             request=request,
             id=None,
             pod_phase=pod_phase,
@@ -104,7 +106,8 @@ class Run:
         run_id: int,
         job_id: int,
         user_id: int,
-        created_ts: str,
+        created_at: str,
+        updated_at: str,
         request: Dict[str, Any],
         pod_phase: PodPhase = PodPhase.RUNNING,
         container_status: Optional[str] = None,
@@ -119,7 +122,8 @@ class Run:
             run_id: ID of the run
             job_id: ID of the associated job
             user_id: ID of the user who created the run
-            created_ts: ISO timestamp string
+            created_at: ISO timestamp string
+            updated_at: ISO timestamp string
             request: Full run request data
             pod_phase: Phase of the pod
             container_status: Status of the container
@@ -133,7 +137,8 @@ class Run:
         return cls(
             job_id=job_id,
             user_id=user_id,
-            created_ts=created_ts,
+            created_at=created_at,
+            updated_at=updated_at,
             request=request,
             id=run_id,
             pod_phase=pod_phase,
@@ -155,6 +160,8 @@ class Run:
         """Update the pod phase."""
         self.pod_phase = pod_phase
     
+    # TODO: See if field from dataclass lets you alias names, if so asdict can be used which
+    # supports serializing nested dataclasses and enums automatically.
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the run to a dictionary representation.
@@ -166,7 +173,7 @@ class Run:
             "id": self.id,
             "jobId": self.job_id,
             "userId": self.user_id,
-            "createdTs": self.created_ts,
+            "createdTs": self.created_at,
             "request": self.request,
             "podPhase": self.pod_phase.value,
             "containerStatus": self.container_status,
@@ -189,3 +196,9 @@ class Run:
             "errors": None,
             "runRequest": self.request
         }
+    
+    def __eq__(self, other: object) -> bool:
+        """Check equality based on run ID and other fields."""
+        if not isinstance(other, Run):
+            return False
+        return self.to_dict() == other.to_dict()

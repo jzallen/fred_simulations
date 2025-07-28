@@ -14,8 +14,8 @@ from epistemix_api.repositories.database import get_database_manager, JobRecord
 
 @pytest.fixture
 def repository():
-    """Create a fresh repository for each test."""
-    test_db_url = "sqlite:///test_sqlalchemy_job_repository.db"
+    db_file = "test_sqlalchemy_job_repository.db"
+    test_db_url = f"sqlite:///{db_file}"
     test_db_manager = get_database_manager(test_db_url)
     test_db_manager.create_tables()
 
@@ -23,7 +23,7 @@ def repository():
     yield SQLAlchemyJobRepository(get_db_session_fn=test_db_manager.get_session)
 
     try:
-        os.remove("test_sqlalchemy_job_repository.db")
+        os.remove(db_file)
     except FileNotFoundError:
         pass
 

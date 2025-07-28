@@ -58,8 +58,9 @@ class RunRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     job_id = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=False)
-    created_ts = Column(String, nullable=False)  # ISO timestamp string
-    request = Column(JSON, nullable=False)  # Full run request data
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    request = Column(JSON, nullable=False)
     pod_phase = Column(Enum(PodPhaseEnum), nullable=False, default=PodPhaseEnum.RUNNING)
     container_status = Column(String, nullable=True)
     status = Column(Enum(RunStatusEnum), nullable=False, default=RunStatusEnum.SUBMITTED)
