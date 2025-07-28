@@ -4,15 +4,9 @@ Script to run the Epistemix API Flask app.
 """
 
 import os
-import sys
-from pathlib import Path
 
-# Add the epistemix_api directory to the Python path
-current_dir = Path(__file__).parent
-sys.path.insert(0, str(current_dir))
-
-from app import app
-from config import config
+from epistemix_api.app import app
+from epistemix_api.config import config
 
 def main():
     """Main function to run the Flask app."""

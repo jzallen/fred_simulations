@@ -202,3 +202,25 @@ class Run:
         if not isinstance(other, Run):
             return False
         return self.to_dict() == other.to_dict()
+
+    
+@dataclass
+class RunConfigLocation:
+    """
+    Represents the location of a run configuration.
+    
+    This is used to return the pre-signed URL for uploading run configurations.
+    """
+    
+    url: str
+
+    def to_dict(self) -> Dict[str, str]:
+        return {"url": self.url}
+    
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, RunConfigLocation):
+            return False
+        return self.url == other.url
+    
+    def __repr__(self):
+        return f"RunConfigLocation(url={self.url})"
