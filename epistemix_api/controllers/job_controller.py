@@ -82,7 +82,7 @@ class JobController:
         )
         return service
 
-    def register_job(self, user_id: int, tags: List[str] = None) -> Result[Dict[str, Any], str]:
+    def register_job(self, user_token_value: str, tags: List[str] = None) -> Result[Dict[str, Any], str]:
         """
         Register a new job for a user.
         
@@ -90,7 +90,7 @@ class JobController:
         The service layer orchestrates the call to the business use case.
         
         Args:
-            user_id: ID of the user registering the job
+            user_token_value: Token value containing user ID and registered scopes
             tags: Optional list of tags for the job
             
         Returns:
@@ -99,7 +99,7 @@ class JobController:
         """
         try:
             job = self._dependencies.register_job_fn(
-                user_id=user_id,
+                user_token_value=user_token_value,
                 tags=tags
             )
             return Success(job.to_dict())
@@ -155,9 +155,8 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            run_request_dicts = [run_request.model_dump() for run_request in run_requests]
             runs = self._dependencies.submit_runs_fn(
-                run_requests=run_request_dicts,
+                run_requests=run_requests,
                 user_token_value=user_token_value,
                 epx_version=epx_version
             )

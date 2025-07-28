@@ -148,13 +148,14 @@ def inject_user_token():
 @app.route('/jobs/register', methods=['POST'])
 @require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
 @require_json('application/json')
-def register_job(json_data):
+@inject_user_token()
+def register_job(user_token_value, json_data):
     """Persists a new job to Epistemix platform."""
     request_data = RegisterJobRequest(**json_data)
     
     job_controller = get_job_controller()
     job_result = job_controller.register_job(
-        user_id=request_data.userId, 
+        user_token_value=user_token_value,
         tags=request_data.tags
     )
     
@@ -163,7 +164,14 @@ def register_job(json_data):
         logger.warning(f"Business logic error in job registration: {error_message}")
         return jsonify({"error": error_message}), 400
 
-    return jsonify(job_result.unwrap()), 200        
+    job_data = job_result.unwrap()
+    job_response = {
+        "id": job_data["id"],
+        "userId": job_data["userId"],
+        "tags": job_data["tags"],
+    }
+
+    return jsonify(job_response), 200
 
 
 @app.route('/jobs', methods=['POST'])

@@ -6,8 +6,9 @@ This module implements the core business logic for job registration operations.
 from typing import List
 import logging
 
-from ..models.job import Job, JobTag
-from ..repositories.interfaces import IJobRepository
+from epistemix_api.models.job import Job, JobTag
+from epistemix_api.models.user import UserToken
+from epistemix_api.repositories.interfaces import IJobRepository
 
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def register_job(
     job_repository: IJobRepository,
-    user_id: int,
+    user_token_value: str,
     tags: List[str] = None
 ) -> Job:
     """
@@ -36,8 +37,11 @@ def register_job(
     Raises:
         ValueError: If user_id is invalid or business rules are violated
     """
+
+    user_token = UserToken.from_bearer_token(user_token_value)
+
     # Input validation
-    if user_id <= 0:
+    if user_token.user_id <= 0:
         raise ValueError("User ID must be positive")
     
     if tags is None:
@@ -47,13 +51,13 @@ def register_job(
     validate_tags(tags)
     
     # Create the unpersisted job entity using domain factory method
-    job = Job.create_new(user_id=user_id, tags=tags)
+    job = Job.create_new(user_id=user_token.user_id, tags=tags)
     
     # Persist the job (repository will assign ID)
     saved_job = job_repository.save(job)
     
     # Log the business event
-    logger.info(f"Job {saved_job.id} created for user {user_id} with tags {tags}")
+    logger.info(f"Job {saved_job.id} created for user {user_token.user_id} with tags {tags}")
     
     return saved_job
 
