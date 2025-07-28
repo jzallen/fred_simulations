@@ -1,0 +1,155 @@
+"""
+Tests for submit_job use case.
+"""
+import os
+import json
+import base64
+from unittest.mock import Mock
+
+import pytest
+from freezegun import freeze_time
+from datetime import datetime
+
+from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository, get_database_manager
+from epistemix_api.use_cases.submit_runs import submit_runs
+
+
+@pytest.fixture
+def run_request():
+    return {
+        "jobId": 1,
+        "workingDir": "/tmp",
+        "size": "small",
+        "fredVersion": "1.0.0",
+        "population": {
+            "version": "1.0",
+            "locations": ["location1", "location2"]
+        },
+        "fredArgs": [{"flag": "--arg1", "value": "value1"}],
+        "fredFiles": ["file1.fred"]
+    }
+
+@pytest.fixture
+def bearer_token():
+    token_data = {"user_id": 123, "scopes_hash": "abc123"}
+    token_json = json.dumps(token_data)
+    token_b64 = base64.b64encode(token_json.encode()).decode()
+    return f"Bearer {token_b64}"
+
+
+@freeze_time("2025-01-01 12:00:00")
+class TestSubmitRunsUseCase:
+
+    @pytest.fixture
+    def mock_repository(self):
+        repo = Mock(spec=IRunRepository)
+        return repo
+    
+    def test_submit_runs__returns_run_responses(self, mock_repository, run_request, bearer_token):
+        mock_repository.save.return_value = Run.create_persisted(
+            run_id=1,
+            user_id=123,
+            job_id=1,
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request=run_request,
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+        )
+        
+        expected_runs = [
+            Run.create_persisted(
+                run_id=1,
+                user_id=123,
+                job_id=1,
+                status=RunStatus.SUBMITTED,
+                pod_phase=PodPhase.PENDING,
+                request=run_request,
+                created_at=datetime(2025, 1, 1, 12, 0, 0),
+                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            )
+        ]
+        result = submit_runs(mock_repository, [run_request], bearer_token)
+        
+        assert result == expected_runs
+
+    def test_submit_runs__raises_value_error_when_invalid_token(self, mock_repository, run_request):
+        invalid_token = "Bearer invalid_token"
+        with pytest.raises(ValueError, match="Failed to decode base64 token"):
+            submit_runs(mock_repository, [run_request], invalid_token)
+
+
+class TestSubmitRunsSLAlchemyRunRepositoryIntegration:
+    """
+    Integration tests for submit_runs use case with SQLAlchemy run repository.
+    This class assumes the repository is properly set up in the test environment.
+    """
+
+    @pytest.fixture
+    def db_session(self):
+        db_name = "test_submit_runs_integration.db"
+        test_db_url = f"sqlite:///{db_name}"
+        test_db_manager = get_database_manager(test_db_url)
+        test_db_manager.create_tables()
+
+        yield test_db_manager.get_session()
+
+        try:
+            os.remove(db_name)
+        except FileNotFoundError:
+            pass
+
+    @pytest.fixture
+    def run_repository(self, db_session):
+        get_db_session_fn = lambda: db_session
+        return SQLAlchemyRunRepository(get_db_session_fn=get_db_session_fn)
+
+    @freeze_time("2025-01-01 12:00:00")
+    def test_submit_runs__give_runs_and_valid_token__returns_runs(self, run_repository, run_request, bearer_token):
+        run_requests = [run_request]
+        
+        expected_runs = [
+            Run.create_persisted(
+                run_id=1,
+                user_id=123,
+                job_id=run_request["jobId"],
+                status=RunStatus.SUBMITTED,
+                pod_phase=PodPhase.PENDING,
+                request=run_request,
+                created_at=datetime(2025, 1, 1, 12, 0, 0),
+                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            )
+        ]
+        result = submit_runs(run_repository, run_requests, bearer_token)
+        assert result == expected_runs
+
+    @freeze_time("2025-01-01 12:00:00")
+    def test_submit_runs__when_no_runs_provided__returns_empty_list(self, run_repository, bearer_token):
+        result = submit_runs(run_repository, [], bearer_token)
+        assert result == []
+
+    @freeze_time("2025-01-01 12:00:00")
+    def test_submit_runs__when_runs_provided__saves_runs_to_repository_on_commit(self, run_repository, run_request, bearer_token, db_session):
+        run_requests = [run_request]
+        submit_runs(run_repository, run_requests, bearer_token)
+        db_session.commit()
+
+        expected_run = Run.create_persisted(
+            run_id=1,
+            user_id=123,
+            job_id=run_request["jobId"],
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request=run_request,
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+        )
+        saved_run = run_repository.find_by_id(1)
+        assert saved_run == expected_run
+        
+
+    def test_submit_runs__when_invalid_token__raises_value_error(self, run_repository, run_request):
+        invalid_token = "Bearer invalid_token"
+        with pytest.raises(ValueError, match="Failed to decode base64 token"):
+            submit_runs(run_repository, [run_request], invalid_token)

@@ -43,7 +43,7 @@ def submit_runs(
     run_requests: List[RunRequestDict],
     user_token_value: str,
     epx_version: str = "epx_client_1.2.2"
-) -> Dict[str, List[Dict[str, Any]]]:
+) -> List[Run]:
     """
     Submit multiple run requests for processing.
     
@@ -70,25 +70,17 @@ def submit_runs(
         run = Run.create_unpersisted(
             job_id=run_request["jobId"],
             user_id=user_token.user_id,
-            created_ts=datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             request=run_request,
-            pod_phase=PodPhase.RUNNING,
+            pod_phase=PodPhase.PENDING,
             container_status=None,
             status=RunStatus.SUBMITTED,
             user_deleted=False,
             epx_client_version=epx_client_version
         )
         
-        # Save the run to the repository (this assigns an ID)
-        saved_run = run_repository.save(run)
-        
-        # Create run response using the domain object
-        run_response = saved_run.to_run_response_dict()
-        run_responses.append(run_response)
+        run_responses.append(run_repository.save(run))
     
-    return {
-        "runResponses": run_responses
-    }
+    return run_responses
 
 
 # Legacy functions for backward compatibility

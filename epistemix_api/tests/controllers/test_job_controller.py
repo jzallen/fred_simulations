@@ -2,30 +2,63 @@
 Tests for the refactored Flask app using Clean Architecture.
 """
 import os
+import json
+import base64
 
 import pytest
 from unittest.mock import Mock
 
 from freezegun import freeze_time
+from datetime import datetime
 from returns.pipeline import is_successful
 
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
 from epistemix_api.models.job import Job, JobStatus, JobConfigLocation
-from epistemix_api.repositories import SQLAlchemyJobRepository, get_database_manager
+from epistemix_api.models.requests import RunRequest
+from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository, get_database_manager
 
 
 @pytest.fixture
 def service():
     with freeze_time("2025-01-01 12:00:00"):
         job = Job.create_persisted(job_id=1, user_id=456, tags=["info_job"])
+    
+    run = Run.create_persisted(
+        run_id=1, 
+        job_id=1, 
+        user_id=456, 
+        status=RunStatus.SUBMITTED, 
+        pod_phase=PodPhase.PENDING, 
+        request={},
+        created_at=datetime(2025, 1, 1, 12, 0, 0),
+        updated_at=datetime(2025, 1, 1, 12, 0, 0)
+    )
 
     service = JobController()
     service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
         submit_job_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url")),
+        submit_runs_fn=Mock(return_value=[run]),
         get_job_fn=Mock()
     )
     return service
+
+
+@pytest.fixture
+def run_requests():
+    return [RunRequest(
+        jobId=1, 
+        workingDir="/tmp", 
+        size="hot",
+        fredVersion="latest",
+        population={
+            "version": "US_2010.v5", 
+            "locations": ["New York", "Los Angeles"]
+        },
+        fredArgs=[{"flag": "-p", "value": "param"}],
+        fredFiles=["/path/to/fred/file"]
+    )]
 
 class TestJobController:
     
@@ -81,28 +114,98 @@ class TestJobController:
         assert not is_successful(job_result)
         assert job_result.failure() == "An unexpected error occurred while submitting the job"
 
+    def test_submit_runs__calls_submit_runs_fn_with_correct_parameters(self, service, run_requests):
+        bearer_token = "Bearer valid_token"
+        service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
+        service._dependencies.submit_runs_fn.assert_called_once_with(
+            run_requests=[run_request.model_dump() for run_request in run_requests], 
+            user_token_value=bearer_token,
+            epx_version="epx_client_1.2.2"
+        )
+
+    def test_submit_runs__returns_success_result_with_run_responses(self, service, run_requests):
+        expected_response = [
+            Run.create_persisted(
+                run_id=1, 
+                job_id=1, 
+                user_id=456, 
+                status=RunStatus.SUBMITTED, 
+                pod_phase=PodPhase.PENDING, 
+                request={},
+                created_at=datetime(2025, 1, 1, 12, 0, 0),
+                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            ).to_run_response_dict()
+        ]
+        bearer_token = "Bearer valid_token"
+        restult = service.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        assert is_successful(restult)
+        assert restult.unwrap() == expected_response
+    
+    def test_submit_runs__when_value_error_raised__returns_failure_result(self, service, run_requests):
+        service._dependencies.submit_runs_fn.side_effect = ValueError("Invalid run request")
+        bearer_token = "Bearer valid_token"
+        result = service.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        assert not is_successful(result)
+        assert result.failure() == "Invalid run request"
+
+    def test_submit_runs__when_exception_raised__returns_failure_result(self, service, run_requests):
+        service._dependencies.submit_runs_fn.side_effect = Exception("Unexpected error")
+        bearer_token = "Bearer valid_token"
+        result = service.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        assert not is_successful(result)
+        assert result.failure() == "An unexpected error occurred while submitting the runs"
 
 
 @pytest.fixture
-def job_repository():
-    # Set up test database URL
-    test_db_url = "sqlite:///test_job_routes.db"
-    
-    # Clear and recreate tables for each test
+def db_session():
+    db_name = "test_job_controller.db"
+    test_db_url = f"sqlite:///{db_name}"
     test_db_manager = get_database_manager(test_db_url)
     test_db_manager.create_tables()
 
-    job_repository = SQLAlchemyJobRepository(test_db_manager.get_session)
-    yield job_repository
+    yield test_db_manager.get_session()
 
     try:
-        os.remove("test_job_routes.db")
+        os.remove(db_name)
     except FileNotFoundError:
         pass
 
+
 @pytest.fixture
-def job_controller(job_repository):
-    return JobController.create_with_job_repository(job_repository)
+def job_repository(db_session):
+    get_db_session_fn = lambda: db_session
+    return SQLAlchemyJobRepository(get_db_session_fn=get_db_session_fn)
+
+
+@pytest.fixture
+def run_repository(db_session):
+    get_db_session_fn = lambda: db_session
+    return SQLAlchemyRunRepository(get_db_session_fn=get_db_session_fn)
+
+
+@pytest.fixture
+def job_controller(job_repository, run_repository):
+    return JobController.create_with_repositories(job_repository, run_repository)
+
+
+@pytest.fixture
+def bearer_token():
+    token_data = {"user_id": 123, "scopes_hash": "abc123"}
+    token_json = json.dumps(token_data)
+    token_b64 = base64.b64encode(token_json.encode()).decode()
+    return f"Bearer {token_b64}"
 
 
 @freeze_time("2025-01-01 12:00:00")
@@ -141,7 +244,7 @@ class TestJobControllerIntegration:
         retrieved_job = job_repository.find_by_id(job_dict["id"])
         assert retrieved_job.to_dict() == expected_job_data
 
-    def test_service__returns_success_result_with_job_config_url(self, job_controller, job_repository):
+    def test_service__returns_success_result_with_job_config_url(self, job_controller):
         register_result = job_controller.register_job(user_id=456, tags=["interface_test"])
         job_dict = register_result.unwrap()
 
@@ -160,3 +263,47 @@ class TestJobControllerIntegration:
         updated_job = job_repository.find_by_id(job_dict["id"])
         assert updated_job.status == JobStatus.SUBMITTED
 
+    def test_submit_runs__returns_success_result_with_run_responses(self, job_controller, run_requests, bearer_token):
+        result = job_controller.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        
+        assert is_successful(result)
+
+        expected_response = [
+            Run.create_persisted(
+                run_id=1, 
+                job_id=1, 
+                user_id=456, 
+                status=RunStatus.SUBMITTED, 
+                pod_phase=PodPhase.PENDING, 
+                request=run_requests[0].model_dump(),
+                created_at=datetime(2025, 1, 1, 12, 0, 0),
+                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            ).to_run_response_dict()
+        ]
+        run_responses = result.unwrap()
+        assert run_responses == expected_response
+
+    def test_submit_runs__persists_runs(self, job_controller, run_requests, bearer_token, run_repository, db_session):
+        job_controller.submit_runs(
+            user_token_value=bearer_token,
+            run_requests=run_requests,
+            epx_version="epx_client_1.2.2"
+        )
+        db_session.commit()
+
+        expected_run = Run.create_persisted(
+            run_id=1,
+            user_id=123,
+            job_id=run_requests[0].jobId,
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request=run_requests[0].model_dump(),
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+        )
+        saved_run = run_repository.find_by_id(1)
+        assert saved_run == expected_run

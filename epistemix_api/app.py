@@ -89,7 +89,7 @@ def get_job_controller():
     session_factory = lambda: g.db_session
     job_repository = SQLAlchemyJobRepository(session_factory)
     run_repository = SQLAlchemyRunRepository(session_factory)
-    return JobController.create_with_job_repository(job_repository, run_repository)
+    return JobController.create_with_repositories(job_repository, run_repository)
 
 
 def validate_headers(required_headers: List[str]) -> bool:
@@ -212,7 +212,11 @@ def submit_runs(user_token_value, json_data):
         logger.warning(f"Business logic error in run submission: {error_message}")
         return jsonify({"error": error_message}), 400
     
-    return jsonify(run_submission_result.unwrap()), 200
+    run_responses = run_submission_result.unwrap()
+    response = {
+        "runResponses": run_responses
+    }
+    return jsonify(response), 200
 
 
 @app.route('/runs', methods=['GET'])

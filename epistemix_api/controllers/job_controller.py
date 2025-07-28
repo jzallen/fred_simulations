@@ -10,7 +10,8 @@ import functools
 
 from returns.result import Result, Success, Failure
 
-from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.models.job import Job
+from epistemix_api.models.run import Run
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.repositories import IJobRepository, IRunRepository
 from epistemix_api.use_cases import (
@@ -37,7 +38,7 @@ class JobControllerDependencies:
     def __init__(
         self, register_job_fn: Callable[[int, List[str]], Job],
         submit_job_fn: Callable[[int, str, str], Dict[str, str]],
-        submit_runs_fn: Callable[[List[Dict[str, Any]], str], Dict[str, List[Dict[str, Any]]]],
+        submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
         get_job_fn: Callable[[int], Optional[Job]],
     ):
         self.register_job_fn = register_job_fn
@@ -66,12 +67,12 @@ class JobController:
             run_repository=Mock()
         )
 
-        Use `create_with_job_repository` to instantiate with a repository for production use.
+        Use `create_with_repositories` to instantiate with a repository for production use.
         """
         self._dependencies = None
 
     @classmethod
-    def create_with_job_repository(cls, job_repository: IJobRepository, run_repository: IRunRepository) -> Self:
+    def create_with_repositories(cls, job_repository: IJobRepository, run_repository: IRunRepository) -> Self:
         service = cls()
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
@@ -155,11 +156,12 @@ class JobController:
         """
         try:
             run_request_dicts = [run_request.model_dump() for run_request in run_requests]
-            run_responses = self._dependencies.submit_runs_fn(
+            runs = self._dependencies.submit_runs_fn(
                 run_requests=run_request_dicts,
                 user_token_value=user_token_value,
                 epx_version=epx_version
             )
+            run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
         except ValueError as e:
             return Failure(str(e))
