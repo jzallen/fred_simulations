@@ -74,24 +74,30 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
     """
 
     @pytest.fixture
-    def job_repository(self):
+    def db_session(self):
         db_name = "test_submit_job_integration.db"
         test_db_url = f"sqlite:///{db_name}"
         test_db_manager = get_database_manager(test_db_url)
         test_db_manager.create_tables()
 
-        yield SQLAlchemyJobRepository(get_db_session_fn=test_db_manager.get_session)
-
+        yield test_db_manager.get_session()
+        
         try:
             os.remove(db_name)
         except FileNotFoundError:
             pass
 
-    def test_submit_job__returns_job_input_location(self, job_repository):
+    @pytest.fixture
+    def job_repository(self, db_session):
+        return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
+
+    def test_submit_job__returns_job_input_location(self, job_repository, db_session):
         job = Job.create_new(user_id=123, tags=["test"])
-        job_repository.save(job)
-        result = submit_job(job_repository, job_id=job.id)
-        
+        persisted_job = job_repository.save(job)
+        # repository only flushes, commits are handled at app layer for global rollback handling
+        db_session.commit()  
+        result = submit_job(job_repository, job_id=persisted_job.id)
+
         # Assert
         assert isinstance(result, JobInputLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"

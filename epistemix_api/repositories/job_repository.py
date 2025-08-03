@@ -49,66 +49,37 @@ class SQLAlchemyJobRepository:
         """
         Save a job to the database.
         
-        For unpersisted jobs (id is None), assigns a new ID from the database.
+        Uses JobMapper for strict conversion with no defaults.
+        The caller is responsible for setting appropriate timestamps and other fields.
+        
+        For unpersisted jobs (id is None), creates a new record and updates the job's ID.
         For persisted jobs (id is not None), updates the existing record.
         
         Args:
-            job: The job to save
+            job: The job to save (must have all required fields populated)
             
         Returns:
-            The saved job with an assigned ID
+            The saved job as returned from the database
             
         Raises:
             SQLAlchemyError: If database operation fails
         """
         try:
             with self._get_session() as session:
-                if not job.is_persisted():
-                    # Create new job record
-                    job_record = JobRecord(
-                        user_id=job.user_id,
-                        tags=job.tags,
-                        status=JobStatusEnum(job.status.value),
-                        job_metadata=job.metadata or {},
-                        created_at=datetime.datetime.utcnow(),
-                        updated_at=datetime.datetime.utcnow()
-                    )
-                    session.add(job_record)
-                    session.flush()  # Get the assigned ID
-                    
-                    # Update the domain object with the assigned ID
-                    job.id = job_record.id
-                else:
-                    job_record = session.get(JobRecord, job.id)
-                    if job_record is None:
-                        raise ValueError(f"Job {job.id} not found for update")
-                    
-                    # Update the record fields
-                    job_record.user_id = job.user_id
-                    job_record.tags = job.tags
-                    job_record.status = JobMapper.domain_to_record(job).status
-                    job_record.updated_at = datetime.datetime.utcnow()
-                    job_record.job_metadata = job.metadata
-                    session.add(job_record)
-                    session.flush()
-                
-                logger.info(f"Job {job.id} saved to database for user {job.user_id}")
-                return Job.create_persisted(
-                    job_id=job_record.id,
-                    user_id=job_record.user_id,
-                    tags=job_record.tags,
-                    status=JobStatus(job_record.status.value),
-                    created_at=job_record.created_at,
-                    updated_at=job_record.updated_at,
-                    metadata=job_record.job_metadata,
-                )
+                job_record = JobMapper.domain_to_record(job)
+                save_strategy_fn = session.merge if job.is_persisted() else session.add
+                save_strategy_fn(job_record)
+                session.flush()
+                persisted_job = JobMapper.record_to_domain(job_record)
+                logger.info(f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}")
                 
         except SQLAlchemyError as e:
             logger.error(f"Database error saving job: {e}")
             raise
+
+        return persisted_job
     
     def find_by_id(self, job_id: int) -> Optional[Job]:
-        """Find a job by its ID."""
         try:
             with self._get_session() as session:
                 job_record = session.get(JobRecord, job_id)
