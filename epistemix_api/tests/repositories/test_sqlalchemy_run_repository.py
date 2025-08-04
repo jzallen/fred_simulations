@@ -2,7 +2,6 @@
 Tests for SQLAlchemy job repository implementation.
 """
 
-import os
 import pytest
 from freezegun import freeze_time
 from datetime import datetime
@@ -10,30 +9,14 @@ from datetime import datetime
 from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.repositories import SQLAlchemyRunRepository
 from epistemix_api.repositories.interfaces import IRunRepository
-from epistemix_api.repositories.database import get_database_manager, RunRecord
-
-
-@pytest.fixture
-def db_session():
-    """Fixture to provide a database session factory."""
-    db_file = "test_sqlalchemy_run_repository.db"
-    test_db_url = f"sqlite:///{db_file}"
-    test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.create_tables()
-    
-    yield test_db_manager.get_session()
-    
-    try:
-        os.remove(db_file)
-    except FileNotFoundError:
-        pass
+from epistemix_api.repositories.database import RunRecord
+from epistemix_api.mappers.run_mapper import RunMapper
 
 
 @pytest.fixture
 def repository(db_session):
-    """Create a fresh repository for each test."""
-    get_db_session_fn = lambda: db_session
-    return SQLAlchemyRunRepository(get_db_session_fn=get_db_session_fn)
+    """Create a fresh repository for each test using the shared db_session fixture."""
+    return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
 
 
 @freeze_time("2025-01-01 12:00:00")
@@ -85,7 +68,7 @@ class TestSQLAlchemyJobRepository:
             updated_at=datetime(2025, 1, 1, 12, 0, 0)
         )
         run_record = db_session.query(RunRecord).get(1)
-        persisted_run = repository._create_run_from_record(run_record)
+        persisted_run = RunMapper.record_to_domain(run_record)
         assert persisted_run == expected_run
 
     def test_save__given_existing_run__updates_run(self, repository: IRunRepository, db_session):
@@ -141,7 +124,7 @@ class TestSQLAlchemyJobRepository:
             updated_at=datetime(2025, 1, 1, 12, 0, 0)
         )
         run_record = db_session.query(RunRecord).get(1)
-        persisted_run = repository._create_run_from_record(run_record)
+        persisted_run = RunMapper.record_to_domain(run_record)
         assert persisted_run == expected_run
 
     def test_delete__given_existing_run__deletes_run_on_commit(self, repository: IRunRepository, db_session):

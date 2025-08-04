@@ -11,31 +11,23 @@ from datetime import datetime
 
 from epistemix_api.app import app
 from epistemix_api.models.job import JobStatus
-from epistemix_api.repositories.database import get_database_manager
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the Flask app with a fresh test database."""
+def client(tmp_path_factory):
+    """Create a test client for the Flask app with a fresh test database using tmp_path_factory."""
     
-    # Set up test database URL
-    test_db_url = "sqlite:///test_job_routes.db"
+    # Create a unique temporary database using tmp_path_factory
+    tmp_dir = tmp_path_factory.mktemp("db")
+    db_path = os.path.join(tmp_dir, "test_job_routes.sqlite")
+    test_db_url = f"sqlite:///{db_path}"
     
     # Configure Flask app to use test database
     app.config['TESTING'] = True
     app.config['DATABASE_URL'] = test_db_url
     
-    # Clear and recreate tables for each test
-    test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.create_tables()
-    
     with app.test_client() as client:
         yield client
-    
-    try:
-        os.remove("test_job_routes.db")
-    except FileNotFoundError:
-        pass
 
 
 @pytest.fixture

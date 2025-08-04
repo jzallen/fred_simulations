@@ -11,7 +11,7 @@ from freezegun import freeze_time
 from datetime import datetime
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
-from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository, get_database_manager
+from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository
 from epistemix_api.use_cases.submit_runs import submit_runs
 
 
@@ -87,23 +87,9 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
     """
 
     @pytest.fixture
-    def db_session(self):
-        db_name = "test_submit_runs_integration.db"
-        test_db_url = f"sqlite:///{db_name}"
-        test_db_manager = get_database_manager(test_db_url)
-        test_db_manager.create_tables()
-
-        yield test_db_manager.get_session()
-
-        try:
-            os.remove(db_name)
-        except FileNotFoundError:
-            pass
-
-    @pytest.fixture
     def run_repository(self, db_session):
-        get_db_session_fn = lambda: db_session
-        return SQLAlchemyRunRepository(get_db_session_fn=get_db_session_fn)
+        """Create a run repository using the shared db_session fixture."""
+        return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
 
     @freeze_time("2025-01-01 12:00:00")
     def test_submit_runs__give_runs_and_valid_token__returns_runs(self, run_repository, run_request, bearer_token):

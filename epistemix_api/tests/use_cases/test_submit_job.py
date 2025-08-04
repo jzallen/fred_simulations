@@ -9,7 +9,7 @@ from freezegun import freeze_time
 from datetime import datetime
 
 from epistemix_api.models.job import Job, JobStatus, JobInputLocation
-from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository, get_database_manager
+from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository
 from epistemix_api.use_cases.submit_job import submit_job
 
 
@@ -74,21 +74,8 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
     """
 
     @pytest.fixture
-    def db_session(self):
-        db_name = "test_submit_job_integration.db"
-        test_db_url = f"sqlite:///{db_name}"
-        test_db_manager = get_database_manager(test_db_url)
-        test_db_manager.create_tables()
-
-        yield test_db_manager.get_session()
-        
-        try:
-            os.remove(db_name)
-        except FileNotFoundError:
-            pass
-
-    @pytest.fixture
     def job_repository(self, db_session):
+        """Create a job repository using the shared db_session fixture."""
         return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
 
     def test_submit_job__returns_job_input_location(self, job_repository, db_session):

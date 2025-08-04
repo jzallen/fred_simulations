@@ -9,7 +9,7 @@ from freezegun import freeze_time
 from datetime import datetime
 
 from epistemix_api.models.job import Job, JobStatus
-from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository, get_database_manager
+from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository
 from epistemix_api.use_cases.job_use_cases import register_job
 
 
@@ -63,17 +63,9 @@ class TestRegisterJobUseCase:
 class TestRegisterJobSQLAlchemyIntegration:
     
     @pytest.fixture
-    def repository(self):
-        test_db_url = "sqlite:///test_register_job_integration.db"
-        test_db_manager = get_database_manager(test_db_url)
-        test_db_manager.create_tables()
-
-        yield SQLAlchemyJobRepository(get_db_session_fn=test_db_manager.get_session)
-
-        try:
-            os.remove("test_register_job_integration.db")
-        except FileNotFoundError:
-            pass
+    def repository(self, db_session):
+        """Create a repository using the shared db_session fixture."""
+        return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
     
     @freeze_time("2025-01-01 12:00:00")
     def test_register_job_persists_job_to_database(self, repository):

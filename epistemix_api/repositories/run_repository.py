@@ -5,9 +5,10 @@ SQLAlchemy implementation of the Run repository.
 from typing import Optional, List, Callable
 from sqlalchemy.orm import Session
 
-from epistemix_api.models.run import Run, RunStatus, PodPhase
-from epistemix_api.repositories.database import RunRecord, RunStatusEnum, PodPhaseEnum, get_db_session
+from epistemix_api.models.run import Run, RunStatus
+from epistemix_api.repositories.database import RunRecord, get_db_session
 from epistemix_api.repositories.interfaces import IRunRepository
+from epistemix_api.mappers.run_mapper import RunMapper
 
 
 class SQLAlchemyRunRepository:
@@ -31,10 +32,10 @@ class SQLAlchemyRunRepository:
             if not run_record:
                 raise ValueError(f"Run with ID {run.id} not found")
             
-            self._update_record_from_run(run_record, run)
+            RunMapper.update_record_from_domain(run_record, run)
         else:
             # Create new run
-            run_record = self._create_record_from_run(run)
+            run_record = RunMapper.domain_to_record(run)
             session.add(run_record)
             session.flush()  # Get the ID without committing
             
@@ -49,7 +50,7 @@ class SQLAlchemyRunRepository:
         run_record = session.query(RunRecord).filter_by(id=run_id).first()
         
         if run_record:
-            return self._create_run_from_record(run_record)
+            return RunMapper.record_to_domain(run_record)
         return None
     
     def find_by_job_id(self, job_id: int) -> List[Run]:
@@ -57,22 +58,22 @@ class SQLAlchemyRunRepository:
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(job_id=job_id).all()
         
-        return [self._create_run_from_record(record) for record in run_records]
+        return [RunMapper.record_to_domain(record) for record in run_records]
     
     def find_by_user_id(self, user_id: int) -> List[Run]:
         """Find all runs for a specific user."""
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(user_id=user_id).all()
         
-        return [self._create_run_from_record(record) for record in run_records]
+        return [RunMapper.record_to_domain(record) for record in run_records]
     
     def find_by_status(self, status: RunStatus) -> List[Run]:
         """Find all runs with a specific status."""
         session = self.session_factory()
-        status_enum = self._run_status_to_enum(status)
+        status_enum = RunMapper._run_status_to_enum(status)
         run_records = session.query(RunRecord).filter_by(status=status_enum).all()
         
-        return [self._create_run_from_record(record) for record in run_records]
+        return [RunMapper.record_to_domain(record) for record in run_records]
     
     def exists(self, run_id: int) -> bool:
         """Check if a run exists."""
@@ -88,63 +89,3 @@ class SQLAlchemyRunRepository:
             session.delete(run_record)
             return True
         return False
-    
-    def _create_record_from_run(self, run: Run) -> RunRecord:
-        """Create a RunRecord from a Run domain object."""
-        return RunRecord(
-            job_id=run.job_id,
-            user_id=run.user_id,
-            created_at=run.created_at,
-            updated_at=run.updated_at,
-            request=run.request,
-            pod_phase=self._pod_phase_to_enum(run.pod_phase),
-            container_status=run.container_status,
-            status=self._run_status_to_enum(run.status),
-            user_deleted=1 if run.user_deleted else 0,
-            epx_client_version=run.epx_client_version
-        )
-    
-    def _update_record_from_run(self, record: RunRecord, run: Run) -> None:
-        """Update a RunRecord from a Run domain object."""
-        record.job_id = run.job_id
-        record.user_id = run.user_id
-        record.created_at = run.created_at
-        record.updated_at = run.updated_at
-        record.request = run.request
-        record.pod_phase = self._pod_phase_to_enum(run.pod_phase)
-        record.container_status = run.container_status
-        record.status = self._run_status_to_enum(run.status)
-        record.user_deleted = 1 if run.user_deleted else 0
-        record.epx_client_version = run.epx_client_version
-    
-    def _create_run_from_record(self, record: RunRecord) -> Run:
-        """Create a Run domain object from a RunRecord."""
-        return Run.create_persisted(
-            run_id=record.id,
-            job_id=record.job_id,
-            user_id=record.user_id,
-            created_at=record.created_at,
-            updated_at=record.updated_at,
-            request=record.request,
-            pod_phase=self._enum_to_pod_phase(record.pod_phase),
-            container_status=record.container_status,
-            status=self._enum_to_run_status(record.status),
-            user_deleted=bool(record.user_deleted),
-            epx_client_version=record.epx_client_version
-        )
-    
-    def _run_status_to_enum(self, status: RunStatus) -> RunStatusEnum:
-        """Convert RunStatus to RunStatusEnum."""
-        return RunStatusEnum(status.value)
-    
-    def _enum_to_run_status(self, status_enum: RunStatusEnum) -> RunStatus:
-        """Convert RunStatusEnum to RunStatus."""
-        return RunStatus(status_enum.value)
-    
-    def _pod_phase_to_enum(self, pod_phase: str) -> PodPhaseEnum:
-        """Convert PodPhase to PodPhaseEnum."""
-        return PodPhaseEnum(pod_phase.value)
-    
-    def _enum_to_pod_phase(self, pod_phase_enum: PodPhaseEnum) -> PodPhase:
-        """Convert PodPhaseEnum to PodPhase."""
-        return PodPhase(pod_phase_enum.value)

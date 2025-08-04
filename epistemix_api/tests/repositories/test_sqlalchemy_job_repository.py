@@ -2,7 +2,6 @@
 Tests for SQLAlchemy job repository implementation.
 """
 
-import os
 import pytest
 from freezegun import freeze_time
 from datetime import datetime
@@ -10,22 +9,12 @@ from datetime import datetime
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.repositories import SQLAlchemyJobRepository
 from epistemix_api.repositories.interfaces import IJobRepository
-from epistemix_api.repositories.database import get_database_manager, JobRecord
+from epistemix_api.repositories.database import JobRecord
 
 @pytest.fixture
-def repository():
-    db_file = "test_sqlalchemy_job_repository.db"
-    test_db_url = f"sqlite:///{db_file}"
-    test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.create_tables()
-
-    # Create a repository with a session factory that uses the test database
-    yield SQLAlchemyJobRepository(get_db_session_fn=test_db_manager.get_session)
-
-    try:
-        os.remove(db_file)
-    except FileNotFoundError:
-        pass
+def repository(db_session):
+    """Create a fresh repository for each test using the shared db_session fixture."""
+    return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
 
 class TestSQLAlchemyJobRepository:
     

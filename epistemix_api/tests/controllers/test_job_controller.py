@@ -16,7 +16,7 @@ from epistemix_api.controllers.job_controller import JobController, JobControlle
 from epistemix_api.models.job import Job, JobStatus, JobConfigLocation, JobInputLocation
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.models.run import Run, RunStatus, PodPhase, RunConfigLocation
-from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository, get_database_manager
+from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository
 
 
 @pytest.fixture
@@ -223,30 +223,15 @@ class TestJobController:
 
 
 @pytest.fixture
-def db_session():
-    db_name = "test_job_controller.db"
-    test_db_url = f"sqlite:///{db_name}"
-    test_db_manager = get_database_manager(test_db_url)
-    test_db_manager.create_tables()
-
-    yield test_db_manager.get_session()
-
-    try:
-        os.remove(db_name)
-    except FileNotFoundError:
-        pass
-
-
-@pytest.fixture
 def job_repository(db_session):
-    get_db_session_fn = lambda: db_session
-    return SQLAlchemyJobRepository(get_db_session_fn=get_db_session_fn)
+    """Create a job repository using the shared db_session fixture."""
+    return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
 
 
 @pytest.fixture
 def run_repository(db_session):
-    get_db_session_fn = lambda: db_session
-    return SQLAlchemyRunRepository(get_db_session_fn=get_db_session_fn)
+    """Create a run repository using the shared db_session fixture."""
+    return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
 
 
 @pytest.fixture
