@@ -6,6 +6,7 @@ Defines contracts for data persistence using Protocol for type safety.
 from typing import Protocol, Optional, List, runtime_checkable
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.run import Run, RunStatus
+from epistemix_api.models.upload_location import UploadLocation
 
 
 @runtime_checkable
@@ -187,5 +188,30 @@ class IRunRepository(Protocol):
             
         Returns:
             True if the run was deleted, False if it didn't exist
+        """
+        ...
+
+
+@runtime_checkable
+class IUploadLocationRepository(Protocol):
+    """
+    Protocol (interface) for upload location repository operations.
+    
+    This defines the contract that any upload location repository implementation must follow.
+    Provides access to pre-signed URLs for uploading various types of content.
+    """
+    
+    def get_upload_location(self, resource_name: str) -> UploadLocation:
+        """
+        Get an upload location (pre-signed URL) for a given resource.
+        
+        Args:
+            resource_name: The name/identifier of the resource to upload
+            
+        Returns:
+            UploadLocation containing the pre-signed URL for upload
+            
+        Raises:
+            ValueError: If the resource_name is invalid or upload location cannot be generated
         """
         ...
