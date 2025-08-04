@@ -1,4 +1,4 @@
-from epistemix_api.models.job import JobConfigLocation
+from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.use_cases.submit_job_config import submit_job_config
 
 
@@ -11,5 +11,5 @@ class TestSubmitJobConfigUseCase:
         
         result = submit_job_config(job_id, context, job_type)
         
-        assert isinstance(result, JobConfigLocation)
+        assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url-job-config"

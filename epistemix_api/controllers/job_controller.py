@@ -10,8 +10,9 @@ import functools
 
 from returns.result import Result, Success, Failure
 
-from epistemix_api.models.job import Job, JobInputLocation, JobConfigLocation
-from epistemix_api.models.run import Run, RunConfigLocation
+from epistemix_api.models.job import Job
+from epistemix_api.models.run import Run
+from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.repositories import IJobRepository, IRunRepository
 from epistemix_api.use_cases import (
@@ -39,10 +40,10 @@ class JobControllerDependencies:
     
     def __init__(
         self, register_job_fn: Callable[[int, List[str]], Job],
-        submit_job_fn: Callable[[int, str, str], JobInputLocation],
-        submit_job_config_fn: Callable[[int, str, str], JobConfigLocation],
+        submit_job_fn: Callable[[int, str, str], UploadLocation],
+        submit_job_config_fn: Callable[[int, str, str], UploadLocation],
         submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
-        submit_run_config_fn: Callable[[int, str, str, Optional[int]], RunConfigLocation],
+        submit_run_config_fn: Callable[[int, str, str, Optional[int]], UploadLocation],
         get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
     ):
         self.register_job_fn = register_job_fn

@@ -229,38 +229,3 @@ class Job:
     def __repr__(self) -> str:
         id_str = str(self.id) if self.is_persisted() else "unpersisted"
         return f"Job(id={id_str}, user_id={self.user_id}, status={self.status.value}, tags={self.tags})"
-
-
-@dataclass
-class JobInputLocation:
-    """URL where job input is stored."""
-    url: str
-
-    def to_dict(self) -> Dict[str, str]:
-        return {"url": self.url}
-    
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, JobInputLocation):
-            return False
-        return self.url == other.url
-    
-    def __repr__(self):
-        return f"JobInputLocation(url={self.url})"
-
-
-
-@dataclass
-class JobConfigLocation:
-    """URL where job configuration is stored."""
-    url: str
-
-    def to_dict(self) -> Dict[str, str]:
-        return {"url": self.url}
-    
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, JobConfigLocation):
-            return False
-        return self.url == other.url
-    
-    def __repr__(self):
-        return f"JobConfigLocation(url={self.url})"

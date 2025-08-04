@@ -13,9 +13,11 @@ from datetime import datetime
 from returns.pipeline import is_successful
 
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
-from epistemix_api.models.job import Job, JobStatus, JobConfigLocation, JobInputLocation
+from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.requests import RunRequest
-from epistemix_api.models.run import Run, RunStatus, PodPhase, RunConfigLocation
+from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository
 
 
@@ -38,10 +40,10 @@ def service():
     service = JobController()
     service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
-        submit_job_fn=Mock(return_value=JobInputLocation(url="http://example.com/pre-signed-url")),
-        submit_job_config_fn=Mock(return_value=JobConfigLocation(url="http://example.com/pre-signed-url-job-config")),
+        submit_job_fn=Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url")),
+        submit_job_config_fn=Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url-job-config")),
         submit_runs_fn=Mock(return_value=[run]),
-        submit_run_config_fn=Mock(return_value=RunConfigLocation(url="http://example.com/pre-signed-url-run-config")),
+        submit_run_config_fn=Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url-run-config")),
         get_runs_by_job_id_fn=Mock(return_value=[run]),
     )
     return service

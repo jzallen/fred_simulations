@@ -8,7 +8,8 @@ import pytest
 from freezegun import freeze_time
 from datetime import datetime
 
-from epistemix_api.models.job import Job, JobStatus, JobInputLocation
+from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository
 from epistemix_api.use_cases.submit_job import submit_job
 
@@ -50,7 +51,7 @@ class TestSubmitJobUseCase:
         
         result = submit_job(mock_repository, job_id=1)
         
-        assert isinstance(result, JobInputLocation)
+        assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
 
     def test_submit_job__when_job_not_found__raises_value_error(self, mock_repository):
@@ -86,7 +87,7 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         result = submit_job(job_repository, job_id=persisted_job.id)
 
         # Assert
-        assert isinstance(result, JobInputLocation)
+        assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
 
     def test_submit_job__when_job_not_found__raises_value_error(self, job_repository):

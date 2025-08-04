@@ -1,4 +1,4 @@
-from epistemix_api.models.run import RunConfigLocation
+from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.use_cases import submit_run_config
 
 
@@ -12,5 +12,5 @@ class TestSubmitRunConfigUseCase:
         
         result = submit_run_config(job_id, run_id, context, job_type)
         
-        assert isinstance(result, RunConfigLocation)
+        assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url-run-config"
