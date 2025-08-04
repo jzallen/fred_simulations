@@ -96,11 +96,11 @@ Resources:
                 Action:
                   - s3:PutObject
                   - s3:PutObjectAcl
-                Resource: !Sub '${UploadBucket}/*'
+                Resource: !Sub 'arn:aws:s3:::${UploadBucket}/*'
               - Effect: Allow
                 Action:
                   - s3:ListBucket
-                Resource: !Ref UploadBucket
+                Resource: !Sub 'arn:aws:s3:::${UploadBucket}'
       Tags:
         - Key: Environment
           Value: !Ref Environment
