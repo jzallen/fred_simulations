@@ -14,7 +14,7 @@ from epistemix_api.models.job import Job
 from epistemix_api.models.run import Run
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.requests import RunRequest
-from epistemix_api.repositories import IJobRepository, IRunRepository
+from epistemix_api.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
 from epistemix_api.use_cases import (
     register_job as register_job_use_case, 
     submit_job as submit_job_use_case,
@@ -79,11 +79,11 @@ class JobController:
         self._dependencies = None
 
     @classmethod
-    def create_with_repositories(cls, job_repository: IJobRepository, run_repository: IRunRepository) -> Self:
+    def create_with_repositories(cls, job_repository: IJobRepository, run_repository: IRunRepository, upload_location_repository: IUploadLocationRepository) -> Self:
         service = cls()
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
-            submit_job_fn=functools.partial(submit_job_use_case, job_repository),
+            submit_job_fn=functools.partial(submit_job_use_case, job_repository, upload_location_repository),
             submit_job_config_fn=submit_job_config_use_case,
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
             submit_run_config_fn=submit_run_config_use_case,

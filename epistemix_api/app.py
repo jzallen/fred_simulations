@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 import os
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import List
 import logging
 from functools import wraps
 from returns.pipeline import is_successful
@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from epistemix_api.controllers.job_controller import JobController
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_api.repositories.run_repository import SQLAlchemyRunRepository
+from epistemix_api.repositories.s3_upload_location_repository import create_upload_location_repository
 from epistemix_api.repositories.database import get_database_manager
 from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
 
@@ -84,12 +85,34 @@ def close_db_session(error):
         db_session.close()
 
 
+def get_upload_location_repository():
+    """Get the upload location repository based on environment."""
+    # Get environment from app config, defaulting to production
+    env = app.config.get('ENVIRONMENT', 'PRODUCTION')
+    
+    # For testing environment, use the dummy repository
+    if app.config.get('TESTING', False):
+        env = 'TESTING'
+    
+    # Configure S3 parameters from environment variables
+    bucket_name = os.environ.get('S3_UPLOAD_BUCKET', 'epistemix-uploads')
+    region_name = os.environ.get('AWS_REGION', 'us-east-1')
+    
+    return create_upload_location_repository(
+        env=env,
+        bucket_name=bucket_name,
+        region_name=region_name
+    )
+
+
 def get_job_controller():
     """Get a JobController instance with the current request's database session."""
     session_factory = lambda: g.db_session
     job_repository = SQLAlchemyJobRepository(session_factory)
     run_repository = SQLAlchemyRunRepository(session_factory)
-    return JobController.create_with_repositories(job_repository, run_repository)
+    upload_location_repository = get_upload_location_repository()
+    
+    return JobController.create_with_repositories(job_repository, run_repository, upload_location_repository)
 
 
 def validate_headers(required_headers: List[str]) -> bool:

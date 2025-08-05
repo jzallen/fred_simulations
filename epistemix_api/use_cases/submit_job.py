@@ -8,7 +8,7 @@ import logging
 
 from epistemix_api.models.job import JobStatus
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.repositories.interfaces import IJobRepository
+from epistemix_api.repositories.interfaces import IJobRepository, IUploadLocationRepository
 
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 def submit_job(
     job_repository: IJobRepository,
+    upload_location_repository: IUploadLocationRepository,
     job_id: int,
     context: str = "job",
     job_type: str = "input"
@@ -28,12 +29,13 @@ def submit_job(
     
     Args:
         job_repository: Repository for job persistence
+        upload_location_repository: Repository for generating upload locations
         job_id: ID of the job to submit
         context: Context of the submission
         job_type: Type of the job submission
         
     Returns:
-        Dictionary containing submission response (e.g., pre-signed URL)
+        UploadLocation containing pre-signed URL for job submission
         
     Raises:
         ValueError: If job doesn't exist or can't be submitted
@@ -51,12 +53,12 @@ def submit_job(
     job.update_status(JobStatus.SUBMITTED)
     job_repository.save(job)
     
-    # TODO: Generate pre-signed URL for job submission with S3
-    job_input_location = UploadLocation(
-        url=f"http://localhost:5001/pre-signed-url"  # Placeholder URL for example
-    )
+    # Generate the resource name for the upload location based on context and job type
+    resource_name = f"job_{job_id}_{context}_{job_type}"
     
-    # TODO: Understand why context and job_type are needed
+    # Use the upload location repository to generate the pre-signed URL
+    job_input_location = upload_location_repository.get_upload_location(resource_name)
+    
     logger.info(f"Job {job_id} submitted with context {context} and type {job_type}")
 
     return job_input_location

@@ -15,9 +15,9 @@ from returns.pipeline import is_successful
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.repositories import IUploadLocationRepository
 from epistemix_api.repositories import SQLAlchemyJobRepository, SQLAlchemyRunRepository
 
 
@@ -237,8 +237,15 @@ def run_repository(db_session):
 
 
 @pytest.fixture
-def job_controller(job_repository, run_repository):
-    return JobController.create_with_repositories(job_repository, run_repository)
+def upload_location_repository():
+    repo = Mock(spec=IUploadLocationRepository)
+    repo.get_upload_location.return_value = UploadLocation(url="https://s3.amazonaws.com/test-bucket/presigned-url")
+    return repo
+
+
+@pytest.fixture
+def job_controller(job_repository, run_repository, upload_location_repository):
+    return JobController.create_with_repositories(job_repository, run_repository, upload_location_repository)
 
 
 @pytest.fixture
@@ -293,7 +300,7 @@ class TestJobControllerIntegration:
         assert is_successful(submit_result)
         response = submit_result.unwrap()
         
-        assert response["url"] == "http://localhost:5001/pre-signed-url"
+        assert response["url"] == "https://s3.amazonaws.com/test-bucket/presigned-url"
 
     def test_submit_job__updates_job_status(self, job_controller, job_repository, bearer_token):
         register_result = job_controller.register_job(user_token_value=bearer_token, tags=["status_test"])

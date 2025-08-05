@@ -6,7 +6,11 @@ import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
-from epistemix_api.repositories.s3_upload_location_repository import S3UploadLocationRepository
+from epistemix_api.repositories.s3_upload_location_repository import (
+    S3UploadLocationRepository,
+    DummyS3UploadLocationRepository,
+    create_upload_location_repository
+)
 from epistemix_api.models.upload_location import UploadLocation
 
 
@@ -104,3 +108,107 @@ class TestS3UploadLocationRepository:
         
         assert "test_file_name.txt" in result
         assert " " not in result
+
+
+class TestDummyS3UploadLocationRepository:
+    """Test cases for the DummyS3UploadLocationRepository."""
+    
+    def test_init__with_default_url(self):
+        """Test initialization with default URL."""
+        repository = DummyS3UploadLocationRepository()
+        assert repository.test_url == "http://localhost:5001/pre-signed-url"
+    
+    def test_init__with_custom_url(self):
+        """Test initialization with custom URL."""
+        custom_url = "http://test.example.com/upload"
+        repository = DummyS3UploadLocationRepository(test_url=custom_url)
+        assert repository.test_url == custom_url
+    
+    def test_get_upload_location__returns_fixed_url(self):
+        """Test that get_upload_location returns the fixed URL."""
+        repository = DummyS3UploadLocationRepository()
+        result = repository.get_upload_location("test-resource")
+        
+        assert isinstance(result, UploadLocation)
+        assert result.url == "http://localhost:5001/pre-signed-url"
+    
+    def test_get_upload_location__ignores_resource_name(self):
+        """Test that resource name is ignored and same URL is returned."""
+        repository = DummyS3UploadLocationRepository()
+        result1 = repository.get_upload_location("resource1")
+        result2 = repository.get_upload_location("resource2")
+        
+        assert result1.url == result2.url
+
+
+class TestCreateUploadLocationRepository:
+    """Test cases for the factory method."""
+    
+    @patch('epistemix_api.repositories.s3_upload_location_repository.boto3.client')
+    def test_create_upload_location_repository__testing_env__returns_dummy(self, mock_boto3_client):
+        """Test that TESTING environment returns DummyS3UploadLocationRepository."""
+        repository = create_upload_location_repository(env="TESTING")
+        
+        assert isinstance(repository, DummyS3UploadLocationRepository)
+        assert repository.test_url == "http://localhost:5001/pre-signed-url"
+        # boto3 should not be called for testing environment
+        mock_boto3_client.assert_not_called()
+    
+    @patch('epistemix_api.repositories.s3_upload_location_repository.boto3.client')
+    def test_create_upload_location_repository__testing_env_with_custom_url(self, mock_boto3_client):
+        """Test that TESTING environment with custom URL works."""
+        custom_url = "http://custom.test.url"
+        repository = create_upload_location_repository(
+            env="TESTING", 
+            test_url=custom_url
+        )
+        
+        assert isinstance(repository, DummyS3UploadLocationRepository)
+        assert repository.test_url == custom_url
+    
+    @patch('epistemix_api.repositories.s3_upload_location_repository.boto3.client')
+    def test_create_upload_location_repository__production_env__returns_s3(self, mock_boto3_client):
+        """Test that PRODUCTION environment returns S3UploadLocationRepository."""
+        mock_boto3_client.return_value.meta.region_name = "us-east-1"
+        
+        repository = create_upload_location_repository(
+            env="PRODUCTION",
+            bucket_name="test-bucket",
+            region_name="us-east-1"
+        )
+        
+        assert isinstance(repository, S3UploadLocationRepository)
+        assert repository.bucket_name == "test-bucket"
+        mock_boto3_client.assert_called_once()
+    
+    def test_create_upload_location_repository__production_without_bucket__raises_error(self):
+        """Test that production environment without bucket name raises error."""
+        with pytest.raises(ValueError, match="bucket_name is required for PRODUCTION environment"):
+            create_upload_location_repository(env="PRODUCTION")
+    
+    @patch('epistemix_api.repositories.s3_upload_location_repository.boto3.client')
+    def test_create_upload_location_repository__development_env__returns_s3(self, mock_boto3_client):
+        """Test that DEVELOPMENT environment returns S3UploadLocationRepository."""
+        mock_boto3_client.return_value.meta.region_name = "us-west-2"
+        
+        repository = create_upload_location_repository(
+            env="DEVELOPMENT",
+            bucket_name="dev-bucket",
+            region_name="us-west-2"
+        )
+        
+        assert isinstance(repository, S3UploadLocationRepository)
+        assert repository.bucket_name == "dev-bucket"
+    
+    @patch('epistemix_api.repositories.s3_upload_location_repository.boto3.client')
+    def test_create_upload_location_repository__unknown_env__returns_s3(self, mock_boto3_client):
+        """Test that unknown environment defaults to S3UploadLocationRepository."""
+        mock_boto3_client.return_value.meta.region_name = "eu-west-1"
+        
+        repository = create_upload_location_repository(
+            env="STAGING",
+            bucket_name="staging-bucket"
+        )
+        
+        assert isinstance(repository, S3UploadLocationRepository)
+        assert repository.bucket_name == "staging-bucket"

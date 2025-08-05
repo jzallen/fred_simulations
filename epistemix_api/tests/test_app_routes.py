@@ -22,9 +22,10 @@ def client(tmp_path_factory):
     db_path = os.path.join(tmp_dir, "test_job_routes.sqlite")
     test_db_url = f"sqlite:///{db_path}"
     
-    # Configure Flask app to use test database
+    # Configure Flask app to use test database and testing environment
     app.config['TESTING'] = True
     app.config['DATABASE_URL'] = test_db_url
+    app.config['ENVIRONMENT'] = 'TESTING'
     
     with app.test_client() as client:
         yield client

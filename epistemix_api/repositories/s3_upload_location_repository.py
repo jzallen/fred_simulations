@@ -130,3 +130,70 @@ class S3UploadLocationRepository:
         key = f"{timestamp}/{key}"
         
         return key
+
+
+class DummyS3UploadLocationRepository:
+    """
+    Dummy implementation of the upload location repository for testing.
+    
+    This implementation returns a fixed pre-signed URL without making any
+    actual AWS calls. It's used in testing environments to avoid S3 dependencies.
+    """
+    
+    def __init__(self, test_url: str = "http://localhost:5001/pre-signed-url"):
+        """
+        Initialize the dummy repository with a test URL.
+        
+        Args:
+            test_url: The fixed URL to return for all upload locations
+        """
+        self.test_url = test_url
+        logger.info(f"DummyS3UploadLocationRepository initialized with test URL: {test_url}")
+    
+    def get_upload_location(self, resource_name: str) -> UploadLocation:
+        """
+        Generate a dummy upload location for testing.
+        
+        Args:
+            resource_name: The name/key of the resource (ignored in dummy implementation)
+            
+        Returns:
+            UploadLocation containing the test URL
+        """
+        logger.info(f"Dummy upload location requested for resource: {resource_name}")
+        return UploadLocation(url=self.test_url)
+
+
+def create_upload_location_repository(
+    env: str,
+    bucket_name: Optional[str] = None,
+    region_name: Optional[str] = None,
+    **kwargs
+) -> IUploadLocationRepository:
+    """
+    Factory method to create the appropriate upload location repository based on environment.
+    
+    Args:
+        env: The environment (e.g., "TESTING", "PRODUCTION", "DEVELOPMENT")
+        bucket_name: S3 bucket name (required for non-testing environments)
+        region_name: AWS region name (optional)
+        **kwargs: Additional arguments passed to the repository constructor
+        
+    Returns:
+        An instance of IUploadLocationRepository appropriate for the environment
+        
+    Raises:
+        ValueError: If required parameters are missing for the selected repository
+    """
+    match env.upper():
+        case "TESTING":
+            test_url = kwargs.get('test_url', "http://localhost:5001/pre-signed-url")
+            return DummyS3UploadLocationRepository(test_url=test_url)
+        case "PRODUCTION" | "DEVELOPMENT" | _:
+            if not bucket_name:
+                raise ValueError(f"bucket_name is required for {env} environment")
+            return S3UploadLocationRepository(
+                bucket_name=bucket_name,
+                region_name=region_name,
+                expiration_seconds=kwargs.get('expiration_seconds', 3600)
+            )

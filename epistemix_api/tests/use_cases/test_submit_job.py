@@ -10,7 +10,7 @@ from datetime import datetime
 
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository
+from epistemix_api.repositories import IJobRepository, IUploadLocationRepository, SQLAlchemyJobRepository
 from epistemix_api.use_cases.submit_job import submit_job
 
 
@@ -20,6 +20,12 @@ class TestSubmitJobUseCase:
     @pytest.fixture
     def mock_repository(self):
         repo = Mock(spec=IJobRepository)
+        return repo
+
+    @pytest.fixture
+    def mock_upload_location_repository(self):
+        repo = Mock(spec=IUploadLocationRepository)
+        repo.get_upload_location.return_value = UploadLocation(url="https://s3.amazonaws.com/test-bucket/presigned-url")
         return repo
 
     @pytest.fixture
@@ -45,27 +51,27 @@ class TestSubmitJobUseCase:
             updated_at=datetime(2025, 1, 1, 12, 0, 0)
         )
 
-    def test_submit_job_success__returns_job_input_location_for_submitted_job(self, mock_repository, created_job):
+    def test_submit_job_success__returns_job_input_location_for_submitted_job(self, mock_repository, mock_upload_location_repository, created_job):
         mock_repository.find_by_id.return_value = created_job
         mock_repository.save.return_value = None
         
-        result = submit_job(mock_repository, job_id=1)
+        result = submit_job(mock_repository, mock_upload_location_repository, job_id=1)
         
         assert isinstance(result, UploadLocation)
-        assert result.url == "http://localhost:5001/pre-signed-url"
+        assert result.url == "https://s3.amazonaws.com/test-bucket/presigned-url"
 
-    def test_submit_job__when_job_not_found__raises_value_error(self, mock_repository):
+    def test_submit_job__when_job_not_found__raises_value_error(self, mock_repository, mock_upload_location_repository):
         mock_repository.find_by_id.return_value = None
         
         with pytest.raises(ValueError, match="Job 999 not found"):
-            submit_job(mock_repository, job_id=999)
+            submit_job(mock_repository, mock_upload_location_repository, job_id=999)
         
         
-    def test_submit_job__when_created_job_has_non_created_status__value_error_raised(self, mock_repository, submitted_job):
+    def test_submit_job__when_created_job_has_non_created_status__value_error_raised(self, mock_repository, mock_upload_location_repository, submitted_job):
         mock_repository.find_by_id.return_value = submitted_job
         
         with pytest.raises(ValueError, match="Job 2 must be in CREATED status to be submitted, current status: submitted"):
-            submit_job(mock_repository, job_id=2)
+            submit_job(mock_repository, mock_upload_location_repository, job_id=2)
 
 
 class TestSubmitJobSLAlchemyJobRepositoryIntegration:
@@ -79,37 +85,44 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         """Create a job repository using the shared db_session fixture."""
         return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
 
-    def test_submit_job__returns_job_input_location(self, job_repository, db_session):
+    @pytest.fixture
+    def upload_location_repository(self):
+        """Create a mock upload location repository for integration tests."""
+        repo = Mock(spec=IUploadLocationRepository)
+        repo.get_upload_location.return_value = UploadLocation(url="https://s3.amazonaws.com/test-bucket/presigned-url")
+        return repo
+
+    def test_submit_job__returns_job_input_location(self, job_repository, upload_location_repository, db_session):
         job = Job.create_new(user_id=123, tags=["test"])
         persisted_job = job_repository.save(job)
         # repository only flushes, commits are handled at app layer for global rollback handling
         db_session.commit()  
-        result = submit_job(job_repository, job_id=persisted_job.id)
+        result = submit_job(job_repository, upload_location_repository, job_id=persisted_job.id)
 
         # Assert
         assert isinstance(result, UploadLocation)
-        assert result.url == "http://localhost:5001/pre-signed-url"
+        assert result.url == "https://s3.amazonaws.com/test-bucket/presigned-url"
 
-    def test_submit_job__when_job_not_found__raises_value_error(self, job_repository):
+    def test_submit_job__when_job_not_found__raises_value_error(self, job_repository, upload_location_repository):
         with pytest.raises(ValueError, match="Job 999 not found"):
-            submit_job(job_repository, job_id=999)
+            submit_job(job_repository, upload_location_repository, job_id=999)
 
-    def test_submit_job__when_job_not_in_created_status__raises_value_error(self, job_repository):
+    def test_submit_job__when_job_not_in_created_status__raises_value_error(self, job_repository, upload_location_repository):
         job = Job.create_new(user_id=123, tags=["test"])
         job.status = JobStatus.SUBMITTED
         job_repository.save(job)
 
         with pytest.raises(ValueError, match="Job 1 must be in CREATED status to be submitted, current status: submitted"):
-            submit_job(job_repository, job_id=1)
+            submit_job(job_repository, upload_location_repository, job_id=1)
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_submit_job__updates_job_status_to_submitted(self, job_repository):
+    def test_submit_job__updates_job_status_to_submitted(self, job_repository, upload_location_repository):
         new_job = Job.create_new(user_id=123, tags=["test"])
         persisted = job_repository.save(new_job)
         assert persisted.updated_at == datetime(2025, 1, 1, 12, 0, 0)
 
         with freeze_time("2025-01-01 12:30:00"):
-            submit_job(job_repository, job_id=persisted.id)
+            submit_job(job_repository, upload_location_repository, job_id=persisted.id)
 
         updated_job = job_repository.find_by_id(persisted.id)
         assert updated_job.status == JobStatus.SUBMITTED
