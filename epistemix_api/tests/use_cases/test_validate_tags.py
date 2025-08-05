@@ -4,7 +4,7 @@ Tests for validate_tags use case.
 
 import pytest
 
-from epistemix_api.use_cases.job_use_cases import validate_tags
+from epistemix_api.use_cases.register_job import validate_tags
 
 
 class TestValidateTagsUseCase:

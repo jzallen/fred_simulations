@@ -84,7 +84,7 @@ class JobController:
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository, upload_location_repository),
-            submit_job_config_fn=submit_job_config_use_case,
+            submit_job_config_fn=functools.partial(submit_job_config_use_case, upload_location_repository),
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
             submit_run_config_fn=submit_run_config_use_case,
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository)

@@ -215,7 +215,7 @@ class TestJobRoutes:
         assert response.status_code == 200
         data = response.get_json()
         expected_job_submission_data = {
-            "url": "http://localhost:5001/pre-signed-url-job-config",
+            "url": "http://localhost:5001/pre-signed-url",
         }
         assert data == expected_job_submission_data
 

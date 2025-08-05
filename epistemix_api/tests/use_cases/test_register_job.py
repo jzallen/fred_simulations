@@ -2,6 +2,8 @@
 Tests for register_job use case.
 """
 import os
+import base64
+import json
 from unittest.mock import Mock
 
 import pytest
@@ -10,7 +12,19 @@ from datetime import datetime
 
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.repositories import IJobRepository, SQLAlchemyJobRepository
-from epistemix_api.use_cases.job_use_cases import register_job
+from epistemix_api.use_cases.register_job import register_job
+
+
+def create_bearer_token(user_id: int, scopes_hash: str = "test_hash") -> str:
+    """Helper function to create a valid bearer token for testing."""
+    token_data = {
+        "user_id": user_id,
+        "scopes_hash": scopes_hash
+    }
+    token_json = json.dumps(token_data)
+    token_bytes = token_json.encode('utf-8')
+    token_b64 = base64.b64encode(token_bytes).decode('utf-8')
+    return f"Bearer {token_b64}"
 
 
 @freeze_time("2025-01-01 12:00:00")
@@ -25,38 +39,57 @@ class TestRegisterJobUseCase:
         # Arrange
         user_id = 456
         tags = ["some_tag"]
+        bearer_token = create_bearer_token(user_id)
         
         # Act
-        register_job(mock_repository, user_id, tags)
+        register_job(mock_repository, bearer_token, tags)
         
         # Assert
         expected_job = Job.create_new(user_id=user_id, tags=tags)
         mock_repository.save.assert_called_once_with(expected_job)
     
     def test_register_job__when_job_with_no_tags__saves_created_job_to_repository(self, mock_repository):
-        register_job(mock_repository, 456, None)
+        bearer_token = create_bearer_token(456)
+        register_job(mock_repository, bearer_token, None)
         expected_job = Job.create_new(user_id=456, tags=[])
         mock_repository.save.assert_called_once_with(expected_job)
     
     def test_register_job__when_invalid_user_id_zero__raises_value_error(self, mock_repository):
+        bearer_token = create_bearer_token(0)
         with pytest.raises(ValueError, match="User ID must be positive"):
-            register_job(mock_repository, 0, ["info_job"])
+            register_job(mock_repository, bearer_token, ["info_job"])
         
         # Repository should not be called
         mock_repository.save.assert_not_called()
     
     def test_register_job__when_invalid_user_id_negative__raises_value_error(self, mock_repository):
+        bearer_token = create_bearer_token(-1)
         with pytest.raises(ValueError, match="User ID must be positive"):
-            register_job(mock_repository, -1, ["info_job"])
+            register_job(mock_repository, bearer_token, ["info_job"])
         
         # Repository should not be called
         mock_repository.save.assert_not_called()
     
     def test_register_job__when_empty_tags__raises_value_error(self, mock_repository):
+        bearer_token = create_bearer_token(456)
         with pytest.raises(ValueError, match="Tag must be a non-empty string"):
-            register_job(mock_repository, 456, [""])
+            register_job(mock_repository, bearer_token, [""])
         
         # Repository should not be called for saving
+        mock_repository.save.assert_not_called()
+    
+    def test_register_job__when_invalid_bearer_token__raises_value_error(self, mock_repository):
+        with pytest.raises(ValueError, match="Invalid bearer token format"):
+            register_job(mock_repository, "invalid_token", ["info_job"])
+        
+        # Repository should not be called
+        mock_repository.save.assert_not_called()
+    
+    def test_register_job__when_malformed_bearer_token__raises_value_error(self, mock_repository):
+        with pytest.raises(ValueError, match="Failed to decode base64 token"):
+            register_job(mock_repository, "Bearer not_base64", ["info_job"])
+        
+        # Repository should not be called
         mock_repository.save.assert_not_called()
 
 
@@ -69,7 +102,8 @@ class TestRegisterJobSQLAlchemyIntegration:
     
     @freeze_time("2025-01-01 12:00:00")
     def test_register_job_persists_job_to_database(self, repository):
-        job = register_job(repository, user_id=456, tags=["some_tag"])
+        bearer_token = create_bearer_token(456)
+        job = register_job(repository, user_token_value=bearer_token, tags=["some_tag"])
         
         # Assert
         expected_job = Job.create_persisted(

@@ -60,13 +60,12 @@ class UserToken:
         """
         if not bearer_token:
             raise ValueError("Bearer token cannot be empty")
-        
-        bearer_keyword, token = bearer_token.strip().split()
-        if bearer_keyword.lower() != "bearer":
+
+        if not bearer_token.startswith("Bearer "):
             raise ValueError("Invalid bearer token format. Expected 'Bearer <token>'")
         
-        token = token
-        
+        bearer_keyword, token = bearer_token.strip().split()
+                
         try:
             # Base64 decode the token
             decoded_bytes = base64.b64decode(token)

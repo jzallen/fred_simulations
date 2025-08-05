@@ -6,40 +6,43 @@ This module implements the core business logic for job submission configuration.
 import logging
 
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.repositories.interfaces import IUploadLocationRepository
 
 
 logger = logging.getLogger(__name__)
 
 
 def submit_job_config(
+    upload_location_repository: IUploadLocationRepository,
     job_id: int,
     context: str = "job",
-    job_type: str = "input"
+    job_type: str = "config"
 ) -> UploadLocation:
     """
-    Submit a job for processing.
+    Submit a job configuration for processing.
     
-    This use case implements the core business logic for job submission.
-    It validates business rules, updates the job status, and returns the response.
+    This use case implements the core business logic for job configuration submission.
+    It generates a pre-signed URL for uploading job configuration files.
     
     Args:
-        job_id: ID of the job to submit
-        context: Context of the submission
-        job_type: Type of the job submission
+        upload_location_repository: Repository for generating upload locations
+        job_id: ID of the job to submit configuration for
+        context: Context of the submission (default: "job")
+        job_type: Type of the job submission (default: "config")
         
     Returns:
-        Dictionary containing submission response (e.g., pre-signed URL)
+        UploadLocation containing pre-signed URL for job configuration upload
         
     Raises:
-        ValueError: If job doesn't exist or can't be submitted
+        ValueError: If job configuration can't be submitted
     """
     
-    # TODO: Generate pre-signed URL for job submission with S3
-    job_configuration_location = UploadLocation(
-        url=f"http://localhost:5001/pre-signed-url-job-config"  # Placeholder URL for example
-    )
+    # Generate the resource name for the upload location based on context and job type
+    resource_name = f"job_{job_id}_{context}_{job_type}"
     
-    # TODO: Understand why context and job_type are needed
-    logger.info(f"Job {job_id} submitted with context {context} and type {job_type}")
+    # Use the upload location repository to generate the pre-signed URL
+    job_configuration_location = upload_location_repository.get_upload_location(resource_name)
+    
+    logger.info(f"Job {job_id} configuration submitted with context {context} and type {job_type}")
     
     return job_configuration_location
