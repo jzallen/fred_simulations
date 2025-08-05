@@ -1,16 +1,79 @@
+from unittest.mock import Mock
+
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.repositories.interfaces import IUploadLocationRepository
 from epistemix_api.use_cases import submit_run_config
 
 
 class TestSubmitRunConfigUseCase:
     
-    def test_submit_job_config__returns_job_config_location(self):
+    def test_submit_run_config__returns_run_config_location(self):
+        # Arrange
         job_id = 1
         run_id = 1
         context = "run"
         job_type = "config"
+        expected_url = "https://example-bucket.s3.amazonaws.com/job_1_run_1_run_config?X-Amz-Algorithm=..."
         
-        result = submit_run_config(job_id, run_id, context, job_type)
+        mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
+        mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
+            url=expected_url
+        )
         
+        # Act
+        result = submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id)
+        
+        # Assert
         assert isinstance(result, UploadLocation)
-        assert result.url == "http://localhost:5001/pre-signed-url-run-config"
+        assert result.url == expected_url
+        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_1_run_1_run_config")
+    
+    def test_submit_run_config__uses_correct_resource_name_with_run_id(self):
+        # Arrange
+        job_id = 123
+        run_id = 456
+        context = "custom"
+        job_type = "special"
+        
+        mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
+        mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
+            url="https://example.com/presigned"
+        )
+        
+        # Act
+        submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id)
+        
+        # Assert
+        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_123_run_456_custom_special")
+    
+    def test_submit_run_config__uses_correct_resource_name_without_run_id(self):
+        # Arrange
+        job_id = 789
+        context = "run"
+        job_type = "config"
+        
+        mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
+        mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
+            url="https://example.com/presigned"
+        )
+        
+        # Act
+        submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id=None)
+        
+        # Assert
+        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_789_run_config")
+    
+    def test_submit_run_config__uses_default_values(self):
+        # Arrange
+        job_id = 999
+        
+        mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
+        mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
+            url="https://example.com/presigned"
+        )
+        
+        # Act
+        submit_run_config(mock_upload_location_repo, job_id)
+        
+        # Assert
+        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_999_run_config")
