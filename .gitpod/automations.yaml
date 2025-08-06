@@ -14,7 +14,7 @@ tasks:
             cat > ~/.epx/config.json << 'EOF'
             {
              "api-url": "http://localhost:5000",
-             "bearer-token": "fake-token"
+             "bearer-token": "eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
             }
             EOF
             echo "Generated ~/.epx/config.json"

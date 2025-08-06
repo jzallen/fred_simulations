@@ -2,8 +2,6 @@
 Tests for register_job use case.
 """
 import os
-import base64
-import json
 from unittest.mock import Mock
 
 import pytest
@@ -17,14 +15,8 @@ from epistemix_api.use_cases.register_job import register_job
 
 def create_bearer_token(user_id: int, scopes_hash: str = "test_hash") -> str:
     """Helper function to create a valid bearer token for testing."""
-    token_data = {
-        "user_id": user_id,
-        "scopes_hash": scopes_hash
-    }
-    token_json = json.dumps(token_data)
-    token_bytes = token_json.encode('utf-8')
-    token_b64 = base64.b64encode(token_bytes).decode('utf-8')
-    return f"Bearer {token_b64}"
+    from epistemix_api.models.user import UserToken
+    return UserToken.generate_bearer_token(user_id, scopes_hash)
 
 
 @freeze_time("2025-01-01 12:00:00")

@@ -32,12 +32,17 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     TESTING = False
+    S3_UPLOAD_BUCKET = os.environ.get('S3_UPLOAD_BUCKET', 'epistemix-uploads-dev')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+    WTF_CSRF_ENABLED = False
 
 
 class TestingConfig(Config):
     """Testing configuration."""
     DEBUG = False
     TESTING = True
+    S3_UPLOAD_BUCKET = os.environ.get('S3_UPLOAD_BUCKET', 'epistemix-uploads-test')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
     WTF_CSRF_ENABLED = False
 
 
@@ -45,6 +50,9 @@ class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
     TESTING = False
+    S3_UPLOAD_BUCKET = os.environ.get('S3_UPLOAD_BUCKET', 'epistemix-uploads-prod')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+    WTF_CSRF_ENABLED = True
 
 
 # Configuration mapping

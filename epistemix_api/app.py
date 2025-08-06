@@ -95,8 +95,8 @@ def get_upload_location_repository():
         env = 'TESTING'
     
     # Configure S3 parameters from environment variables
-    bucket_name = os.environ.get('S3_UPLOAD_BUCKET', 'epistemix-uploads')
-    region_name = os.environ.get('AWS_REGION', 'us-east-1')
+    bucket_name = app.config.get('S3_UPLOAD_BUCKET')
+    region_name = app.config.get('AWS_REGION')
     
     return create_upload_location_repository(
         env=env,
@@ -281,6 +281,45 @@ def get_runs():
     return jsonify(response), 200
 
 
+@app.route('/jobs/results', methods=['GET'])
+@require_headers('Offline-Token', 'Fredcli-Version')
+def get_job_results():
+    """
+    Get URLs for runs by job ID.
+    Returns a JSON response with URLs for all runs associated with the job.
+    """
+    job_id = request.args.get('job_id')
+    if not job_id:
+        return jsonify({"error": "Missing job_id parameter"}), 400
+    
+    try:
+        job_id = int(job_id)
+    except ValueError:
+        return jsonify({"error": "Invalid job_id parameter"}), 400
+    
+    job_controller = get_job_controller()
+    runs_result = job_controller.get_runs(job_id=job_id)
+    
+    if not is_successful(runs_result):
+        error_message = runs_result.failure()
+        logger.warning(f"Business logic error in get job results: {error_message}")
+        return jsonify({"error": error_message}), 400
+    
+    runs = runs_result.unwrap()
+    
+    # Extract URLs from runs
+    urls = [
+        {
+            "run_id": run.get('id'),
+            "url": run.get('url')
+        }
+        for run in runs 
+        if run.get('url') is not None
+    ]
+    
+    return jsonify({"urls": urls}), 200
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Basic health check endpoint."""
@@ -299,6 +338,7 @@ def root():
             "POST /jobs": "Submit a job for processing", 
             "POST /runs": "Submit run requests",
             "GET /runs": "Get runs by job_id",
+            "GET /jobs/results": "Get URLs for runs by job_id",
             "GET /jobs/statistics": "Get job statistics",
             "GET /health": "Health check"
         }

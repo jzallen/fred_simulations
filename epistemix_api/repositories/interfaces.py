@@ -69,6 +69,18 @@ class IJobRepository(Protocol):
         """
         ...
     
+    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+        """
+        Find all jobs in the repository.
+        
+        Args:
+            limit: Maximum number of jobs to return (None for all)
+            offset: Number of jobs to skip (for pagination)
+            
+        Returns:
+            List of all jobs
+        """
+        ...
     
     def exists(self, job_id: int) -> bool:
         """

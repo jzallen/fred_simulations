@@ -50,15 +50,23 @@ def submit_job(
             f"current status: {job.status.value}"
         )
     
-    job.update_status(JobStatus.SUBMITTED)
-    job_repository.save(job)
-    
     # Generate the resource name for the upload location based on context and job type
     resource_name = f"job_{job_id}_{context}_{job_type}"
     
     # Use the upload location repository to generate the pre-signed URL
     job_input_location = upload_location_repository.get_upload_location(resource_name)
     
-    logger.info(f"Job {job_id} submitted with context {context} and type {job_type}")
+    # Update job status and save the upload URL
+    job.update_status(JobStatus.SUBMITTED)
+    
+    # Store the URL based on the type
+    if job_type == "input":
+        job.input_location = job_input_location.url
+    elif job_type == "config":
+        job.config_location = job_input_location.url
+    
+    job_repository.save(job)
+    
+    logger.info(f"Job {job_id} submitted with context {context} and type {job_type}, URL: {job_input_location.url}")
 
     return job_input_location

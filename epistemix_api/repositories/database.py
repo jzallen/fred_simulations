@@ -22,9 +22,15 @@ class JobStatusEnum(enum.Enum):
 
 class RunStatusEnum(enum.Enum):
     """SQLAlchemy enum for run status."""
-    SUBMITTED = "Submitted"
-    RUNNING = "Running"
+    # New expected values
+    QUEUED = "QUEUED"
+    NOT_STARTED = "NOT_STARTED"
+    RUNNING = "RUNNING"
+    ERROR = "ERROR"
     DONE = "DONE"
+    # Legacy values for backward compatibility
+    SUBMITTED = "Submitted"
+    RUNNING_LEGACY = "Running"
     FAILED = "Failed"
     CANCELLED = "Cancelled"
 
@@ -48,6 +54,8 @@ class JobRecord(Base):
     status = Column(Enum(JobStatusEnum), nullable=False, default=JobStatusEnum.CREATED)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    input_location = Column(String, nullable=True)  # S3 URL for job input
+    config_location = Column(String, nullable=True)  # S3 URL for job config
     job_metadata = Column(JSON, nullable=False, default=dict)  # Renamed from 'metadata' to avoid SQLAlchemy conflict
 
 
@@ -66,6 +74,7 @@ class RunRecord(Base):
     status = Column(Enum(RunStatusEnum), nullable=False, default=RunStatusEnum.SUBMITTED)
     user_deleted = Column(Integer, nullable=False, default=0)  # SQLite doesn't have native boolean
     epx_client_version = Column(String, nullable=False, default="1.2.2")
+    url = Column(String, nullable=True)  # Store the presigned URL for this run
 
 
 class DatabaseManager:

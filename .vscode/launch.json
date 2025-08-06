@@ -103,6 +103,106 @@
                 "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
                 "PYTHONPATH": "${workspaceFolder}"
             }
+        },
+        {
+            "name": "Run Epistemix API Server",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "bash ${workspaceFolder}/run_epistemix_api.sh",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Python: Run Server (Debug)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/epistemix_api/run_server.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}",
+                "FLASK_ENV": "development",
+                "FLASK_HOST": "0.0.0.0",
+                "FLASK_PORT": "5000",
+                "FLASK_DEBUG": "True"
+            }
+        },
+        {
+            "name": "Python: Run Info Job",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_info_job.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
+                "PATH": "${env:PATH}:/workspaces/fred_simulations/fred-framework/bin",
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Debug: CLI jobs uploads list --job-id=2",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "epistemix_api.cli",
+            "args": [
+                "jobs",
+                "uploads",
+                "list",
+                "--job-id=2"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "S3_UPLOAD_BUCKET": "epistemix-uploads-dev",
+                "DATABASE_URL": "sqlite:///epistemix_jobs.db",
+                "AWS_PROFILE": "default"
+            }
+        },
+        {
+            "name": "Debug: CLI jobs uploads list (custom job-id)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "epistemix_api.cli",
+            "args": [
+                "jobs",
+                "uploads",
+                "list",
+                "--job-id=${input:jobId}"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "S3_UPLOAD_BUCKET": "epistemix-uploads-dev",
+                "DATABASE_URL": "sqlite:///epistemix_jobs.db",
+                "AWS_PROFILE": "default"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run Server then Info Job",
+            "configurations": [
+                "Python: Run Server (Debug)",
+                "Python: Run Info Job"
+            ],
+            "stopAll": true
         }
     ],
     "inputs": [
@@ -110,6 +210,12 @@
             "id": "testPath",
             "description": "Enter the test path (e.g., epistemix_api/tests/test_clean_architecture.py::TestJobRegistrationRoute::test_job_registration_creates_business_model)",
             "default": "epistemix_api/tests/test_clean_architecture.py",
+            "type": "promptString"
+        },
+        {
+            "id": "jobId",
+            "description": "Enter the Job ID to retrieve uploads for",
+            "default": "2",
             "type": "promptString"
         }
     ]

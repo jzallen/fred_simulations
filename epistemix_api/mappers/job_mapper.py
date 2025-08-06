@@ -32,6 +32,8 @@ class JobMapper:
             status=JobStatus(job_record.status.value),
             created_at=job_record.created_at,
             updated_at=job_record.updated_at,
+            input_location=job_record.input_location,
+            config_location=job_record.config_location,
             metadata=job_record.job_metadata,
         )
     
@@ -53,5 +55,7 @@ class JobMapper:
             status=JobStatusEnum(job.status.value),
             created_at=job.created_at,
             updated_at=job.updated_at,
+            input_location=job.input_location,
+            config_location=job.config_location,
             job_metadata=job.metadata or {}
         )

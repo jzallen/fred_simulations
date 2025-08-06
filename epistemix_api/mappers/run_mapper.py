@@ -36,7 +36,8 @@ class RunMapper:
             container_status=run_record.container_status,
             status=RunMapper._enum_to_run_status(run_record.status),
             user_deleted=bool(run_record.user_deleted),
-            epx_client_version=run_record.epx_client_version
+            epx_client_version=run_record.epx_client_version,
+            url=run_record.url
         )
     
     @staticmethod
@@ -61,7 +62,8 @@ class RunMapper:
             container_status=run.container_status,
             status=RunMapper._run_status_to_enum(run.status),
             user_deleted=1 if run.user_deleted else 0,
-            epx_client_version=run.epx_client_version
+            epx_client_version=run.epx_client_version,
+            url=run.url
         )
     
     @staticmethod
@@ -83,16 +85,42 @@ class RunMapper:
         record.status = RunMapper._run_status_to_enum(run.status)
         record.user_deleted = 1 if run.user_deleted else 0
         record.epx_client_version = run.epx_client_version
+        record.url = run.url
     
     @staticmethod
     def _run_status_to_enum(status: RunStatus) -> RunStatusEnum:
         """Convert RunStatus to RunStatusEnum."""
-        return RunStatusEnum(status.value)
+        # Map domain status to database enum
+        status_to_db_mapping = {
+            RunStatus.QUEUED: RunStatusEnum.QUEUED,
+            RunStatus.NOT_STARTED: RunStatusEnum.NOT_STARTED,
+            RunStatus.RUNNING: RunStatusEnum.RUNNING,
+            RunStatus.ERROR: RunStatusEnum.ERROR,
+            RunStatus.DONE: RunStatusEnum.DONE,
+            # Legacy mappings
+            RunStatus.SUBMITTED: RunStatusEnum.SUBMITTED,
+            RunStatus.FAILED: RunStatusEnum.FAILED,
+            RunStatus.CANCELLED: RunStatusEnum.CANCELLED,
+        }
+        return status_to_db_mapping.get(status, RunStatusEnum(status.value))
     
     @staticmethod
     def _enum_to_run_status(status_enum: RunStatusEnum) -> RunStatus:
         """Convert RunStatusEnum to RunStatus."""
-        return RunStatus(status_enum.value)
+        # Map database enum to domain status
+        db_to_status_mapping = {
+            RunStatusEnum.QUEUED: RunStatus.QUEUED,
+            RunStatusEnum.NOT_STARTED: RunStatus.NOT_STARTED,
+            RunStatusEnum.RUNNING: RunStatus.RUNNING,
+            RunStatusEnum.ERROR: RunStatus.ERROR,
+            RunStatusEnum.DONE: RunStatus.DONE,
+            # Legacy mappings
+            RunStatusEnum.SUBMITTED: RunStatus.SUBMITTED,
+            RunStatusEnum.RUNNING_LEGACY: RunStatus.RUNNING,
+            RunStatusEnum.FAILED: RunStatus.FAILED,
+            RunStatusEnum.CANCELLED: RunStatus.CANCELLED,
+        }
+        return db_to_status_mapping.get(status_enum, RunStatus(status_enum.value))
     
     @staticmethod
     def _pod_phase_to_enum(pod_phase: PodPhase) -> PodPhaseEnum:

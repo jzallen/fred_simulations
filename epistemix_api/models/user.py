@@ -45,6 +45,41 @@ class UserToken:
     raw_token: str
     
     @classmethod
+    def generate_bearer_token(cls, user_id: int, scopes_hash: str = None) -> str:
+        """
+        Generate a bearer token string from a user_id.
+        
+        This is a convenience method for generating valid bearer tokens,
+        particularly useful for testing and CLI integration.
+        
+        Args:
+            user_id: The user ID to encode in the token
+            scopes_hash: Optional scopes hash (defaults to a placeholder value)
+            
+        Returns:
+            A properly formatted bearer token string (e.g., "Bearer <base64-token>")
+            
+        Example:
+            >>> token = UserToken.generate_bearer_token(123)
+            >>> print(token)
+            Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiZGVmYXVsdF9zY29wZXNfaGFzaCJ9
+        """
+        # TODO: Implement proper scopes hash logic based on user permissions
+        if scopes_hash is None:
+            scopes_hash = "default_scopes_hash"
+        
+        token_data = {
+            "user_id": user_id,
+            "scopes_hash": scopes_hash
+        }
+        
+        token_json = json.dumps(token_data)
+        token_bytes = token_json.encode('utf-8')
+        token_b64 = base64.b64encode(token_bytes).decode('utf-8')
+        
+        return f"Bearer {token_b64}"
+    
+    @classmethod
     def from_bearer_token(cls, bearer_token: str) -> 'UserToken':
         """
         Create a UserToken from a bearer token string.
@@ -64,7 +99,7 @@ class UserToken:
         if not bearer_token.startswith("Bearer "):
             raise ValueError("Invalid bearer token format. Expected 'Bearer <token>'")
         
-        bearer_keyword, token = bearer_token.strip().split()
+        bearer_keyword, token = bearer_token.strip().split(" ", 1)
                 
         try:
             # Base64 decode the token

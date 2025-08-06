@@ -52,6 +52,11 @@ class Job:
     status: JobStatus = JobStatus.CREATED
     created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     updated_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    
+    # Upload locations (S3 URLs)
+    input_location: Optional[str] = None
+    config_location: Optional[str] = None
+    
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
@@ -174,6 +179,8 @@ class Job:
         status: JobStatus = JobStatus.CREATED,
         created_at: datetime = None,
         updated_at: datetime = None,
+        input_location: Optional[str] = None,
+        config_location: Optional[str] = None,
         metadata: Dict[str, Any] = None,
     ) -> 'Job':
         """
@@ -210,6 +217,8 @@ class Job:
             status=status,
             created_at=created_at,
             updated_at=updated_at,
+            input_location=input_location,
+            config_location=config_location,
             metadata=metadata
         )
         

@@ -62,7 +62,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs/register",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -89,7 +89,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -135,7 +135,7 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer fake-token"),
+                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
                     "Fredcli-Version": Like("0.4.0"),
                     "Version": Like("HTTP/1.1")
                 },
@@ -193,7 +193,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -221,7 +221,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -253,7 +253,7 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer fake-token"),
+                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
                     "Fredcli-Version": Like("0.4.0"),
                     "Version": Like("HTTP/1.1")
                 }
@@ -286,6 +286,7 @@ class TestAgentInfoJob(unittest.TestCase):
                             "status": "DONE",
                             "userDeleted": False,
                             "epxClientVersion": "1.2.2",
+                            "url": "http://localhost:5001/pre-signed-url-run",
                         }
                     ]
                 }

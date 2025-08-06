@@ -42,7 +42,7 @@ class JobControllerDependencies:
         self, register_job_fn: Callable[[int, List[str]], Job],
         submit_job_fn: Callable[[int, str, str], UploadLocation],
         submit_job_config_fn: Callable[[int, str, str], UploadLocation],
-        submit_runs_fn: Callable[[List[Dict[str, Any]], str], List[Run]],
+        submit_runs_fn: Callable[[List[Dict[str, Any]], str, str], List[Run]],
         submit_run_config_fn: Callable[[int, str, str, Optional[int]], UploadLocation],
         get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
     ):
@@ -84,9 +84,9 @@ class JobController:
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository, upload_location_repository),
-            submit_job_config_fn=functools.partial(submit_job_config_use_case, upload_location_repository),
-            submit_runs_fn=functools.partial(submit_runs_use_case, run_repository),
-            submit_run_config_fn=functools.partial(submit_run_config_use_case, upload_location_repository),
+            submit_job_config_fn=functools.partial(submit_job_config_use_case, job_repository, upload_location_repository),
+            submit_runs_fn=functools.partial(submit_runs_use_case, run_repository, upload_location_repository),
+            submit_run_config_fn=functools.partial(submit_run_config_use_case, run_repository, upload_location_repository),
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository)
         )
         return service
@@ -113,6 +113,7 @@ class JobController:
             )
             return Success(job.to_dict())
         except ValueError as e:
+            logger.exception(f"Validation error in register_job: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in register_job")

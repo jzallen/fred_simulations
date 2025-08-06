@@ -8,7 +8,7 @@ import logging
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.models.user import UserToken
-from epistemix_api.repositories.interfaces import IRunRepository
+from epistemix_api.repositories.interfaces import IRunRepository, IUploadLocationRepository
 
 
 class FredArgDict(TypedDict):
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 def submit_runs(
     run_repository: IRunRepository,
+    upload_location_repository: IUploadLocationRepository,
     run_requests: List[RunRequestDict],
     user_token_value: str,
     epx_version: str = "epx_client_1.2.2"
@@ -51,12 +52,13 @@ def submit_runs(
     
     Args:
         run_repository: Repository for run persistence
+        upload_location_repository: Repository for generating upload locations
         run_requests: List of run request dictionaries to process
         user_token_value: The bearer token string containing user authentication
         epx_version: The epx client version used by the user
 
     Returns:
-        Dictionary containing run responses
+        List of Run objects with persisted data
     """
     user_token = UserToken.from_bearer_token(user_token_value)
     run_responses = []
@@ -65,7 +67,7 @@ def submit_runs(
         # Extract client version from user agent
         epx_client_version = epx_version.split('_')[-1] if '_' in epx_version else "1.2.2"
 
-        # Create a new Run domain object
+        # Create a new Run domain object (without URL initially)
         run = Run.create_unpersisted(
             job_id=run_request["jobId"],
             user_id=user_token.user_id,
@@ -77,7 +79,20 @@ def submit_runs(
             epx_client_version=epx_client_version
         )
         
-        run_responses.append(run_repository.save(run))
+        # Save the run to get an ID
+        persisted_run = run_repository.save(run)
+        
+        # Generate URL for this run using the persisted ID
+        resource_name = f"job_{persisted_run.job_id}_run_{persisted_run.id}_run_config"
+        upload_location = upload_location_repository.get_upload_location(resource_name)
+        
+        # Update the run with the URL
+        persisted_run.url = upload_location.url
+        
+        # Save the updated run with the URL
+        final_run = run_repository.save(persisted_run)
+        
+        run_responses.append(final_run)
     
     return run_responses
 

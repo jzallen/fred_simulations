@@ -121,6 +121,24 @@ class SQLAlchemyJobRepository:
             logger.error(f"Database error finding jobs with status {status}: {e}")
             raise
     
+    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+        """Find all jobs in the repository."""
+        try:
+            with self._get_session() as session:
+                query = session.query(JobRecord).order_by(JobRecord.created_at.desc())
+                
+                if offset > 0:
+                    query = query.offset(offset)
+                
+                if limit is not None:
+                    query = query.limit(limit)
+                
+                job_records = query.all()
+                return [JobMapper.record_to_domain(record) for record in job_records]
+        except SQLAlchemyError as e:
+            logger.error(f"Database error finding all jobs: {e}")
+            raise
+    
     def exists(self, job_id: int) -> bool:
         """Check if a job exists."""
         try:
@@ -185,6 +203,18 @@ class InMemoryJobRepository(IJobRepository):
     def find_by_status(self, status: JobStatus) -> List[Job]:
         """Find all jobs with a specific status."""
         return [job for job in self._jobs.values() if job.status == status]
+    
+    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+        """Find all jobs in the repository."""
+        all_jobs = sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
+        
+        if offset > 0:
+            all_jobs = all_jobs[offset:]
+        
+        if limit is not None:
+            all_jobs = all_jobs[:limit]
+        
+        return all_jobs
     
     def get_next_id(self) -> int:
         """Get the next available job ID."""

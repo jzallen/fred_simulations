@@ -11,7 +11,8 @@ from freezegun import freeze_time
 from datetime import datetime
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
-from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository
+from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.repositories import IRunRepository, IUploadLocationRepository, SQLAlchemyRunRepository
 from epistemix_api.use_cases.submit_runs import submit_runs
 
 
@@ -46,7 +47,13 @@ class TestSubmitRunsUseCase:
         repo = Mock(spec=IRunRepository)
         return repo
     
-    def test_submit_runs__returns_run_responses(self, mock_repository, run_request, bearer_token):
+    @pytest.fixture
+    def mock_upload_location_repository(self):
+        repo = Mock(spec=IUploadLocationRepository)
+        repo.get_upload_location.return_value = UploadLocation(url="https://example.com/presigned-url")
+        return repo
+    
+    def test_submit_runs__returns_run_responses(self, mock_repository, mock_upload_location_repository, run_request, bearer_token):
         mock_repository.save.return_value = Run.create_persisted(
             run_id=1,
             user_id=123,
@@ -55,7 +62,8 @@ class TestSubmitRunsUseCase:
             pod_phase=PodPhase.PENDING,
             request=run_request,
             created_at=datetime(2025, 1, 1, 12, 0, 0),
-            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            url="https://example.com/presigned-url"
         )
         
         expected_runs = [
@@ -67,17 +75,18 @@ class TestSubmitRunsUseCase:
                 pod_phase=PodPhase.PENDING,
                 request=run_request,
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),
+                url="https://example.com/presigned-url"
             )
         ]
-        result = submit_runs(mock_repository, [run_request], bearer_token)
+        result = submit_runs(mock_repository, mock_upload_location_repository, [run_request], bearer_token)
         
         assert result == expected_runs
 
-    def test_submit_runs__raises_value_error_when_invalid_token(self, mock_repository, run_request):
+    def test_submit_runs__raises_value_error_when_invalid_token(self, mock_repository, mock_upload_location_repository, run_request):
         invalid_token = "Bearer invalid_token"
         with pytest.raises(ValueError, match="Failed to decode base64 token"):
-            submit_runs(mock_repository, [run_request], invalid_token)
+            submit_runs(mock_repository, mock_upload_location_repository, [run_request], invalid_token)
 
 
 class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
@@ -90,9 +99,16 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
     def run_repository(self, db_session):
         """Create a run repository using the shared db_session fixture."""
         return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
+    
+    @pytest.fixture
+    def upload_location_repository(self):
+        """Create a mock upload location repository."""
+        repo = Mock(spec=IUploadLocationRepository)
+        repo.get_upload_location.return_value = UploadLocation(url="https://example.com/presigned-url")
+        return repo
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_submit_runs__give_runs_and_valid_token__returns_runs(self, run_repository, run_request, bearer_token):
+    def test_submit_runs__give_runs_and_valid_token__returns_runs(self, run_repository, upload_location_repository, run_request, bearer_token):
         run_requests = [run_request]
         
         expected_runs = [
@@ -104,21 +120,22 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
                 pod_phase=PodPhase.PENDING,
                 request=run_request,
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),
+                url="https://example.com/presigned-url"
             )
         ]
-        result = submit_runs(run_repository, run_requests, bearer_token)
+        result = submit_runs(run_repository, upload_location_repository, run_requests, bearer_token)
         assert result == expected_runs
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_submit_runs__when_no_runs_provided__returns_empty_list(self, run_repository, bearer_token):
-        result = submit_runs(run_repository, [], bearer_token)
+    def test_submit_runs__when_no_runs_provided__returns_empty_list(self, run_repository, upload_location_repository, bearer_token):
+        result = submit_runs(run_repository, upload_location_repository, [], bearer_token)
         assert result == []
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_submit_runs__when_runs_provided__saves_runs_to_repository_on_commit(self, run_repository, run_request, bearer_token, db_session):
+    def test_submit_runs__when_runs_provided__saves_runs_to_repository_on_commit(self, run_repository, upload_location_repository, run_request, bearer_token, db_session):
         run_requests = [run_request]
-        submit_runs(run_repository, run_requests, bearer_token)
+        submit_runs(run_repository, upload_location_repository, run_requests, bearer_token)
         db_session.commit()
 
         expected_run = Run.create_persisted(
@@ -129,13 +146,14 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
             pod_phase=PodPhase.PENDING,
             request=run_request,
             created_at=datetime(2025, 1, 1, 12, 0, 0),
-            updated_at=datetime(2025, 1, 1, 12, 0, 0)
+            updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            url="https://example.com/presigned-url"
         )
         saved_run = run_repository.find_by_id(1)
         assert saved_run == expected_run
         
 
-    def test_submit_runs__when_invalid_token__raises_value_error(self, run_repository, run_request):
+    def test_submit_runs__when_invalid_token__raises_value_error(self, run_repository, upload_location_repository, run_request):
         invalid_token = "Bearer invalid_token"
         with pytest.raises(ValueError, match="Failed to decode base64 token"):
-            submit_runs(run_repository, [run_request], invalid_token)
+            submit_runs(run_repository, upload_location_repository, [run_request], invalid_token)

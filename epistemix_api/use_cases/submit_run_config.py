@@ -7,13 +7,14 @@ import logging
 from typing import Optional
 
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.repositories.interfaces import IUploadLocationRepository
+from epistemix_api.repositories.interfaces import IRunRepository, IUploadLocationRepository
 
 
 logger = logging.getLogger(__name__)
 
 
 def submit_run_config(
+    run_repository: IRunRepository,
     upload_location_repository: IUploadLocationRepository,
     job_id: int,
     context: str = "run",
@@ -27,6 +28,7 @@ def submit_run_config(
     It generates a pre-signed URL for uploading run configuration files.
     
     Args:
+        run_repository: Repository for run persistence
         upload_location_repository: Repository for generating upload locations
         job_id: ID of the job to submit
         context: Context of the submission (default: "run")
@@ -48,6 +50,14 @@ def submit_run_config(
     
     # Use the upload location repository to generate the pre-signed URL
     run_configuration_location = upload_location_repository.get_upload_location(resource_name)
+    
+    # If we have a run_id, persist the URL to the run
+    if run_id is not None:
+        run = run_repository.find_by_id(run_id)
+        if run:
+            run.url = run_configuration_location.url
+            run_repository.save(run)
+            logger.info(f"Run {run_id} config URL persisted: {run_configuration_location.url}")
     
     logger.info(f"Run {run_id} config for Job {job_id} submitted with context {context} and type {job_type}")
     

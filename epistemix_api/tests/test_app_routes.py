@@ -323,7 +323,8 @@ class TestJobRoutes:
               "containerStatus": None,
               "status": "Submitted",
               "userDeleted": False,
-              "epxClientVersion": "1.2.2"
+              "epxClientVersion": "1.2.2",
+              "url": "http://localhost:5001/pre-signed-url"
             }
           ]
         }

@@ -11,11 +11,15 @@ from typing import Optional, Dict, Any
 
 class RunStatus(Enum):
     """Enumeration of possible run statuses."""
-    SUBMITTED = "Submitted"
-    RUNNING = "Running"
+    QUEUED = "QUEUED"
+    NOT_STARTED = "NOT_STARTED"
+    RUNNING = "RUNNING"
+    ERROR = "ERROR"
     DONE = "DONE"
-    FAILED = "Failed"
-    CANCELLED = "Cancelled"
+    # Legacy values for backward compatibility
+    SUBMITTED = "Submitted"  # Maps to QUEUED
+    FAILED = "Failed"  # Maps to ERROR
+    CANCELLED = "Cancelled"  # Maps to ERROR
 
 
 class PodPhase(Enum):
@@ -57,6 +61,7 @@ class Run:
     status: RunStatus = RunStatus.SUBMITTED
     user_deleted: bool = False
     epx_client_version: str = "1.2.2"
+    url: Optional[str] = None  # Presigned URL for this run
     
     @classmethod
     def create_unpersisted(
@@ -68,7 +73,8 @@ class Run:
         container_status: Optional[str] = None,
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
-        epx_client_version: str = "1.2.2"
+        epx_client_version: str = "1.2.2",
+        url: Optional[str] = None
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -97,7 +103,8 @@ class Run:
             container_status=container_status,
             status=status,
             user_deleted=user_deleted,
-            epx_client_version=epx_client_version
+            epx_client_version=epx_client_version,
+            url=url
         )
     
     @classmethod
@@ -113,7 +120,8 @@ class Run:
         container_status: Optional[str] = None,
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
-        epx_client_version: str = "1.2.2"
+        epx_client_version: str = "1.2.2",
+        url: Optional[str] = None
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -145,7 +153,8 @@ class Run:
             container_status=container_status,
             status=status,
             user_deleted=user_deleted,
-            epx_client_version=epx_client_version
+            epx_client_version=epx_client_version,
+            url=url
         )
     
     def is_persisted(self) -> bool:
@@ -169,6 +178,21 @@ class Run:
         Returns:
             Dictionary representation of the run
         """
+        # Map legacy status values to expected client values
+        status_mapping = {
+            RunStatus.SUBMITTED: "QUEUED",
+            RunStatus.FAILED: "ERROR",
+            RunStatus.CANCELLED: "ERROR",
+            # Direct mappings for new values
+            RunStatus.QUEUED: "QUEUED",
+            RunStatus.NOT_STARTED: "NOT_STARTED",
+            RunStatus.RUNNING: "RUNNING",
+            RunStatus.ERROR: "ERROR",
+            RunStatus.DONE: "DONE"
+        }
+        
+        mapped_status = status_mapping.get(self.status, self.status.value)
+        
         return {
             "id": self.id,
             "jobId": self.job_id,
@@ -177,9 +201,10 @@ class Run:
             "request": self.request,
             "podPhase": self.pod_phase.value,
             "containerStatus": self.container_status,
-            "status": self.status.value,
+            "status": mapped_status,
             "userDeleted": self.user_deleted,
-            "epxClientVersion": self.epx_client_version
+            "epxClientVersion": self.epx_client_version,
+            "url": self.url
         }
     
     def to_run_response_dict(self) -> Dict[str, Any]:
