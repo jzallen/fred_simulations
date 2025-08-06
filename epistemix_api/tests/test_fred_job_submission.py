@@ -1,15 +1,11 @@
 import os
-import sys
 import unittest
-from unittest.mock import patch
 
 from pathlib import Path
 
 from pact import Consumer, Provider
 from pact.matchers import Like, EachLike
 
-# Add the root directory to the Python path to allow imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from simulations.agent_info_demo.agent_info_job import info_job
 
@@ -66,7 +62,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs/register",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -88,12 +84,12 @@ class TestAgentInfoJob(unittest.TestCase):
         # Define job input submission response
         (
             epistemix_pact
-            .upon_receiving("a job submission request")
+            .upon_receiving("a job input submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -139,7 +135,7 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer fake-token"),
+                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
                     "Fredcli-Version": Like("0.4.0"),
                     "Version": Like("HTTP/1.1")
                 },
@@ -192,12 +188,12 @@ class TestAgentInfoJob(unittest.TestCase):
         # Define job run config submission response
         (
             epistemix_pact
-            .upon_receiving("a job submission request")
+            .upon_receiving("a job run config submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -220,12 +216,12 @@ class TestAgentInfoJob(unittest.TestCase):
         # Define job config submission response
         (
             epistemix_pact
-            .upon_receiving("a job submission request")
+            .upon_receiving("a job config submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer fake-token",
+                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2"
@@ -257,7 +253,7 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer fake-token"),
+                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
                     "Fredcli-Version": Like("0.4.0"),
                     "Version": Like("HTTP/1.1")
                 }
@@ -290,6 +286,7 @@ class TestAgentInfoJob(unittest.TestCase):
                             "status": "DONE",
                             "userDeleted": False,
                             "epxClientVersion": "1.2.2",
+                            "url": "http://localhost:5001/pre-signed-url-run",
                         }
                     ]
                 }
@@ -325,8 +322,16 @@ class TestAgentInfoJob(unittest.TestCase):
 
     def tearDown(self):
         # Stop the pact mock service after each test
-        epistemix_pact.stop_service()
-        s3_pact.stop_service()
+        try:
+            epistemix_pact.stop_service()
+        except RuntimeError:
+            # Ignore errors when stopping the service as it might already be stopped
+            pass
+        try:
+            s3_pact.stop_service()
+        except RuntimeError:
+            # Ignore errors when stopping the service as it might already be stopped
+            pass
         # self.mock_request.stop()
         super().tearDown()
 

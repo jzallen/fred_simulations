@@ -12,7 +12,7 @@
         "method": "POST",
         "path": "/jobs/register",
         "headers": {
-          "Offline-Token": "Bearer fake-token",
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
           "content-type": "application/json",
           "fredcli-version": "0.4.0",
           "user-agent": "epx_client_1.2.2"
@@ -37,12 +37,12 @@
       }
     },
     {
-      "description": "a job submission request",
+      "description": "a job input submission request",
       "request": {
         "method": "POST",
         "path": "/jobs",
         "headers": {
-          "Offline-Token": "Bearer fake-token",
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
           "content-type": "application/json",
           "fredcli-version": "0.4.0",
           "user-agent": "epx_client_1.2.2"
@@ -75,7 +75,7 @@
           "Accept-Encoding": "gzip, deflate",
           "Accept": "*/*",
           "Connection": "keep-alive",
-          "Offline-Token": "Bearer fake-token",
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
           "Fredcli-Version": "0.4.0",
           "Version": "HTTP/1.1"
         },
@@ -252,6 +252,59 @@
       }
     },
     {
+      "description": "a job run config submission request",
+      "request": {
+        "method": "POST",
+        "path": "/jobs",
+        "headers": {
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+          "content-type": "application/json",
+          "fredcli-version": "0.4.0",
+          "user-agent": "epx_client_1.2.2"
+        },
+        "body": {
+          "jobId": 123,
+          "context": "run",
+          "type": "config",
+          "runId": 978
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+          "url": "http://localhost:5001/pre-signed-url-run"
+        }
+      }
+    },
+    {
+      "description": "a job config submission request",
+      "request": {
+        "method": "POST",
+        "path": "/jobs",
+        "headers": {
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+          "content-type": "application/json",
+          "fredcli-version": "0.4.0",
+          "user-agent": "epx_client_1.2.2"
+        },
+        "body": {
+          "jobId": 123,
+          "context": "job",
+          "type": "config"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+        },
+        "body": {
+          "url": "http://localhost:5001/pre-signed-url-job-config"
+        }
+      }
+    },
+    {
       "description": "a request to get runs by job_id",
       "request": {
         "method": "GET",
@@ -264,7 +317,7 @@
           "Accept-Encoding": "gzip, deflate",
           "Accept": "*/*",
           "Connection": "keep-alive",
-          "Offline-Token": "Bearer fake-token",
+          "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
           "Fredcli-Version": "0.4.0",
           "Version": "HTTP/1.1"
         },
@@ -325,7 +378,8 @@
               "containerStatus": null,
               "status": "DONE",
               "userDeleted": false,
-              "epxClientVersion": "1.2.2"
+              "epxClientVersion": "1.2.2",
+              "url": "http://localhost:5001/pre-signed-url-run"
             }
           ]
         }

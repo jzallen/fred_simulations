@@ -68,3 +68,10 @@ venv.bak/
 # Poetry virtual environments
 .venv/
 poetry.toml  # Poetry local config (not poetry.lock which should be committed)
+
+# Additional project-specific files
+claude
+epistemix_jobs.db
+node_modules/
+package-lock.json
+package.json
