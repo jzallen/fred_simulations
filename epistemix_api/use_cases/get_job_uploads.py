@@ -141,29 +141,6 @@ def get_job_uploads(
             (f"run_{run.id}_results", f"run_{run.id}_results"),
             (f"run_{run.id}_logs", f"run_{run.id}_logs"),
         ]
-        
-        for upload_type, s3_key_pattern in run_patterns:
-            possible_keys = [
-                s3_key_pattern,
-                f"{s3_key_pattern}.json",
-                f"{s3_key_pattern}.txt",
-                f"{s3_key_pattern}.log",
-            ]
-            
-            for s3_key in possible_keys:
-                upload = JobUpload(
-                    upload_type=upload_type,
-                    job_id=job_id,
-                    run_id=run.id,
-                    s3_key=s3_key
-                )
-                
-                result = content_reader.execute(s3_key)
-                if is_successful(result):
-                    upload.content = result.unwrap()
-                    uploads.append(upload)
-                    logger.info(f"Found {upload_type} for run {run.id} at {s3_key}")
-                    break
     
     return uploads
 
