@@ -12,6 +12,7 @@ from epistemix_api.repositories.s3_upload_location_repository import (
     create_upload_location_repository
 )
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.upload_content import UploadContent
 
 
 class TestS3UploadLocationRepository:
@@ -108,6 +109,84 @@ class TestS3UploadLocationRepository:
         
         assert "test_file_name.txt" in result
         assert " " not in result
+    
+    def test_read_content__valid_location__returns_upload_content(self, repository, mock_s3_client):
+        """Test reading content from a valid location."""
+        # Arrange
+        location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2024/01/01/test-file.txt")
+        mock_response = {
+            'Body': Mock(read=Mock(return_value=b"Hello, World!"))
+        }
+        mock_s3_client.get_object.return_value = mock_response
+        
+        # Act
+        content = repository.read_content(location)
+        
+        # Assert
+        assert isinstance(content, UploadContent)
+        assert content.content_type.value == "text"
+        assert content.raw_content == "Hello, World!"
+        mock_s3_client.get_object.assert_called_once_with(
+            Bucket="test-bucket",
+            Key="2024/01/01/test-file.txt"
+        )
+    
+    def test_read_content__json_file__returns_json_content(self, repository, mock_s3_client):
+        """Test reading JSON content."""
+        # Arrange
+        location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/config.json")
+        json_data = '{"key": "value", "number": 42}'
+        mock_response = {
+            'Body': Mock(read=Mock(return_value=json_data.encode()))
+        }
+        mock_s3_client.get_object.return_value = mock_response
+        
+        # Act
+        content = repository.read_content(location)
+        
+        # Assert
+        assert content.content_type.value == "json"
+        assert content.raw_content == json_data
+    
+    def test_read_content__binary_file__returns_content(self, repository, mock_s3_client):
+        """Test reading binary-like content that can be decoded."""
+        # Arrange
+        location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/binary.dat")
+        # This binary data can actually be decoded as latin-1, which is expected behavior
+        binary_data = b'\x00\x01\x02\x03\x04\x05'
+        mock_response = {
+            'Body': Mock(read=Mock(return_value=binary_data))
+        }
+        mock_s3_client.get_object.return_value = mock_response
+        
+        # Act
+        content = repository.read_content(location)
+        
+        # Assert
+        # The content should be successfully decoded (latin-1 can decode any byte sequence)
+        assert isinstance(content, UploadContent)
+        # It's correctly treated as text since it could be decoded
+        assert content.content_type.value == "text"
+    
+    def test_read_content__s3_error__raises_value_error(self, repository, mock_s3_client):
+        """Test that S3 errors are properly handled."""
+        # Arrange
+        location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/missing.txt")
+        error_response = {'Error': {'Code': 'NoSuchKey', 'Message': 'Key not found'}}
+        mock_s3_client.get_object.side_effect = ClientError(error_response, 'get_object')
+        
+        # Act & Assert
+        with pytest.raises(ValueError, match="S3 error.*NoSuchKey"):
+            repository.read_content(location)
+    
+    def test_read_content__invalid_url__raises_value_error(self, repository):
+        """Test that invalid URLs raise an error."""
+        # Arrange
+        location = UploadLocation(url="not-a-valid-url")
+        
+        # Act & Assert
+        with pytest.raises(ValueError):
+            repository.read_content(location)
 
 
 class TestDummyS3UploadLocationRepository:
@@ -139,6 +218,17 @@ class TestDummyS3UploadLocationRepository:
         result2 = repository.get_upload_location("resource2")
         
         assert result1.url == result2.url
+    
+    def test_read_content__returns_dummy_content(self):
+        """Test that read_content returns dummy text content."""
+        repository = DummyS3UploadLocationRepository()
+        location = UploadLocation(url="http://example.com/any-url")
+        
+        content = repository.read_content(location)
+        
+        assert isinstance(content, UploadContent)
+        assert content.content_type.value == "text"
+        assert content.raw_content == "This is dummy content for testing purposes."
 
 
 class TestCreateUploadLocationRepository:

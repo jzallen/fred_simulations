@@ -112,7 +112,11 @@ def get_job_controller():
     run_repository = SQLAlchemyRunRepository(session_factory)
     upload_location_repository = get_upload_location_repository()
     
-    return JobController.create_with_repositories(job_repository, run_repository, upload_location_repository)
+    return JobController.create_with_repositories(
+        job_repository, 
+        run_repository, 
+        upload_location_repository
+    )
 
 
 def validate_headers(required_headers: List[str]) -> bool:
