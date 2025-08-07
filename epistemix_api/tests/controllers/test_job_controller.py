@@ -15,6 +15,8 @@ from returns.pipeline import is_successful
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.job_upload import JobUpload
+from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.repositories import IUploadLocationRepository
@@ -45,6 +47,8 @@ def service():
         submit_runs_fn=Mock(return_value=[run]),
         submit_run_config_fn=Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url-run-config")),
         get_runs_by_job_id_fn=Mock(return_value=[run]),
+        get_job_uploads_fn=Mock(return_value=[]),
+        read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
     )
     return service
 
@@ -222,6 +226,60 @@ class TestJobController:
         runs_result = service.get_runs(job_id=1)
         assert is_successful(runs_result)
         assert runs_result.unwrap() == [expected_run.to_dict()]
+    
+    def test_get_job_uploads__calls_dependencies_with_correct_parameters(self, service):
+        upload = JobUpload(
+            upload_type="job_input",
+            job_id=1,
+            location=UploadLocation(url="http://example.com/job-input"),
+            run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [upload]
+        
+        service.get_job_uploads(job_id=1)
+        
+        service._dependencies.get_job_uploads_fn.assert_called_once_with(job_id=1)
+        service._dependencies.read_upload_content_fn.assert_called_once_with(upload.location)
+    
+    def test_get_job_uploads__returns_success_result_with_content(self, service):
+        upload = JobUpload(
+            upload_type="job_input",
+            job_id=1,
+            location=UploadLocation(url="http://example.com/job-input"),
+            run_id=None
+        )
+        content = UploadContent.create_text("test file content")
+        service._dependencies.get_job_uploads_fn.return_value = [upload]
+        service._dependencies.read_upload_content_fn.return_value = content
+        
+        result = service.get_job_uploads(job_id=1)
+        
+        assert is_successful(result)
+        uploads = result.unwrap()
+        assert len(uploads) == 1
+        assert uploads[0]["uploadType"] == "job_input"
+        assert uploads[0]["jobId"] == 1
+        assert uploads[0]["content"]["contentType"] == "text"
+        assert uploads[0]["content"]["content"] == "test file content"
+    
+    def test_get_job_uploads__when_read_content_fails__includes_error(self, service):
+        upload = JobUpload(
+            upload_type="job_input",
+            job_id=1,
+            location=UploadLocation(url="http://example.com/job-input"),
+            run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [upload]
+        service._dependencies.read_upload_content_fn.side_effect = ValueError("S3 error")
+        
+        result = service.get_job_uploads(job_id=1)
+        
+        assert is_successful(result)
+        uploads = result.unwrap()
+        assert len(uploads) == 1
+        assert uploads[0]["uploadType"] == "job_input"
+        assert uploads[0]["error"] == "S3 error"
+        assert "content" not in uploads[0]
 
 
 @pytest.fixture
@@ -240,6 +298,7 @@ def run_repository(db_session):
 def upload_location_repository():
     repo = Mock(spec=IUploadLocationRepository)
     repo.get_upload_location.return_value = UploadLocation(url="https://s3.amazonaws.com/test-bucket/presigned-url")
+    repo.read_content.return_value = UploadContent.create_text("test content from repository")
     return repo
 
 
