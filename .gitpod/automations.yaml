@@ -1,8 +1,48 @@
 tasks:
-    run:
-        name: Run Simulation
-        description: runs FRED simulation
-        command: echo "Hello Simulation"
+    setup_fred_environment:
+        name: Setup FRED Environment
+        description: Install dependencies and build FRED framework
+        command: |
+            set -e
+            # Update package lists and install system dependencies
+            sudo apt-get update && sudo apt-get install -y build-essential g++ make cmake pkg-config libboost-all-dev
+            
+            # Install Node.js and npm separately with verification
+            sudo apt-get install -y nodejs npm
+            hash -r  # Refresh command cache
+            
+            # Verify npm is available
+            which npm || { echo "npm not found after installation"; exit 1; }
+            npm --version
+            
+            # Build FRED framework
+            cd /workspaces/fred_simulations/fred-framework/src && make
+            cd /workspaces/fred_simulations
+            
+            # Install Poetry
+            curl -sSL https://install.python-poetry.org | python3 -
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+            export PATH="$HOME/.local/bin:$PATH"
+            poetry install --no-root
+            
+            # Install Claude CLI
+            npm install @anthropic-ai/claude-code
+            echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
+        triggeredBy:
+            - postEnvironmentStart
+    
+    setup_epx_config:
+        name: Setup EPX Configuration
+        description: generates ~/.epx/config.json with API configuration
+        command: |
+            mkdir -p ~/.epx
+            cat > ~/.epx/config.json << 'EOF'
+            {
+             "api-url": "http://localhost:5000",
+             "bearer-token": "eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+            }
+            EOF
+            echo "Generated ~/.epx/config.json"
         triggeredBy:
             - postEnvironmentStart
     
