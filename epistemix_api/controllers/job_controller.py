@@ -13,6 +13,8 @@ from returns.result import Result, Success, Failure
 from epistemix_api.models.job import Job
 from epistemix_api.models.run import Run
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.job_upload import JobUpload
+from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.requests import RunRequest
 from epistemix_api.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
 from epistemix_api.use_cases import (
@@ -23,6 +25,8 @@ from epistemix_api.use_cases import (
     submit_run_config as submit_run_config_use_case,    
     get_job as get_job_use_case,
     get_runs_by_job_id as get_runs_by_job_id_use_case,
+    get_job_uploads,
+    read_upload_content,
 )
 
 
@@ -45,6 +49,8 @@ class JobControllerDependencies:
         submit_runs_fn: Callable[[List[Dict[str, Any]], str, str], List[Run]],
         submit_run_config_fn: Callable[[int, str, str, Optional[int]], UploadLocation],
         get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
+        get_job_uploads_fn: Callable[[int], List[JobUpload]],
+        read_upload_content_fn: Callable[[UploadLocation], UploadContent],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -52,6 +58,8 @@ class JobControllerDependencies:
         self.submit_runs_fn = submit_runs_fn
         self.submit_run_config_fn = submit_run_config_fn
         self.get_runs_by_job_id_fn = get_runs_by_job_id_fn
+        self.get_job_uploads_fn = get_job_uploads_fn
+        self.read_upload_content_fn = read_upload_content_fn
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -79,15 +87,34 @@ class JobController:
         self._dependencies = None
 
     @classmethod
-    def create_with_repositories(cls, job_repository: IJobRepository, run_repository: IRunRepository, upload_location_repository: IUploadLocationRepository) -> Self:
+    def create_with_repositories(
+        cls, 
+        job_repository: IJobRepository, 
+        run_repository: IRunRepository, 
+        upload_location_repository: IUploadLocationRepository
+    ) -> Self:
+        """
+        Create JobController with repositories.
+        
+        Args:
+            job_repository: Repository for job persistence
+            run_repository: Repository for run persistence
+            upload_location_repository: Repository for upload locations (handles storage details)
+            
+        Returns:
+            Configured JobController instance
+        """
         service = cls()
+        
         service._dependencies = JobControllerDependencies(
             register_job_fn=functools.partial(register_job_use_case, job_repository),
             submit_job_fn=functools.partial(submit_job_use_case, job_repository, upload_location_repository),
             submit_job_config_fn=functools.partial(submit_job_config_use_case, job_repository, upload_location_repository),
             submit_runs_fn=functools.partial(submit_runs_use_case, run_repository, upload_location_repository),
             submit_run_config_fn=functools.partial(submit_run_config_use_case, run_repository, upload_location_repository),
-            get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository)
+            get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
+            get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),
+            read_upload_content_fn=functools.partial(read_upload_content, upload_location_repository)
         )
         return service
 
@@ -217,3 +244,47 @@ class JobController:
         except Exception as e:
             logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
             return Failure("An unexpected error occurred while retrieving the runs")
+    
+    def get_job_uploads(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
+        """
+        Get all uploads associated with a job and their contents.
+        
+        This method orchestrates retrieving upload metadata and reading
+        the actual content from storage, combining them into a complete response.
+        
+        Args:
+            job_id: ID of the job to get uploads for
+            
+        Returns:
+            Result containing list of uploads with content (Success) 
+            or an error message (Failure)
+        """
+        try:
+            # Get upload metadata from use case
+            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+            
+            # Enrich each upload with content
+            results = []
+            for upload in uploads:
+                upload_dict = upload.to_dict()
+                
+                try:
+                    # Read content for this upload
+                    content = self._dependencies.read_upload_content_fn(upload.location)
+                    upload_dict['content'] = content.to_dict()
+                except ValueError as e:
+                    # Include error information if content couldn't be read
+                    upload_dict['error'] = str(e)
+                    logger.warning(f"Failed to read content for upload {upload.upload_type} (job_id={job_id}): {e}")
+                
+                results.append(upload_dict)
+            
+            logger.info(f"Retrieved {len(results)} uploads for job {job_id}")
+            return Success(results)
+            
+        except ValueError as e:
+            logger.error(f"Validation error in get_job_uploads: {e}")
+            return Failure(str(e))
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_job_uploads")
+            return Failure("An unexpected error occurred while retrieving uploads")

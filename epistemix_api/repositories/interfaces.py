@@ -7,6 +7,7 @@ from typing import Protocol, Optional, List, runtime_checkable
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.run import Run, RunStatus
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.upload_content import UploadContent
 
 
 @runtime_checkable
@@ -225,5 +226,23 @@ class IUploadLocationRepository(Protocol):
             
         Raises:
             ValueError: If the resource_name is invalid or upload location cannot be generated
+        """
+        ...
+    
+    def read_content(self, location: UploadLocation) -> UploadContent:
+        """
+        Read the content from an upload location.
+        
+        This method abstracts the storage implementation details and returns
+        the content in a domain model format.
+        
+        Args:
+            location: The upload location to read from
+            
+        Returns:
+            UploadContent domain model
+            
+        Raises:
+            ValueError: If the content cannot be read or parsed
         """
         ...
