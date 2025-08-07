@@ -28,23 +28,7 @@ tasks:
             # Install Claude CLI
             npm install @anthropic-ai/claude-code
             echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
-        triggeredBy:
-            - postEnvironmentStart
-    
-    setup_epx_config:
-        name: Setup EPX Configuration
-        description: generates ~/.epx/config.json with API configuration
-        command: |
-            mkdir -p ~/.epx
-            cat > ~/.epx/config.json << 'EOF'
-            {
-             "api-url": "http://localhost:5000",
-             "bearer-token": "eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
-            }
-            EOF
-            echo "Generated ~/.epx/config.json"
-        triggeredBy:
-            - postEnvironmentStart
+        triggeredBy: ['postEnvironmentStart', 'manual']
     
     setup_epx_config:
         name: Setup EPX Configuration
