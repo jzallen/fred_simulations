@@ -21,7 +21,6 @@
         "foxundermoon.shell-format"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true
       }
