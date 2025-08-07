@@ -1,12 +1,14 @@
 {
   "name": "FRED Dev with Python",
-  "image": "mcr.microsoft.com/devcontainers/python:3.9-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
   "remoteUser": "vscode",
 
   "containerEnv": {
     "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
     "PATH": "${containerEnv:PATH}:/workspaces/fred_simulations/fred-framework/bin"
   },
+
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential g++ make && cd fred-framework/src && make && curl -sSL https://install.python-poetry.org | python3 - && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && poetry install --no-root",
 
   "customizations": {
     "vscode": {
@@ -21,6 +23,7 @@
         "foxundermoon.shell-format"
       ],
       "settings": {
+        "python.defaultInterpreterPath": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true
       }
