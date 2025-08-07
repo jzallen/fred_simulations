@@ -204,13 +204,10 @@ class TestJobRoutes:
             'user-agent': 'epx_client_1.2.2'
         }
         
-<<<<<<< HEAD
         # First register a job so it exists in the repository
         register_body = {"tags": ["test_job"]}
         client.post('/jobs/register', headers=headers, json=register_body)
         
-=======
->>>>>>> origin/main
         submit_body = {
             "jobId": 1,
             "context": "job",
@@ -328,11 +325,7 @@ class TestJobRoutes:
               },
               "podPhase": "Pending",
               "containerStatus": None,
-<<<<<<< HEAD
               "status": "QUEUED",
-=======
-              "status": "Submitted",
->>>>>>> origin/main
               "userDeleted": False,
               "epxClientVersion": "1.2.2",
               "url": "http://localhost:5001/pre-signed-url"
