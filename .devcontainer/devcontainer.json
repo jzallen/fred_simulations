@@ -1,6 +1,6 @@
 {
   "name": "FRED Dev with Python",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-dev",
   "remoteUser": "vscode",
 
   "containerEnv": {
