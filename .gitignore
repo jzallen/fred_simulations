@@ -75,3 +75,10 @@ epistemix_jobs.db
 node_modules/
 package-lock.json
 package.json
+
+# sqlite dbs
+*.sqlite
+*.db
+
+# claude markdown
+CLAUDE.md

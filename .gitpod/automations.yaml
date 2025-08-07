@@ -42,5 +42,4 @@ tasks:
             }
             EOF
             echo "Generated ~/.epx/config.json"
-        triggeredBy:
-            - postEnvironmentStart
+        triggeredBy: ['postEnvironmentStart', 'manual']
