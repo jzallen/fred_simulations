@@ -1,16 +1,23 @@
+// The Dev Container format allows you to configure your environment. At the heart of it
+// is a Docker image or Dockerfile which controls the tools available in your environment.
+//
+// See https://aka.ms/devcontainer.json for more information.
 {
-  "name": "FRED Dev with Python",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "remoteUser": "vscode",
-
-  "containerEnv": {
-    "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
-    "PATH": "${containerEnv:PATH}:/workspaces/fred_simulations/fred-framework/bin"
-  },
-
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential g++ make && cd fred-framework/src && make && curl -sSL https://install.python-poetry.org | python3 - && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && poetry install --no-root",
-
-  "customizations": {
+	"name": "Gitpod",
+	// Use "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+	// instead of the build to use a pre-built image.
+	"build": {
+        "context": ".",
+        "dockerfile": "Dockerfile"
+    },
+	// Features add additional features to your environment. See https://containers.dev/features
+	// Beware: features are not supported on all platforms and may have unintended side-effects.
+	// "features": {
+    //   "ghcr.io/devcontainers/features/docker-in-docker": {
+    //     "moby": false
+    //   }
+    // }
+    "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
@@ -23,7 +30,6 @@
         "foxundermoon.shell-format"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true
       }
