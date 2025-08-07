@@ -1,7 +1,8 @@
 from unittest.mock import Mock
 
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.repositories.interfaces import IUploadLocationRepository
+from epistemix_api.models.run import Run
+from epistemix_api.repositories.interfaces import IUploadLocationRepository, IRunRepository
 from epistemix_api.use_cases import submit_run_config
 
 
@@ -15,13 +16,17 @@ class TestSubmitRunConfigUseCase:
         job_type = "config"
         expected_url = "https://example-bucket.s3.amazonaws.com/job_1_run_1_run_config?X-Amz-Algorithm=..."
         
+        mock_run_repo = Mock(spec=IRunRepository)
+        mock_run = Mock(spec=Run)
+        mock_run_repo.find_by_id.return_value = mock_run
+        
         mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
         mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
             url=expected_url
         )
         
         # Act
-        result = submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id)
+        result = submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id)
         
         # Assert
         assert isinstance(result, UploadLocation)
@@ -35,13 +40,17 @@ class TestSubmitRunConfigUseCase:
         context = "custom"
         job_type = "special"
         
+        mock_run_repo = Mock(spec=IRunRepository)
+        mock_run = Mock(spec=Run)
+        mock_run_repo.find_by_id.return_value = mock_run
+        
         mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
         mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
             url="https://example.com/presigned"
         )
         
         # Act
-        submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id)
         
         # Assert
         mock_upload_location_repo.get_upload_location.assert_called_once_with("job_123_run_456_custom_special")
@@ -52,13 +61,16 @@ class TestSubmitRunConfigUseCase:
         context = "run"
         job_type = "config"
         
+        mock_run_repo = Mock(spec=IRunRepository)
+        mock_run_repo.find_by_id.return_value = None
+        
         mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
         mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
             url="https://example.com/presigned"
         )
         
         # Act
-        submit_run_config(mock_upload_location_repo, job_id, context, job_type, run_id=None)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id=None)
         
         # Assert
         mock_upload_location_repo.get_upload_location.assert_called_once_with("job_789_run_config")
@@ -67,13 +79,16 @@ class TestSubmitRunConfigUseCase:
         # Arrange
         job_id = 999
         
+        mock_run_repo = Mock(spec=IRunRepository)
+        mock_run_repo.find_by_id.return_value = None
+        
         mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
         mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
             url="https://example.com/presigned"
         )
         
         # Act
-        submit_run_config(mock_upload_location_repo, job_id)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id)
         
         # Assert
         mock_upload_location_repo.get_upload_location.assert_called_once_with("job_999_run_config")
