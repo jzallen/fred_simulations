@@ -1,8 +1,18 @@
 tasks:
-    run:
-        name: Run Simulation
-        description: runs FRED simulation
-        command: echo "Hello Simulation"
+    setup_fred_environment:
+        name: Setup FRED Environment
+        description: Install dependencies and build FRED framework
+        command: |
+            set -e
+            apt-get update && apt-get install -y build-essential g++ make cmake pkg-config libboost-all-dev nodejs npm
+            cd /workspaces/fred_simulations/fred-framework/src && make
+            cd /workspaces/fred_simulations
+            curl -sSL https://install.python-poetry.org | python3 -
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+            export PATH="$HOME/.local/bin:$PATH"
+            poetry install --no-root
+            npm install @anthropic-ai/claude-code
+            echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
         triggeredBy:
             - postEnvironmentStart
     
