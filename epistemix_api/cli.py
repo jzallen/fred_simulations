@@ -21,10 +21,11 @@ from sqlalchemy.orm import sessionmaker
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_api.repositories.run_repository import SQLAlchemyRunRepository
 from epistemix_api.repositories.database import get_database_manager
+from epistemix_api.repositories.s3_upload_location_repository import create_upload_location_repository
+from epistemix_api.controllers.job_controller import JobController
 from epistemix_api.use_cases.get_job import get_job
 from epistemix_api.use_cases.get_runs import get_runs_by_job_id
 from epistemix_api.use_cases.list_jobs import list_jobs
-from epistemix_api.use_cases.get_job_uploads import get_job_uploads, JobUpload
 
 # Configure logging
 logging.basicConfig(
@@ -51,8 +52,8 @@ def format_job_uploads(uploads: list) -> str:
     output.append("=" * 80)
     
     # Group uploads by type
-    job_uploads = [u for u in uploads if u['runId'] is None]
-    run_uploads = [u for u in uploads if u['runId'] is not None]
+    job_uploads = [u for u in uploads if u.get('runId') is None]
+    run_uploads = [u for u in uploads if u.get('runId') is not None]
     
     # Display job uploads
     if job_uploads:
@@ -61,12 +62,20 @@ def format_job_uploads(uploads: list) -> str:
         
         for upload in job_uploads:
             output.append(f"\n[{upload['uploadType'].upper()}]")
+            output.append(f"Location: {upload.get('location', {}).get('url', 'N/A')}")
+            
+            # Handle content based on new structure
             if upload.get('content'):
+                content_obj = upload['content']
+                content_type = content_obj.get('contentType', 'unknown')
+                raw_content = content_obj.get('content', '')
+                
+                output.append(f"Content Type: {content_type}")
+                
                 # Truncate very long content
-                content = upload['content']
-                if len(content) > 1000:
-                    content = content[:997] + "..."
-                output.append(content)
+                if len(raw_content) > 1000:
+                    raw_content = raw_content[:997] + "..."
+                output.append(f"Content:\n{raw_content}")
             elif upload.get('error'):
                 output.append(f"Error: {upload['error']}")
             else:
@@ -90,12 +99,19 @@ def format_job_uploads(uploads: list) -> str:
             output.append(f"\nRun ID: {run_id}")
             for upload in run_uploads_list:
                 output.append(f"  [{upload['uploadType'].upper()}]")
+                output.append(f"  Location: {upload.get('location', {}).get('url', 'N/A')}")
+                
                 if upload.get('content'):
+                    content_obj = upload['content']
+                    content_type = content_obj.get('contentType', 'unknown')
+                    raw_content = content_obj.get('content', '')
+                    
+                    output.append(f"  Content Type: {content_type}")
+                    
                     # Indent content for run uploads
-                    content = upload['content']
-                    if len(content) > 800:
-                        content = content[:797] + "..."
-                    content_lines = content.split('\n')
+                    if len(raw_content) > 800:
+                        raw_content = raw_content[:797] + "..."
+                    content_lines = raw_content.split('\n')
                     for line in content_lines[:20]:  # Limit lines shown
                         output.append(f"    {line}")
                     if len(content_lines) > 20:
@@ -351,10 +367,11 @@ def job_uploads():
 
 @job_uploads.command('list')
 @click.option('--job-id', required=True, type=int, help='Job ID to get uploads for')
+@click.option('--env', default='PRODUCTION', help='Environment (TESTING, DEVELOPMENT, PRODUCTION)')
 @click.option('--bucket', help='S3 bucket name (defaults to epistemix-uploads-dev)')
 @click.option('--region', help='AWS region (defaults to AWS config)')
 @click.option('--json-output', is_flag=True, help='Output as JSON')
-def list_job_uploads(job_id: int, bucket: Optional[str], region: Optional[str], json_output: bool):
+def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optional[str], json_output: bool):
     """List and display all upload contents for a job and its runs."""
     try:
         # Use default bucket if not provided
@@ -368,45 +385,50 @@ def list_job_uploads(job_id: int, bucket: Optional[str], region: Optional[str], 
         job_repository = SQLAlchemyJobRepository(session_factory)
         run_repository = SQLAlchemyRunRepository(session_factory)
         
-        # Get uploads using the use case
-        uploads = get_job_uploads(
-            job_repository=job_repository,
-            run_repository=run_repository,
-            job_id=job_id,
+        # Create upload location repository
+        upload_location_repository = create_upload_location_repository(
+            env=env,
             bucket_name=bucket_name,
             region_name=region
         )
         
-        # Convert uploads to dicts
-        uploads_data = []
-        for upload in uploads:
-            upload_dict = {
-                'uploadType': upload.upload_type,
-                'jobId': upload.job_id,
-                'runId': upload.run_id,
-                's3Key': upload.s3_key,
-                'content': upload.content,
-                'error': upload.error
-            }
-            uploads_data.append(upload_dict)
+        # Create JobController
+        job_controller = JobController.create_with_repositories(
+            job_repository=job_repository,
+            run_repository=run_repository,
+            upload_location_repository=upload_location_repository
+        )
+        
+        # Get uploads using the controller
+        result = job_controller.get_job_uploads(job_id=job_id)
+        
+        if not is_successful(result):
+            click.echo(f"Error: {result.failure()}", err=True)
+            sys.exit(1)
+        
+        uploads_data = result.unwrap()
         
         # Output results
         if json_output:
             # For JSON, we might want to limit content size
             for upload in uploads_data:
-                if upload.get('content') and len(upload['content']) > 5000:
-                    upload['content'] = upload['content'][:4997] + '...'
+                if upload.get('content') and upload['content'].get('content'):
+                    content = upload['content']['content']
+                    if len(content) > 5000:
+                        upload['content']['content'] = content[:4997] + '...'
             
             output = {
                 'jobId': job_id,
-                'bucket': bucket_name,
+                'env': env,
+                'bucket': bucket_name if env != 'TESTING' else 'N/A (TESTING mode)',
                 'uploads': uploads_data,
                 'count': len(uploads_data)
             }
             click.echo(json.dumps(output, indent=2))
         else:
             click.echo(f"\nUploads for Job ID: {job_id}")
-            click.echo(f"Bucket: {bucket_name}")
+            click.echo(f"Environment: {env}")
+            click.echo(f"Bucket: {bucket_name if env != 'TESTING' else 'N/A (TESTING mode)'}")
             click.echo(format_job_uploads(uploads_data))
         
         session.close()
