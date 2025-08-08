@@ -472,7 +472,8 @@ def list_job_uploads(job_id: int, json_output: bool):
 @job_uploads.command('download')
 @click.option('--job-id', required=True, type=int, help='Job ID to download uploads for')
 @click.option('--output-dir', help='Directory to download files to (defaults to temp directory)')
-def download_job_uploads(job_id: int, output_dir: Optional[str]):
+@click.option('-f', '--force', is_flag=True, help='Force overwrite existing files')
+def download_job_uploads(job_id: int, output_dir: Optional[str], force: bool):
     """Download all uploads for a job to a local directory."""
     try:
         # Get configuration from environment/config file
@@ -512,9 +513,11 @@ def download_job_uploads(job_id: int, output_dir: Optional[str]):
             base_path = Path(temp_dir)
         
         click.echo(f"Downloading uploads for job {job_id} to {base_path}")
+        if not force:
+            click.echo("(Use -f/--force to overwrite existing files)")
         
         # Download uploads using the controller
-        result = job_controller.download_job_uploads(job_id=job_id, base_path=base_path)
+        result = job_controller.download_job_uploads(job_id=job_id, base_path=base_path, should_force=force)
         
         if not is_successful(result):
             click.echo(f"Error: {result.failure()}", err=True)

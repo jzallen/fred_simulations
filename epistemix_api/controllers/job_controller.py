@@ -291,17 +291,18 @@ class JobController:
             logger.exception(f"Unexpected error in get_job_uploads")
             return Failure("An unexpected error occurred while retrieving uploads")
     
-    def download_job_uploads(self, job_id: int, base_path: Path) -> Result[str, str]:
+    def download_job_uploads(self, job_id: int, base_path: Path, should_force: bool = False) -> Result[str, str]:
         """
         Download all uploads associated with a job to a local directory.
         
         This method orchestrates downloading all job and run uploads to the specified
         base path directory. Files are saved with their original names in a flat structure.
-        Existing files will be overwritten.
+        Existing files will be overwritten only if should_force=True.
         
         Args:
             job_id: ID of the job to download uploads for
             base_path: Path to the directory where files should be downloaded
+            should_force: If True, overwrite existing files. If False, skip existing files
             
         Returns:
             Result containing the download directory path (Success) 
@@ -319,32 +320,40 @@ class JobController:
             
             # Check if directory has existing files
             existing_files = list(base_path.iterdir())
-            if existing_files:
-                logger.warning(f"Directory {base_path} contains {len(existing_files)} existing files that may be overwritten")
+            if existing_files and should_force:
+                logger.info(f"Directory {base_path} contains {len(existing_files)} existing files that may be overwritten (should_force=True)")
+            elif existing_files:
+                logger.warning(f"Directory {base_path} contains {len(existing_files)} existing files - will skip existing files (use should_force=True to overwrite)")
             
-            logger.info(f"Downloading job {job_id} uploads to {base_path}")
+            logger.info(f"Downloading job {job_id} uploads to {base_path} (should_force={should_force})")
             
             downloaded_files = []
+            skipped_files = []
             errors = []
             
             for upload in uploads:
                 try:
-                    # Read content from storage
-                    content = self._dependencies.read_upload_content_fn(upload.location)
-                    
                     # Determine filename from URL or use a default from the model
                     filename = upload.location.extract_filename()
                     if not filename:
                         filename = upload.get_default_filename()
                     
-                    # Write content to file in flat structure
+                    # Check if file exists and handle based on should_force
                     file_path = base_path / filename
+                    
+                    if file_path.exists() and not should_force:
+                        logger.warning(f"Skipping existing file: {file_path}")
+                        skipped_files.append(str(file_path))
+                        continue
+                    
+                    # Read content from storage
+                    content = self._dependencies.read_upload_content_fn(upload.location)
                     
                     # Log if overwriting
                     if file_path.exists():
                         logger.info(f"Overwriting existing file: {file_path}")
                     
-                    file_path.write_text(content.data)
+                    file_path.write_text(content.raw_content)
                     
                     downloaded_files.append(str(file_path))
                     logger.info(f"Downloaded {upload.context}_{upload.upload_type} to {file_path}")
@@ -357,10 +366,24 @@ class JobController:
             # Report results
             if errors and not downloaded_files:
                 return Failure(f"Failed to download any files. Errors: {'; '.join(errors)}")
-            elif errors:
-                logger.warning(f"Downloaded {len(downloaded_files)} files with {len(errors)} errors")
+            
+            # Build summary message
+            summary_parts = []
+            if downloaded_files:
+                summary_parts.append(f"Downloaded {len(downloaded_files)} files")
+            if skipped_files:
+                summary_parts.append(f"skipped {len(skipped_files)} existing files")
+            if errors:
+                summary_parts.append(f"{len(errors)} errors")
+            
+            summary_message = ", ".join(summary_parts)
+            
+            if errors:
+                logger.warning(f"{summary_message}")
+            elif skipped_files:
+                logger.info(f"{summary_message} (use should_force=True to overwrite)")
             else:
-                logger.info(f"Successfully downloaded {len(downloaded_files)} files")
+                logger.info(f"{summary_message}")
             
             return Success(str(base_path))
             
