@@ -28,6 +28,7 @@ from epistemix_api.use_cases import (
     get_runs_by_job_id as get_runs_by_job_id_use_case,
     get_job_uploads,
     read_upload_content,
+    write_to_local,
 )
 
 
@@ -52,6 +53,7 @@ class JobControllerDependencies:
         get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
         get_job_uploads_fn: Callable[[int], List[JobUpload]],
         read_upload_content_fn: Callable[[UploadLocation], UploadContent],
+        write_to_local_fn: Callable[[Path, UploadContent, bool], None],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -61,6 +63,7 @@ class JobControllerDependencies:
         self.get_runs_by_job_id_fn = get_runs_by_job_id_fn
         self.get_job_uploads_fn = get_job_uploads_fn
         self.read_upload_content_fn = read_upload_content_fn
+        self.write_to_local_fn = write_to_local_fn
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -115,7 +118,8 @@ class JobController:
             submit_run_config_fn=functools.partial(submit_run_config_use_case, run_repository, upload_location_repository),
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
             get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),
-            read_upload_content_fn=functools.partial(read_upload_content, upload_location_repository)
+            read_upload_content_fn=functools.partial(read_upload_content, upload_location_repository),
+            write_to_local_fn=write_to_local
         )
         return service
 
@@ -349,11 +353,8 @@ class JobController:
                     # Read content from storage
                     content = self._dependencies.read_upload_content_fn(upload.location)
                     
-                    # Log if overwriting
-                    if file_path.exists():
-                        logger.info(f"Overwriting existing file: {file_path}")
-                    
-                    file_path.write_text(content.raw_content)
+                    # Use the write_to_local use case to handle the write operation
+                    self._dependencies.write_to_local_fn(file_path, content, force=should_force)
                     
                     downloaded_files.append(str(file_path))
                     logger.info(f"Downloaded {upload.context}_{upload.upload_type} to {file_path}")

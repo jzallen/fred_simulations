@@ -52,6 +52,7 @@ def service():
         get_runs_by_job_id_fn=Mock(return_value=[run]),
         get_job_uploads_fn=Mock(return_value=[]),
         read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
+        write_to_local_fn=Mock(return_value=None),
     )
     return service
 
@@ -459,8 +460,6 @@ def temp_download_dir():
 @pytest.fixture
 def mock_controller_with_uploads():
     """Create a JobController with mocked dependencies for download testing."""
-    mock_deps = Mock()
-    
     # Create mock locations with url attribute
     mock_location1 = Mock(spec=UploadLocation)
     mock_location1.url = "http://example.com/test_file1.txt"
@@ -487,12 +486,26 @@ def mock_controller_with_uploads():
         context="job"
     )
     
-    # Mock the get_job_uploads function
-    mock_deps.get_job_uploads_fn = Mock(return_value=[mock_upload1, mock_upload2])
-    
     # Store mock content for reuse
-    mock_deps.mock_content1 = UploadContent.create_text("Content for file 1")
-    mock_deps.mock_content2 = UploadContent.create_text("Content for file 2")
+    mock_content1 = UploadContent.create_text("Content for file 1")
+    mock_content2 = UploadContent.create_text("Content for file 2")
+    
+    # Create JobControllerDependencies with all required fields
+    mock_deps = JobControllerDependencies(
+        register_job_fn=Mock(),
+        submit_job_fn=Mock(),
+        submit_job_config_fn=Mock(),
+        submit_runs_fn=Mock(),
+        submit_run_config_fn=Mock(),
+        get_runs_by_job_id_fn=Mock(),
+        get_job_uploads_fn=Mock(return_value=[mock_upload1, mock_upload2]),
+        read_upload_content_fn=Mock(side_effect=[mock_content1, mock_content2]),
+        write_to_local_fn=Mock(return_value=None),
+    )
+    
+    # Store mock content for reuse in tests
+    mock_deps.mock_content1 = mock_content1
+    mock_deps.mock_content2 = mock_content2
     
     controller = JobController()
     controller._dependencies = mock_deps
@@ -510,6 +523,11 @@ class TestJobControllerDownloadForceFlag:
         mock_deps.read_upload_content_fn = Mock(
             side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
         )
+        
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
         
         # Download files
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
@@ -540,6 +558,9 @@ class TestJobControllerDownloadForceFlag:
             side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
         )
         
+        # Setup write_to_local mock that shouldn't be called for existing files
+        mock_deps.write_to_local_fn = Mock()
+        
         # Download without force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
         
@@ -568,6 +589,11 @@ class TestJobControllerDownloadForceFlag:
             side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
         )
         
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        
         # Download with force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=True)
         
@@ -591,6 +617,11 @@ class TestJobControllerDownloadForceFlag:
         
         # Setup read_upload_content mock - should only be called for file2
         mock_deps.read_upload_content_fn = Mock(return_value=mock_deps.mock_content2)
+        
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
         
         # Download without force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
