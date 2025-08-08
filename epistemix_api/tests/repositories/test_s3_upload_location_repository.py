@@ -122,32 +122,32 @@ class TestS3UploadLocationRepository:
         """Test that job_input resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_123_job_input")
         
-        # Should have new format: /jobs/123/YYYY/MM/DD/HHMMSS/job_input.zip
-        assert result == "/jobs/123/2025/02/28/091530/job_input.zip"
+        # Should have new format: jobs/123/YYYY/MM/DD/HHMMSS/job_input.zip
+        assert result == "jobs/123/2025/02/28/091530/job_input.zip"
     
     @freeze_time("2025-12-31 23:59:59")
     def test_generate_s3_key__job_config__creates_proper_structure(self, repository):
         """Test that job_config resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_456_job_config")
         
-        # Should have new format: /jobs/456/YYYY/MM/DD/HHMMSS/job_config.json
-        assert result == "/jobs/456/2025/12/31/235959/job_config.json"
+        # Should have new format: jobs/456/YYYY/MM/DD/HHMMSS/job_config.json
+        assert result == "jobs/456/2025/12/31/235959/job_config.json"
     
     @freeze_time("2025-07-04 16:20:00")
     def test_generate_s3_key__run_config__creates_proper_structure(self, repository):
         """Test that run_config resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_789_run_config")
         
-        # Should have new format: /jobs/789/YYYY/MM/DD/HHMMSS/run_config.json
-        assert result == "/jobs/789/2025/07/04/162000/run_config.json"
+        # Should have new format: jobs/789/YYYY/MM/DD/HHMMSS/run_config.json
+        assert result == "jobs/789/2025/07/04/162000/run_config.json"
     
     @freeze_time("2025-03-15 08:45:12")
     def test_generate_s3_key__run_with_id_config__creates_proper_structure(self, repository):
         """Test that run_config with run_id gets proper S3 key structure."""
         result = repository._generate_s3_key("job_111_run_222_run_config")
         
-        # Should have new format: /jobs/111/YYYY/MM/DD/HHMMSS/run_config.json
-        assert result == "/jobs/111/2025/03/15/084512/run_config.json"
+        # Should have new format: jobs/111/YYYY/MM/DD/HHMMSS/run_config.json
+        assert result == "jobs/111/2025/03/15/084512/run_config.json"
     
     def test_read_content__valid_location__returns_upload_content(self, repository, mock_s3_client):
         """Test reading content from a valid location."""

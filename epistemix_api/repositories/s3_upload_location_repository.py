@@ -149,8 +149,8 @@ class S3UploadLocationRepository:
         # Generate timestamp in UTC
         timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d/%H%M%S")
         
-        # Build the S3 key
-        key = f"/jobs/{job_upload.job_id}/{timestamp}/{filename}{extension}"
+        # Build the S3 key (no leading slash per S3 best practices)
+        key = f"jobs/{job_upload.job_id}/{timestamp}/{filename}{extension}"
         
         return key
     
@@ -204,9 +204,9 @@ class S3UploadLocationRepository:
         # Generate timestamp in UTC
         timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d/%H%M%S")
         
-        # Build the new key structure
+        # Build the new key structure (no leading slash per S3 best practices)
         if job_id:
-            key = f"/jobs/{job_id}/{timestamp}/{filename}{extension}"
+            key = f"jobs/{job_id}/{timestamp}/{filename}{extension}"
         else:
             # Fallback for resources without job_id (shouldn't happen in normal flow)
             key = f"{timestamp}/{filename}"
