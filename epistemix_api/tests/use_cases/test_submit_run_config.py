@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.run import Run
+from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.repositories.interfaces import IUploadLocationRepository, IRunRepository
 from epistemix_api.use_cases import submit_run_config
 
@@ -26,19 +27,20 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        result = submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
+        result = submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
         assert isinstance(result, UploadLocation)
         assert result.url == expected_url
-        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_1_run_1_run_config")
+        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
     
     def test_submit_run_config__uses_correct_resource_name_with_run_id(self):
         # Arrange
         job_id = 123
         run_id = 456
-        context = "custom"
-        job_type = "special"
+        context = "run"  # Valid context for run config
+        job_type = "config"  # Valid type for run context
         
         mock_run_repo = Mock(spec=IRunRepository)
         mock_run = Mock(spec=Run)
@@ -50,10 +52,11 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
-        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_123_run_456_custom_special")
+        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
     
     def test_submit_run_config__uses_correct_resource_name_without_run_id(self):
         # Arrange
@@ -70,10 +73,11 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id, context, job_type, run_id=None)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=None)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
-        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_789_run_config")
+        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
     
     def test_submit_run_config__uses_default_values(self):
         # Arrange
@@ -88,7 +92,8 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        submit_run_config(mock_run_repo, mock_upload_location_repo, job_id)
+        job_upload = JobUpload(context="run", upload_type="config", job_id=job_id)
+        submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
-        mock_upload_location_repo.get_upload_location.assert_called_once_with("job_999_run_config")
+        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)

@@ -104,7 +104,8 @@ class TestJobController:
 
     def test_submit_job__calls_submit_job_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, context="job", job_type="input")
-        service._dependencies.submit_job_fn.assert_called_once_with(job_id=1, context="job", job_type="input")
+        expected_job_upload = JobUpload(context="job", upload_type="input", job_id=1, run_id=None)
+        service._dependencies.submit_job_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url"}
@@ -113,10 +114,10 @@ class TestJobController:
         assert job_result.unwrap() == expected_response
 
     def test_submit_job__when_value_error_raised__returns_failure_result(self, service):
-        service._dependencies.submit_job_fn.side_effect = ValueError("Invalid job ID")
+        # The ValueError will be raised during JobUpload creation due to validation
         job_result = service.submit_job(job_id=0, context="job", job_type="input")
         assert not is_successful(job_result)
-        assert job_result.failure() == "Invalid job ID"
+        assert "Job ID must be positive" in job_result.failure()
 
     def test_submit_job__when_exception_raised__returns_failure_result(self, service):
         service._dependencies.submit_job_fn.side_effect = Exception("Unexpected error")
@@ -179,11 +180,8 @@ class TestJobController:
 
     def test_submit_job___type_config__calls_submit_job_config_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, context="job", job_type="config")
-        service._dependencies.submit_job_config_fn.assert_called_once_with(
-            job_id=1, 
-            context="job", 
-            job_type="config"
-        )
+        expected_job_upload = JobUpload(context="job", upload_type="config", job_id=1, run_id=None)
+        service._dependencies.submit_job_config_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__type_config__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url-job-config"}
@@ -193,12 +191,8 @@ class TestJobController:
 
     def test_submit_job__context_run_type_config__calls_submit_run_config_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, run_id=2, context="run", job_type="config")
-        service._dependencies.submit_run_config_fn.assert_called_once_with(
-            job_id=1,
-            run_id=2, 
-            context="run", 
-            job_type="config"
-        )
+        expected_job_upload = JobUpload(context="run", upload_type="config", job_id=1, run_id=2)
+        service._dependencies.submit_run_config_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__context_run_type_config__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url-run-config"}
@@ -229,7 +223,8 @@ class TestJobController:
     
     def test_get_job_uploads__calls_dependencies_with_correct_parameters(self, service):
         upload = JobUpload(
-            upload_type="job_input",
+            context="job",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None
@@ -243,7 +238,8 @@ class TestJobController:
     
     def test_get_job_uploads__returns_success_result_with_content(self, service):
         upload = JobUpload(
-            upload_type="job_input",
+            context="job",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None
@@ -257,14 +253,16 @@ class TestJobController:
         assert is_successful(result)
         uploads = result.unwrap()
         assert len(uploads) == 1
-        assert uploads[0]["uploadType"] == "job_input"
+        assert uploads[0]["context"] == "job"
+        assert uploads[0]["uploadType"] == "input"
         assert uploads[0]["jobId"] == 1
         assert uploads[0]["content"]["contentType"] == "text"
         assert uploads[0]["content"]["content"] == "test file content"
     
     def test_get_job_uploads__when_read_content_fails__includes_error(self, service):
         upload = JobUpload(
-            upload_type="job_input",
+            context="job",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None
@@ -277,7 +275,8 @@ class TestJobController:
         assert is_successful(result)
         uploads = result.unwrap()
         assert len(uploads) == 1
-        assert uploads[0]["uploadType"] == "job_input"
+        assert uploads[0]["context"] == "job"
+        assert uploads[0]["uploadType"] == "input"
         assert uploads[0]["error"] == "S3 error"
         assert "content" not in uploads[0]
 

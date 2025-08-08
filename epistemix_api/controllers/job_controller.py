@@ -163,26 +163,22 @@ class JobController:
             or an error message (Failure)
         """
         try:
+            # Create JobUpload object from parameters
+            job_upload = JobUpload(
+                context=context,
+                upload_type=job_type,
+                job_id=job_id,
+                run_id=run_id
+            )
+            
+            # Route to the appropriate use case based on context and type
             match (context, job_type):
                 case ("job", "input"):
-                    job_configuration_location = self._dependencies.submit_job_fn(
-                        job_id=job_id,
-                        context=context,
-                        job_type=job_type
-                    )
+                    job_configuration_location = self._dependencies.submit_job_fn(job_upload)
                 case ("job", "config"):
-                    job_configuration_location = self._dependencies.submit_job_config_fn(
-                        job_id=job_id,
-                        context=context,
-                        job_type=job_type
-                    )
+                    job_configuration_location = self._dependencies.submit_job_config_fn(job_upload)
                 case ("run", "config"):
-                    job_configuration_location = self._dependencies.submit_run_config_fn(
-                        job_id=job_id,
-                        context=context,
-                        job_type=job_type,
-                        run_id=run_id
-                    )
+                    job_configuration_location = self._dependencies.submit_run_config_fn(job_upload)
                 case _:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(job_configuration_location.to_dict())
@@ -275,7 +271,7 @@ class JobController:
                 except ValueError as e:
                     # Include error information if content couldn't be read
                     upload_dict['error'] = str(e)
-                    logger.warning(f"Failed to read content for upload {upload.upload_type} (job_id={job_id}): {e}")
+                    logger.warning(f"Failed to read content for upload {upload.context}_{upload.upload_type} (job_id={job_id}): {e}")
                 
                 results.append(upload_dict)
             

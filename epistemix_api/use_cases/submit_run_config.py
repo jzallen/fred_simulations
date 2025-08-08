@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.repositories.interfaces import IRunRepository, IUploadLocationRepository
 
 
@@ -16,10 +17,7 @@ logger = logging.getLogger(__name__)
 def submit_run_config(
     run_repository: IRunRepository,
     upload_location_repository: IUploadLocationRepository,
-    job_id: int,
-    context: str = "run",
-    job_type: str = "config",
-    run_id: Optional[int] = None,
+    job_upload: JobUpload
 ) -> UploadLocation:
     """
     Submit a run configuration for processing.
@@ -30,10 +28,7 @@ def submit_run_config(
     Args:
         run_repository: Repository for run persistence
         upload_location_repository: Repository for generating upload locations
-        job_id: ID of the job to submit
-        context: Context of the submission (default: "run")
-        job_type: Type of the job submission (default: "config")
-        run_id: Optional ID of the run associated with the job submission
+        job_upload: JobUpload object with job_id, context, job_type, and optional run_id
         
     Returns:
         UploadLocation containing pre-signed URL for run configuration upload
@@ -42,23 +37,19 @@ def submit_run_config(
         ValueError: If run configuration can't be submitted
     """
     
-    # Generate the resource name for the upload location
-    if run_id is not None:
-        resource_name = f"job_{job_id}_run_{run_id}_{context}_{job_type}"
-    else:
-        resource_name = f"job_{job_id}_{context}_{job_type}"
-    
     # Use the upload location repository to generate the pre-signed URL
-    run_configuration_location = upload_location_repository.get_upload_location(resource_name)
+    run_configuration_location = upload_location_repository.get_upload_location(job_upload)
     
     # If we have a run_id, persist the URL to the run
-    if run_id is not None:
-        run = run_repository.find_by_id(run_id)
+    if job_upload.run_id is not None:
+        run = run_repository.find_by_id(job_upload.run_id)
         if run:
             run.url = run_configuration_location.url
             run_repository.save(run)
-            logger.info(f"Run {run_id} config URL persisted: {run_configuration_location.url}")
+            # Sanitize URL for logging
+            safe_url = run_configuration_location.url.split('?')[0] if '?' in run_configuration_location.url else run_configuration_location.url
+            logger.info(f"Run {job_upload.run_id} config URL persisted: {safe_url}")
     
-    logger.info(f"Run {run_id} config for Job {job_id} submitted with context {context} and type {job_type}")
+    logger.info(f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.upload_type}")
     
     return run_configuration_location
