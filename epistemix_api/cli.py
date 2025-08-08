@@ -11,7 +11,10 @@ import os
 import sys
 import json
 import logging
-from typing import Optional
+import tempfile
+from pathlib import Path
+from typing import Optional, Dict
+from dotenv import load_dotenv
 
 import click
 from returns.pipeline import is_successful
@@ -27,18 +30,37 @@ from epistemix_api.use_cases.get_job import get_job
 from epistemix_api.use_cases.get_runs import get_runs_by_job_id
 from epistemix_api.use_cases.list_jobs import list_jobs
 
+# Load configuration from ~/.epistemix/cli.env if it exists
+CONFIG_PATH = Path.home() / '.epistemix' / 'cli.env'
+if CONFIG_PATH.exists():
+    load_dotenv(CONFIG_PATH)
+else:
+    # Try loading from current directory as fallback
+    load_dotenv('cli.env')
+
 # Configure logging
+log_level = os.getenv('LOG_LEVEL', 'INFO')
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, log_level),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
 
+def get_default_config() -> Dict[str, str]:
+    """Get default configuration from environment variables."""
+    return {
+        'env': os.getenv('EPISTEMIX_ENV', 'PRODUCTION'),
+        'bucket': os.getenv('EPISTEMIX_S3_BUCKET'),  # None if not set
+        'region': os.getenv('AWS_REGION'),  # None if not set
+        'database_url': os.getenv('DATABASE_URL', 'sqlite:///epistemix_jobs.db')
+    }
+
+
 def get_database_session():
     """Get a database session."""
-    database_url = os.getenv('DATABASE_URL', 'sqlite:///epistemix_jobs.db')
-    db_manager = get_database_manager(database_url)
+    config = get_default_config()
+    db_manager = get_database_manager(config['database_url'])
     db_manager.create_tables()
     return db_manager.get_session()
 
@@ -367,15 +389,15 @@ def job_uploads():
 
 @job_uploads.command('list')
 @click.option('--job-id', required=True, type=int, help='Job ID to get uploads for')
-@click.option('--env', default='PRODUCTION', help='Environment (TESTING, DEVELOPMENT, PRODUCTION)')
-@click.option('--bucket', help='S3 bucket name (defaults to epistemix-uploads-dev)')
-@click.option('--region', help='AWS region (defaults to AWS config)')
 @click.option('--json-output', is_flag=True, help='Output as JSON')
-def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optional[str], json_output: bool):
-    """List and display all upload contents for a job and its runs."""
+def list_job_uploads(job_id: int, json_output: bool):
+    """List sanitized S3 URLs for all uploads of a job and its runs."""
     try:
-        # Use default bucket if not provided
-        bucket_name = bucket or os.getenv('S3_UPLOAD_BUCKET', 'epistemix-uploads-dev')
+        # Get configuration from environment/config file
+        config = get_default_config()
+        env = config['env']
+        bucket_name = config['bucket'] or 'epistemix-uploads-dev'
+        region_name = config['region']
         
         # Get database session
         session = get_database_session()
@@ -389,7 +411,7 @@ def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optio
         upload_location_repository = create_upload_location_repository(
             env=env,
             bucket_name=bucket_name,
-            region_name=region
+            region_name=region_name
         )
         
         # Create JobController
@@ -399,8 +421,8 @@ def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optio
             upload_location_repository=upload_location_repository
         )
         
-        # Get uploads using the controller
-        result = job_controller.get_job_uploads(job_id=job_id)
+        # Get uploads WITHOUT content (just metadata and sanitized URLs)
+        result = job_controller.get_job_uploads(job_id=job_id, include_content=False)
         
         if not is_successful(result):
             click.echo(f"Error: {result.failure()}", err=True)
@@ -410,13 +432,6 @@ def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optio
         
         # Output results
         if json_output:
-            # For JSON, we might want to limit content size
-            for upload in uploads_data:
-                if upload.get('content') and upload['content'].get('content'):
-                    content = upload['content']['content']
-                    if len(content) > 5000:
-                        upload['content']['content'] = content[:4997] + '...'
-            
             output = {
                 'jobId': job_id,
                 'env': env,
@@ -426,10 +441,102 @@ def list_job_uploads(job_id: int, env: str, bucket: Optional[str], region: Optio
             }
             click.echo(json.dumps(output, indent=2))
         else:
-            click.echo(f"\nUploads for Job ID: {job_id}")
-            click.echo(f"Environment: {env}")
-            click.echo(f"Bucket: {bucket_name if env != 'TESTING' else 'N/A (TESTING mode)'}")
-            click.echo(format_job_uploads(uploads_data))
+            # Print sanitized URLs to terminal
+            for upload in uploads_data:
+                # Get sanitized URL from location object
+                location = upload.get('location', {})
+                sanitized_url = location.get('url', '')
+                if sanitized_url:
+                    # Include context info in the output
+                    context = upload.get('context', '')
+                    upload_type = upload.get('uploadType', '')
+                    run_id = upload.get('runId', '')
+                    
+                    if context == 'job':
+                        prefix = f"[job_{job_id}_{upload_type}]"
+                    elif run_id:
+                        prefix = f"[run_{run_id}_{upload_type}]"
+                    else:
+                        prefix = f"[{context}_{upload_type}]"
+                    
+                    click.echo(f"{prefix} {sanitized_url}")
+        
+        session.close()
+        
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@job_uploads.command('download')
+@click.option('--job-id', required=True, type=int, help='Job ID to download uploads for')
+@click.option('--output-dir', help='Directory to download files to (defaults to temp directory)')
+@click.option('-f', '--force', is_flag=True, help='Force overwrite existing files')
+def download_job_uploads(job_id: int, output_dir: Optional[str], force: bool):
+    """Download all uploads for a job to a local directory."""
+    try:
+        # Get configuration from environment/config file
+        config = get_default_config()
+        env = config['env']
+        bucket_name = config['bucket'] or 'epistemix-uploads-dev'
+        region_name = config['region']
+        
+        # Get database session
+        session = get_database_session()
+        session_factory = lambda: session
+        
+        # Create repositories
+        job_repository = SQLAlchemyJobRepository(session_factory)
+        run_repository = SQLAlchemyRunRepository(session_factory)
+        
+        # Create upload location repository
+        upload_location_repository = create_upload_location_repository(
+            env=env,
+            bucket_name=bucket_name,
+            region_name=region_name
+        )
+        
+        # Create JobController
+        job_controller = JobController.create_with_repositories(
+            job_repository=job_repository,
+            run_repository=run_repository,
+            upload_location_repository=upload_location_repository
+        )
+        
+        # Determine download path
+        if output_dir:
+            base_path = Path(output_dir)
+        else:
+            # Create temp directory
+            temp_dir = tempfile.mkdtemp(prefix=f"job_{job_id}_")
+            base_path = Path(temp_dir)
+        
+        click.echo(f"Downloading uploads for job {job_id} to {base_path}")
+        if not force:
+            click.echo("(Use -f/--force to overwrite existing files)")
+        
+        # Download uploads using the controller
+        result = job_controller.download_job_uploads(job_id=job_id, base_path=base_path, should_force=force)
+        
+        if not is_successful(result):
+            click.echo(f"Error: {result.failure()}", err=True)
+            sys.exit(1)
+        
+        download_path = result.unwrap()
+        
+        # List downloaded files
+        downloaded_files = list(Path(download_path).iterdir())
+        click.echo(f"\nSuccessfully downloaded {len(downloaded_files)} files to:")
+        click.echo(f"  {download_path}")
+        
+        if downloaded_files:
+            click.echo("\nDownloaded files:")
+            for file_path in downloaded_files:
+                file_size = file_path.stat().st_size
+                click.echo(f"  - {file_path.name} ({file_size} bytes)")
         
         session.close()
         

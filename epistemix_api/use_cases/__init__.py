@@ -13,6 +13,7 @@ from .get_job import get_job
 from .get_runs import get_runs_by_job_id
 from .get_job_uploads import get_job_uploads
 from .read_upload_content import read_upload_content
+from .write_to_local import write_to_local
 
 __all__ = [
     'register_job', 
@@ -26,5 +27,6 @@ __all__ = [
     'validate_tags',
     'RunRequestDict',
     'get_job_uploads',
-    'read_upload_content'
+    'read_upload_content',
+    'write_to_local'
 ]

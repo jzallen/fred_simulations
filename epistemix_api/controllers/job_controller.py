@@ -7,6 +7,7 @@ the web layer and domain models.
 from typing import Dict, List, Any, Optional, Callable, Self
 import logging
 import functools
+from pathlib import Path
 
 from returns.result import Result, Success, Failure
 
@@ -27,6 +28,7 @@ from epistemix_api.use_cases import (
     get_runs_by_job_id as get_runs_by_job_id_use_case,
     get_job_uploads,
     read_upload_content,
+    write_to_local,
 )
 
 
@@ -51,6 +53,7 @@ class JobControllerDependencies:
         get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
         get_job_uploads_fn: Callable[[int], List[JobUpload]],
         read_upload_content_fn: Callable[[UploadLocation], UploadContent],
+        write_to_local_fn: Callable[[Path, UploadContent, bool], None],
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -60,6 +63,7 @@ class JobControllerDependencies:
         self.get_runs_by_job_id_fn = get_runs_by_job_id_fn
         self.get_job_uploads_fn = get_job_uploads_fn
         self.read_upload_content_fn = read_upload_content_fn
+        self.write_to_local_fn = write_to_local_fn
 
 class JobController:
     """Controller for job-related operations in epistemix platform."""
@@ -114,7 +118,8 @@ class JobController:
             submit_run_config_fn=functools.partial(submit_run_config_use_case, run_repository, upload_location_repository),
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
             get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),
-            read_upload_content_fn=functools.partial(read_upload_content, upload_location_repository)
+            read_upload_content_fn=functools.partial(read_upload_content, upload_location_repository),
+            write_to_local_fn=write_to_local
         )
         return service
 
@@ -241,37 +246,40 @@ class JobController:
             logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
             return Failure("An unexpected error occurred while retrieving the runs")
     
-    def get_job_uploads(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
+    def get_job_uploads(self, job_id: int, include_content: bool = True) -> Result[List[Dict[str, Any]], str]:
         """
-        Get all uploads associated with a job and their contents.
+        Get all uploads associated with a job, optionally with their contents.
         
-        This method orchestrates retrieving upload metadata and reading
+        This method orchestrates retrieving upload metadata and optionally reading
         the actual content from storage, combining them into a complete response.
         
         Args:
             job_id: ID of the job to get uploads for
+            include_content: If True, fetch and include file contents in response
             
         Returns:
-            Result containing list of uploads with content (Success) 
+            Result containing list of uploads with optional content (Success) 
             or an error message (Failure)
         """
         try:
             # Get upload metadata from use case
             uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
             
-            # Enrich each upload with content
+            # Process uploads based on whether content is requested
             results = []
             for upload in uploads:
-                upload_dict = upload.to_dict()
+                # Use sanitized dict to show sanitized URLs to users
+                upload_dict = upload.to_sanitized_dict()
                 
-                try:
-                    # Read content for this upload
-                    content = self._dependencies.read_upload_content_fn(upload.location)
-                    upload_dict['content'] = content.to_dict()
-                except ValueError as e:
-                    # Include error information if content couldn't be read
-                    upload_dict['error'] = str(e)
-                    logger.warning(f"Failed to read content for upload {upload.context}_{upload.upload_type} (job_id={job_id}): {e}")
+                if include_content:
+                    try:
+                        # Read content for this upload
+                        content = self._dependencies.read_upload_content_fn(upload.location)
+                        upload_dict['content'] = content.to_dict()
+                    except ValueError as e:
+                        # Include error information if content couldn't be read
+                        upload_dict['error'] = str(e)
+                        logger.warning(f"Failed to read content for upload {upload.context}_{upload.upload_type} (job_id={job_id}): {e}")
                 
                 results.append(upload_dict)
             
@@ -284,3 +292,103 @@ class JobController:
         except Exception as e:
             logger.exception(f"Unexpected error in get_job_uploads")
             return Failure("An unexpected error occurred while retrieving uploads")
+    
+    def download_job_uploads(self, job_id: int, base_path: Path, should_force: bool = False) -> Result[str, str]:
+        """
+        Download all uploads associated with a job to a local directory.
+        
+        This method orchestrates downloading all job and run uploads to the specified
+        base path directory. Files are saved with their original names in a flat structure.
+        Existing files will be overwritten only if should_force=True.
+        
+        Args:
+            job_id: ID of the job to download uploads for
+            base_path: Path to the directory where files should be downloaded
+            should_force: If True, overwrite existing files. If False, skip existing files
+            
+        Returns:
+            Result containing the download directory path (Success) 
+            or an error message (Failure)
+        """
+        try:
+            # Get upload metadata
+            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+            
+            if not uploads:
+                return Failure(f"No uploads found for job {job_id}")
+            
+            # Ensure the base path exists
+            base_path.mkdir(parents=True, exist_ok=True)
+            
+            # Check if directory has existing files
+            existing_files = list(base_path.iterdir())
+            if existing_files and should_force:
+                logger.info(f"Directory {base_path} contains {len(existing_files)} existing files that may be overwritten (should_force=True)")
+            elif existing_files:
+                logger.warning(f"Directory {base_path} contains {len(existing_files)} existing files - will skip existing files (use should_force=True to overwrite)")
+            
+            logger.info(f"Downloading job {job_id} uploads to {base_path} (should_force={should_force})")
+            
+            downloaded_files = []
+            skipped_files = []
+            errors = []
+            
+            for upload in uploads:
+                try:
+                    # Determine filename from URL or use a default from the model
+                    filename = upload.location.extract_filename()
+                    if not filename:
+                        filename = upload.get_default_filename()
+                    
+                    # Check if file exists and handle based on should_force
+                    file_path = base_path / filename
+                    
+                    if file_path.exists() and not should_force:
+                        logger.warning(f"Skipping existing file: {file_path}")
+                        skipped_files.append(str(file_path))
+                        continue
+                    
+                    # Read content from storage
+                    content = self._dependencies.read_upload_content_fn(upload.location)
+                    
+                    # Use the write_to_local use case to handle the write operation
+                    self._dependencies.write_to_local_fn(file_path, content, force=should_force)
+                    
+                    downloaded_files.append(str(file_path))
+                    logger.info(f"Downloaded {upload.context}_{upload.upload_type} to {file_path}")
+                    
+                except Exception as e:
+                    error_msg = f"Failed to download {upload.context}_{upload.upload_type}: {e}"
+                    errors.append(error_msg)
+                    logger.error(error_msg)
+            
+            # Report results
+            if errors and not downloaded_files:
+                return Failure(f"Failed to download any files. Errors: {'; '.join(errors)}")
+            
+            # Build summary message
+            summary_parts = []
+            if downloaded_files:
+                summary_parts.append(f"Downloaded {len(downloaded_files)} files")
+            if skipped_files:
+                summary_parts.append(f"skipped {len(skipped_files)} existing files")
+            if errors:
+                summary_parts.append(f"{len(errors)} errors")
+            
+            summary_message = ", ".join(summary_parts)
+            
+            if errors:
+                logger.warning(f"{summary_message}")
+            elif skipped_files:
+                logger.info(f"{summary_message} (use should_force=True to overwrite)")
+            else:
+                logger.info(f"{summary_message}")
+            
+            return Success(str(base_path))
+            
+        except ValueError as e:
+            logger.error(f"Validation error in download_job_uploads: {e}")
+            return Failure(str(e))
+        except Exception as e:
+            logger.exception(f"Unexpected error in download_job_uploads")
+            return Failure("An unexpected error occurred while downloading uploads")

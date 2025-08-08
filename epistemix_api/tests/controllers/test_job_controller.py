@@ -4,6 +4,9 @@ Tests for the refactored Flask app using Clean Architecture.
 import os
 import json
 import base64
+import tempfile
+import shutil
+from pathlib import Path
 
 import pytest
 from unittest.mock import Mock
@@ -49,6 +52,7 @@ def service():
         get_runs_by_job_id_fn=Mock(return_value=[run]),
         get_job_uploads_fn=Mock(return_value=[]),
         read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
+        write_to_local_fn=Mock(return_value=None),
     )
     return service
 
@@ -442,3 +446,196 @@ class TestJobControllerIntegration:
         runs_result = job_controller.get_runs(job_id=999)
         assert is_successful(runs_result)
         assert runs_result.unwrap() == []
+
+
+@pytest.fixture
+def temp_download_dir():
+    """Create a temporary directory for download testing."""
+    test_dir = Path(tempfile.mkdtemp(prefix="test_force_"))
+    yield test_dir
+    # Cleanup after test
+    shutil.rmtree(test_dir)
+
+
+@pytest.fixture
+def mock_controller_with_uploads():
+    """Create a JobController with mocked dependencies for download testing."""
+    # Create mock locations with url attribute
+    mock_location1 = Mock(spec=UploadLocation)
+    mock_location1.url = "http://example.com/test_file1.txt"
+    mock_location1.extract_filename = Mock(return_value="test_file1.txt")
+    
+    mock_location2 = Mock(spec=UploadLocation)
+    mock_location2.url = "http://example.com/test_file2.txt"
+    mock_location2.extract_filename = Mock(return_value="test_file2.txt")
+    
+    # Create mock uploads (using valid types for job context)
+    mock_upload1 = JobUpload(
+        job_id=123,
+        run_id=None,
+        upload_type="config",
+        location=mock_location1,
+        context="job"
+    )
+    
+    mock_upload2 = JobUpload(
+        job_id=123,
+        run_id=None,
+        upload_type="input",
+        location=mock_location2,
+        context="job"
+    )
+    
+    # Store mock content for reuse
+    mock_content1 = UploadContent.create_text("Content for file 1")
+    mock_content2 = UploadContent.create_text("Content for file 2")
+    
+    # Create JobControllerDependencies with all required fields
+    mock_deps = JobControllerDependencies(
+        register_job_fn=Mock(),
+        submit_job_fn=Mock(),
+        submit_job_config_fn=Mock(),
+        submit_runs_fn=Mock(),
+        submit_run_config_fn=Mock(),
+        get_runs_by_job_id_fn=Mock(),
+        get_job_uploads_fn=Mock(return_value=[mock_upload1, mock_upload2]),
+        read_upload_content_fn=Mock(side_effect=[mock_content1, mock_content2]),
+        write_to_local_fn=Mock(return_value=None),
+    )
+    
+    # Store mock content for reuse in tests
+    mock_deps.mock_content1 = mock_content1
+    mock_deps.mock_content2 = mock_content2
+    
+    controller = JobController()
+    controller._dependencies = mock_deps
+    return controller, mock_deps
+
+
+class TestJobControllerDownloadForceFlag:
+    """Test the force flag functionality for download_job_uploads."""
+
+    def test_initial_download_creates_files(self, mock_controller_with_uploads, temp_download_dir):
+        """Test that initial download creates files when directory is empty."""
+        controller, mock_deps = mock_controller_with_uploads
+        
+        # Setup read_upload_content mock
+        mock_deps.read_upload_content_fn = Mock(
+            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        )
+        
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        
+        # Download files
+        result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
+        
+        # Verify success
+        assert is_successful(result)
+        
+        # Verify files were created
+        file1 = temp_download_dir / "test_file1.txt"
+        file2 = temp_download_dir / "test_file2.txt"
+        assert file1.exists()
+        assert file2.exists()
+        assert file1.read_text() == "Content for file 1"
+        assert file2.read_text() == "Content for file 2"
+
+    def test_download_without_force_skips_existing_files(self, mock_controller_with_uploads, temp_download_dir):
+        """Test that download without force flag skips existing files."""
+        controller, mock_deps = mock_controller_with_uploads
+        
+        # Create existing files with different content
+        file1 = temp_download_dir / "test_file1.txt"
+        file2 = temp_download_dir / "test_file2.txt"
+        file1.write_text("Modified content 1")
+        file2.write_text("Modified content 2")
+        
+        # Setup read_upload_content mock
+        mock_deps.read_upload_content_fn = Mock(
+            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        )
+        
+        # Setup write_to_local mock that shouldn't be called for existing files
+        mock_deps.write_to_local_fn = Mock()
+        
+        # Download without force
+        result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
+        
+        # Verify success
+        assert is_successful(result)
+        
+        # Verify files were NOT overwritten
+        assert file1.read_text() == "Modified content 1"
+        assert file2.read_text() == "Modified content 2"
+        
+        # Verify read_upload_content was not called (files were skipped)
+        assert mock_deps.read_upload_content_fn.call_count == 0
+
+    def test_download_with_force_overwrites_existing_files(self, mock_controller_with_uploads, temp_download_dir):
+        """Test that download with force flag overwrites existing files."""
+        controller, mock_deps = mock_controller_with_uploads
+        
+        # Create existing files with different content
+        file1 = temp_download_dir / "test_file1.txt"
+        file2 = temp_download_dir / "test_file2.txt"
+        file1.write_text("Modified content 1")
+        file2.write_text("Modified content 2")
+        
+        # Setup read_upload_content mock
+        mock_deps.read_upload_content_fn = Mock(
+            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        )
+        
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        
+        # Download with force
+        result = controller.download_job_uploads(123, temp_download_dir, should_force=True)
+        
+        # Verify success
+        assert is_successful(result)
+        
+        # Verify files WERE overwritten
+        assert file1.read_text() == "Content for file 1"
+        assert file2.read_text() == "Content for file 2"
+        
+        # Verify read_upload_content was called for all files
+        assert mock_deps.read_upload_content_fn.call_count == 2
+
+    def test_partial_existing_files_behavior(self, mock_controller_with_uploads, temp_download_dir):
+        """Test behavior when only some files exist in the directory."""
+        controller, mock_deps = mock_controller_with_uploads
+        
+        # Create only one existing file
+        file1 = temp_download_dir / "test_file1.txt"
+        file1.write_text("Modified content 1")
+        
+        # Setup read_upload_content mock - should only be called for file2
+        mock_deps.read_upload_content_fn = Mock(return_value=mock_deps.mock_content2)
+        
+        # Setup write_to_local mock to actually write files for testing
+        def mock_write_to_local(file_path, content, force=False):
+            file_path.write_text(content.raw_content)
+        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        
+        # Download without force
+        result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
+        
+        # Verify success
+        assert is_successful(result)
+        
+        # Verify file1 was not overwritten
+        assert file1.read_text() == "Modified content 1"
+        
+        # Verify file2 was created
+        file2 = temp_download_dir / "test_file2.txt"
+        assert file2.exists()
+        assert file2.read_text() == "Content for file 2"
+        
+        # Verify read_upload_content was called only once (for file2)
+        assert mock_deps.read_upload_content_fn.call_count == 1

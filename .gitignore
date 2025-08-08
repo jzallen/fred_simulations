@@ -83,3 +83,7 @@ package.json
 # claude
 .claude/settings.local.json
 CLAUDE.md
+
+# Epistemix CLI config
+~/.epistemix/cli.env
+cli.env
