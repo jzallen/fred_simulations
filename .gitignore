@@ -80,5 +80,6 @@ package.json
 *.sqlite
 *.db
 
-# claude markdown
+# claude
+.claude/settings.local.json
 CLAUDE.md
