@@ -11,6 +11,8 @@ from .submit_runs import submit_runs, get_runs_storage, RunRequestDict
 from .submit_run_config import submit_run_config
 from .get_job import get_job
 from .get_runs import get_runs_by_job_id
+from .get_job_uploads import get_job_uploads
+from .read_upload_content import read_upload_content
 
 __all__ = [
     'register_job', 
@@ -22,5 +24,7 @@ __all__ = [
     'get_job', 
     'get_runs_by_job_id',
     'validate_tags',
-    'RunRequestDict'
+    'RunRequestDict',
+    'get_job_uploads',
+    'read_upload_content'
 ]
