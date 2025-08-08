@@ -4,7 +4,7 @@ Contains the unified model for handling presigned URLs for various upload scenar
 """
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 
 @dataclass
@@ -31,3 +31,63 @@ class UploadLocation:
     def __repr__(self):
         """String representation for debugging."""
         return f"UploadLocation(url={self.url})"
+    
+    def extract_filename(self) -> Optional[str]:
+        """
+        Extract filename from the URL.
+        
+        TODO: Consider generalizing this for non-S3 storage backends in the future.
+        Currently assumes S3-style URLs and HTTP presigned URLs.
+        
+        Returns:
+            Filename if found, None otherwise
+        """
+        if not self.url:
+            return None
+        
+        # Remove query parameters
+        url_without_params = self.url.split("?")[0]
+        
+        # Extract last component of path
+        path_parts = url_without_params.split("/")
+        if path_parts:
+            filename = path_parts[-1]
+            # Ensure it looks like a filename (has an extension)
+            if filename and "." in filename:
+                return filename
+        
+        return None
+    
+    def get_sanitized_url(self) -> str:
+        """
+        Get a sanitized version of the URL with sensitive parts masked.
+        
+        TODO: Consider generalizing this for non-S3 storage backends in the future.
+        Currently handles S3 URLs and HTTP presigned URLs specifically.
+        
+        Returns:
+            Sanitized URL string
+        """
+        if not self.url:
+            return ""
+        
+        # Handle S3 URLs
+        if self.url.startswith("s3://"):
+            parts = self.url[5:].split("/", 1)
+            if len(parts) >= 1:
+                bucket = parts[0]
+                # Mask part of bucket name
+                if len(bucket) > 4:
+                    bucket = bucket[:2] + "***" + bucket[-2:]
+                path = parts[1] if len(parts) > 1 else ""
+                return f"s3://{bucket}/{path}"
+        
+        # Handle HTTP(S) presigned URLs
+        elif self.url.startswith(("http://", "https://")):
+            # Remove query parameters which contain sensitive signatures
+            base_url = self.url.split("?")[0]
+            # Add indicator that parameters were removed
+            return f"{base_url}?[parameters_removed]"
+        
+        # For other URL types, return as-is
+        return self.url

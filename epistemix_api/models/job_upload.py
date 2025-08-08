@@ -76,6 +76,33 @@ class JobUpload:
             result["location"] = self.location.to_dict()
         return result
     
+    def get_default_filename(self) -> str:
+        """
+        Get a default filename for this upload based on its context and type.
+        
+        Returns:
+            A filename with appropriate extension based on upload type
+        """
+        # Determine file extension based on upload type
+        if self.upload_type == "config":
+            extension = ".json"
+        elif self.upload_type == "input":
+            extension = ".zip"
+        elif self.upload_type in ["output", "results"]:
+            extension = ".csv"
+        elif self.upload_type == "logs":
+            extension = ".log"
+        else:
+            extension = ".txt"
+        
+        # Build filename based on context
+        if self.context == "job":
+            return f"job_{self.job_id}_{self.upload_type}{extension}"
+        elif self.context == "run" and self.run_id:
+            return f"run_{self.run_id}_{self.upload_type}{extension}"
+        else:
+            return f"{self.context}_{self.upload_type}{extension}"
+    
     def __repr__(self) -> str:
         run_str = f", run_id={self.run_id}" if self.run_id else ""
         location_str = f", location={self.location.url}" if self.location else ""
