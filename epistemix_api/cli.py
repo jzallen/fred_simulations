@@ -443,7 +443,9 @@ def list_job_uploads(job_id: int, json_output: bool):
         else:
             # Print sanitized URLs to terminal
             for upload in uploads_data:
-                sanitized_url = upload.get('sanitized_url', '')
+                # Get sanitized URL from location object
+                location = upload.get('location', {})
+                sanitized_url = location.get('url', '')
                 if sanitized_url:
                     # Include context info in the output
                     context = upload.get('context', '')

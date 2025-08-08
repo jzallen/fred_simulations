@@ -76,6 +76,18 @@ class JobUpload:
             result["location"] = self.location.to_dict()
         return result
     
+    def to_sanitized_dict(self) -> Dict[str, Any]:
+        """Serialize the upload to a dictionary with sanitized location URL."""
+        result = {
+            "context": self.context,
+            "uploadType": self.upload_type,
+            "jobId": self.job_id,
+            "runId": self.run_id,
+        }
+        if self.location:
+            result["location"] = self.location.to_sanitized_dict()
+        return result
+    
     def get_default_filename(self) -> str:
         """
         Get a default filename for this upload based on its context and type.

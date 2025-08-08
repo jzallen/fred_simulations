@@ -268,10 +268,8 @@ class JobController:
             # Process uploads based on whether content is requested
             results = []
             for upload in uploads:
-                upload_dict = upload.to_dict()
-                
-                # Add sanitized URL to the response
-                upload_dict['sanitized_url'] = upload.location.get_sanitized_url()
+                # Use sanitized dict to show sanitized URLs to users
+                upload_dict = upload.to_sanitized_dict()
                 
                 if include_content:
                     try:

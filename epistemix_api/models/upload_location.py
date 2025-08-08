@@ -22,6 +22,10 @@ class UploadLocation:
         """Convert to dictionary representation."""
         return {"url": self.url}
     
+    def to_sanitized_dict(self) -> Dict[str, str]:
+        """Convert to dictionary representation with sanitized URL as the url value."""
+        return {"url": self.get_sanitized_url()}
+    
     def __eq__(self, other) -> bool:
         """Check equality based on URL."""
         if not isinstance(other, UploadLocation):
