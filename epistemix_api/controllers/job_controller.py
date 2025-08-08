@@ -166,7 +166,7 @@ class JobController:
             # Create JobUpload object from parameters
             job_upload = JobUpload(
                 context=context,
-                job_type=job_type,
+                upload_type=job_type,
                 job_id=job_id,
                 run_id=run_id
             )
@@ -271,7 +271,7 @@ class JobController:
                 except ValueError as e:
                     # Include error information if content couldn't be read
                     upload_dict['error'] = str(e)
-                    logger.warning(f"Failed to read content for upload {upload.context}_{upload.job_type} (job_id={job_id}): {e}")
+                    logger.warning(f"Failed to read content for upload {upload.context}_{upload.upload_type} (job_id={job_id}): {e}")
                 
                 results.append(upload_dict)
             

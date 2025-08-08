@@ -132,18 +132,18 @@ class S3UploadLocationRepository:
         # Determine filename based on context and type
         if job_upload.context == "run" and job_upload.run_id:
             # Include run_id in filename for run-specific uploads
-            filename = f"run_{job_upload.run_id}_{job_upload.job_type}"
+            filename = f"run_{job_upload.run_id}_{job_upload.upload_type}"
         else:
             # For job uploads, just use the type
-            filename = f"{job_upload.context}_{job_upload.job_type}"
+            filename = f"{job_upload.context}_{job_upload.upload_type}"
         
         # Determine file extension based on type
         extension = ""
-        if job_upload.job_type == "input":
+        if job_upload.upload_type == "input":
             extension = ".zip"
-        elif job_upload.job_type in ["config", "output", "results"]:
+        elif job_upload.upload_type in ["config", "output", "results"]:
             extension = ".json"
-        elif job_upload.job_type == "logs":
+        elif job_upload.upload_type == "logs":
             extension = ".log"
         
         # Generate timestamp in UTC

@@ -27,7 +27,7 @@ class TestSubmitJobConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context=context, job_type=job_type, job_id=job_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id)
         result = submit_job_config(mock_job_repo, mock_upload_location_repo, job_upload)
         
         # Assert
@@ -54,7 +54,7 @@ class TestSubmitJobConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context=context, job_type=job_type, job_id=job_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id)
         submit_job_config(mock_job_repo, mock_upload_location_repo, job_upload)
         
         # Assert
@@ -75,7 +75,7 @@ class TestSubmitJobConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context="job", job_type="config", job_id=job_id)
+        job_upload = JobUpload(context="job", upload_type="config", job_id=job_id)
         submit_job_config(mock_job_repo, mock_upload_location_repo, job_upload)
         
         # Assert

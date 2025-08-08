@@ -49,6 +49,6 @@ def submit_job_config(
     
     # Sanitize URL for logging (remove query string with AWS credentials)
     safe_url = job_configuration_location.url.split('?')[0] if '?' in job_configuration_location.url else job_configuration_location.url
-    logger.info(f"Job {job_upload.job_id} configuration submitted with context {job_upload.context} and type {job_upload.job_type}, URL: {safe_url}")
+    logger.info(f"Job {job_upload.job_id} configuration submitted with context {job_upload.context} and type {job_upload.upload_type}, URL: {safe_url}")
     
     return job_configuration_location

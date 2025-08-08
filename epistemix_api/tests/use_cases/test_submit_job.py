@@ -55,7 +55,7 @@ class TestSubmitJobUseCase:
     def test_submit_job_success__returns_job_input_location_for_submitted_job(self, mock_repository, mock_upload_location_repository, created_job):
         mock_repository.find_by_id.return_value = created_job
         mock_repository.save.return_value = None
-        job_upload = JobUpload(context="job", job_type="input", job_id=1)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=1)
         
         result = submit_job(mock_repository, mock_upload_location_repository, job_upload)
         
@@ -64,7 +64,7 @@ class TestSubmitJobUseCase:
 
     def test_submit_job__when_job_not_found__raises_value_error(self, mock_repository, mock_upload_location_repository):
         mock_repository.find_by_id.return_value = None
-        job_upload = JobUpload(context="job", job_type="input", job_id=999)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=999)
         
         with pytest.raises(ValueError, match="Job 999 not found"):
             submit_job(mock_repository, mock_upload_location_repository, job_upload)
@@ -72,7 +72,7 @@ class TestSubmitJobUseCase:
         
     def test_submit_job__when_created_job_has_non_created_status__value_error_raised(self, mock_repository, mock_upload_location_repository, submitted_job):
         mock_repository.find_by_id.return_value = submitted_job
-        job_upload = JobUpload(context="job", job_type="input", job_id=2)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=2)
         
         with pytest.raises(ValueError, match="Job 2 must be in CREATED status to be submitted, current status: submitted"):
             submit_job(mock_repository, mock_upload_location_repository, job_upload)
@@ -101,7 +101,7 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         persisted_job = job_repository.save(job)
         # repository only flushes, commits are handled at app layer for global rollback handling
         db_session.commit()  
-        job_upload = JobUpload(context="job", job_type="input", job_id=persisted_job.id)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=persisted_job.id)
         result = submit_job(job_repository, upload_location_repository, job_upload)
 
         # Assert
@@ -109,7 +109,7 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         assert result.url == "https://s3.amazonaws.com/test-bucket/presigned-url"
 
     def test_submit_job__when_job_not_found__raises_value_error(self, job_repository, upload_location_repository):
-        job_upload = JobUpload(context="job", job_type="input", job_id=999)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=999)
         with pytest.raises(ValueError, match="Job 999 not found"):
             submit_job(job_repository, upload_location_repository, job_upload)
 
@@ -117,7 +117,7 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         job = Job.create_new(user_id=123, tags=["test"])
         job.status = JobStatus.SUBMITTED
         job_repository.save(job)
-        job_upload = JobUpload(context="job", job_type="input", job_id=1)
+        job_upload = JobUpload(context="job", upload_type="input", job_id=1)
 
         with pytest.raises(ValueError, match="Job 1 must be in CREATED status to be submitted, current status: submitted"):
             submit_job(job_repository, upload_location_repository, job_upload)
@@ -129,7 +129,7 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
         assert persisted.updated_at == datetime(2025, 1, 1, 12, 0, 0)
 
         with freeze_time("2025-01-01 12:30:00"):
-            job_upload = JobUpload(context="job", job_type="input", job_id=persisted.id)
+            job_upload = JobUpload(context="job", upload_type="input", job_id=persisted.id)
             submit_job(job_repository, upload_location_repository, job_upload)
 
         updated_job = job_repository.find_by_id(persisted.id)

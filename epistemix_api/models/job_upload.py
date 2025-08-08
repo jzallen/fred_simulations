@@ -20,7 +20,7 @@ class JobUpload:
     """
     
     context: str  # "job" or "run"
-    job_type: str  # "config", "input", "output", "results", "logs"
+    upload_type: str  # "config", "input", "output", "results", "logs"
     job_id: int
     location: Optional[UploadLocation] = None  # Optional to allow creation before location is generated
     run_id: Optional[int] = None
@@ -46,15 +46,15 @@ class JobUpload:
             raise ValueError(f"Invalid context: {self.context}. Must be one of {valid_contexts}")
         
         valid_job_types = ["config", "input", "output", "results", "logs"]
-        if self.job_type not in valid_job_types:
-            raise ValueError(f"Invalid job_type: {self.job_type}. Must be one of {valid_job_types}")
+        if self.upload_type not in valid_job_types:
+            raise ValueError(f"Invalid job_type: {self.upload_type}. Must be one of {valid_job_types}")
         
         # Validate context-type combinations
-        if self.context == "job" and self.job_type not in ["config", "input"]:
-            raise ValueError(f"Job context only supports 'config' and 'input' types, got '{self.job_type}'")
+        if self.context == "job" and self.upload_type not in ["config", "input"]:
+            raise ValueError(f"Job context only supports 'config' and 'input' types, got '{self.upload_type}'")
         
-        if self.context == "run" and self.job_type not in ["config", "output", "results", "logs"]:
-            raise ValueError(f"Run context only supports 'config', 'output', 'results', and 'logs' types, got '{self.job_type}'")
+        if self.context == "run" and self.upload_type not in ["config", "output", "results", "logs"]:
+            raise ValueError(f"Run context only supports 'config', 'output', 'results', and 'logs' types, got '{self.upload_type}'")
     
     def is_job_upload(self) -> bool:
         """Check if this is a job-level upload (not run-specific)."""
@@ -68,7 +68,7 @@ class JobUpload:
         """Serialize the upload to a dictionary for API responses."""
         result = {
             "context": self.context,
-            "jobType": self.job_type,
+            "jobType": self.upload_type,
             "jobId": self.job_id,
             "runId": self.run_id,
         }
@@ -79,4 +79,4 @@ class JobUpload:
     def __repr__(self) -> str:
         run_str = f", run_id={self.run_id}" if self.run_id else ""
         location_str = f", location={self.location.url}" if self.location else ""
-        return f"JobUpload(context={self.context}, type={self.job_type}, job_id={self.job_id}{run_str}{location_str})"
+        return f"JobUpload(context={self.context}, type={self.upload_type}, job_id={self.job_id}{run_str}{location_str})"

@@ -71,7 +71,7 @@ class TestS3UploadLocationRepository:
         mock_s3_client.generate_presigned_url.return_value = "https://test-bucket.s3.amazonaws.com/test-file?signature=abc123"
         job_upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=123
         )
         
@@ -95,7 +95,7 @@ class TestS3UploadLocationRepository:
         mock_s3_client.generate_presigned_url.side_effect = ClientError(error_response, 'generate_presigned_url')
         job_upload = JobUpload(
             context="job",
-            job_type="config",
+            upload_type="config",
             job_id=456
         )
         
@@ -247,7 +247,7 @@ class TestDummyS3UploadLocationRepository:
         repository = DummyS3UploadLocationRepository()
         job_upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=789
         )
         result = repository.get_upload_location(job_upload)
@@ -260,12 +260,12 @@ class TestDummyS3UploadLocationRepository:
         repository = DummyS3UploadLocationRepository()
         job_upload1 = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=111
         )
         job_upload2 = JobUpload(
             context="run",
-            job_type="config",
+            upload_type="config",
             job_id=222,
             run_id=333
         )

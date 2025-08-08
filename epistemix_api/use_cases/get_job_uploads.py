@@ -47,7 +47,7 @@ def get_job_uploads(
     if job.input_location:
         upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=job_id,
             location=UploadLocation(url=job.input_location),
             run_id=None
@@ -58,7 +58,7 @@ def get_job_uploads(
     if job.config_location:
         upload = JobUpload(
             context="job",
-            job_type="config",
+            upload_type="config",
             job_id=job_id,
             location=UploadLocation(url=job.config_location),
             run_id=None
@@ -76,7 +76,7 @@ def get_job_uploads(
         if hasattr(run, 'url') and run.url:
             upload = JobUpload(
                 context="run",
-                job_type="output",
+                upload_type="output",
                 job_id=job_id,
                 location=UploadLocation(url=run.url),
                 run_id=run.id
@@ -88,7 +88,7 @@ def get_job_uploads(
         if hasattr(run, 'config_location') and run.config_location:
             upload = JobUpload(
                 context="run",
-                job_type="config",
+                upload_type="config",
                 job_id=job_id,
                 location=UploadLocation(url=run.config_location),
                 run_id=run.id

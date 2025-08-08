@@ -27,7 +27,7 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context=context, job_type=job_type, job_id=job_id, run_id=run_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
         result = submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
@@ -52,7 +52,7 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context=context, job_type=job_type, job_id=job_id, run_id=run_id)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
         submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
@@ -73,7 +73,7 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context=context, job_type=job_type, job_id=job_id, run_id=None)
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=None)
         submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert
@@ -92,7 +92,7 @@ class TestSubmitRunConfigUseCase:
         )
         
         # Act
-        job_upload = JobUpload(context="run", job_type="config", job_id=job_id)
+        job_upload = JobUpload(context="run", upload_type="config", job_id=job_id)
         submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
         
         # Assert

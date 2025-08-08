@@ -86,7 +86,7 @@ def submit_runs(
         # Generate URL for this run using the persisted ID
         job_upload = JobUpload(
             context="run",
-            job_type="config",
+            upload_type="config",
             job_id=persisted_run.job_id,
             run_id=persisted_run.id
         )

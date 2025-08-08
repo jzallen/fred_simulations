@@ -104,7 +104,7 @@ class TestJobController:
 
     def test_submit_job__calls_submit_job_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, context="job", job_type="input")
-        expected_job_upload = JobUpload(context="job", job_type="input", job_id=1, run_id=None)
+        expected_job_upload = JobUpload(context="job", upload_type="input", job_id=1, run_id=None)
         service._dependencies.submit_job_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__returns_success_result_with_response_data(self, service):
@@ -180,7 +180,7 @@ class TestJobController:
 
     def test_submit_job___type_config__calls_submit_job_config_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, context="job", job_type="config")
-        expected_job_upload = JobUpload(context="job", job_type="config", job_id=1, run_id=None)
+        expected_job_upload = JobUpload(context="job", upload_type="config", job_id=1, run_id=None)
         service._dependencies.submit_job_config_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__type_config__returns_success_result_with_response_data(self, service):
@@ -191,7 +191,7 @@ class TestJobController:
 
     def test_submit_job__context_run_type_config__calls_submit_run_config_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, run_id=2, context="run", job_type="config")
-        expected_job_upload = JobUpload(context="run", job_type="config", job_id=1, run_id=2)
+        expected_job_upload = JobUpload(context="run", upload_type="config", job_id=1, run_id=2)
         service._dependencies.submit_run_config_fn.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__context_run_type_config__returns_success_result_with_response_data(self, service):
@@ -224,7 +224,7 @@ class TestJobController:
     def test_get_job_uploads__calls_dependencies_with_correct_parameters(self, service):
         upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None
@@ -239,7 +239,7 @@ class TestJobController:
     def test_get_job_uploads__returns_success_result_with_content(self, service):
         upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None
@@ -262,7 +262,7 @@ class TestJobController:
     def test_get_job_uploads__when_read_content_fails__includes_error(self, service):
         upload = JobUpload(
             context="job",
-            job_type="input",
+            upload_type="input",
             job_id=1,
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None

@@ -54,15 +54,15 @@ def submit_job(
     job.update_status(JobStatus.SUBMITTED)
     
     # Store the URL based on the type
-    if job_upload.job_type == "input":
+    if job_upload.upload_type == "input":
         job.input_location = job_input_location.url
-    elif job_upload.job_type == "config":
+    elif job_upload.upload_type == "config":
         job.config_location = job_input_location.url
     
     job_repository.save(job)
     
     # Sanitize URL for logging (remove query string with AWS credentials)
     safe_url = job_input_location.url.split('?')[0] if '?' in job_input_location.url else job_input_location.url
-    logger.info(f"Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.job_type}, URL: {safe_url}")
+    logger.info(f"Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.upload_type}, URL: {safe_url}")
 
     return job_input_location

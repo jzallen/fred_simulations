@@ -50,6 +50,6 @@ def submit_run_config(
             safe_url = run_configuration_location.url.split('?')[0] if '?' in run_configuration_location.url else run_configuration_location.url
             logger.info(f"Run {job_upload.run_id} config URL persisted: {safe_url}")
     
-    logger.info(f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.job_type}")
+    logger.info(f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.upload_type}")
     
     return run_configuration_location
