@@ -8,6 +8,7 @@ from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.run import Run, RunStatus
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.upload_content import UploadContent
+from epistemix_api.models.job_upload import JobUpload
 
 
 @runtime_checkable
@@ -214,18 +215,18 @@ class IUploadLocationRepository(Protocol):
     Provides access to pre-signed URLs for uploading various types of content.
     """
     
-    def get_upload_location(self, resource_name: str) -> UploadLocation:
+    def get_upload_location(self, job_upload: JobUpload) -> UploadLocation:
         """
-        Get an upload location (pre-signed URL) for a given resource.
+        Get an upload location (pre-signed URL) for a given job upload.
         
         Args:
-            resource_name: The name/identifier of the resource to upload
+            job_upload: JobUpload object containing job_id, context, job_type, and optional run_id
             
         Returns:
             UploadLocation containing the pre-signed URL for upload
             
         Raises:
-            ValueError: If the resource_name is invalid or upload location cannot be generated
+            ValueError: If the job_upload is invalid or upload location cannot be generated
         """
         ...
     

@@ -8,6 +8,7 @@ import logging
 
 from epistemix_api.models.run import Run, RunStatus, PodPhase
 from epistemix_api.models.user import UserToken
+from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.repositories.interfaces import IRunRepository, IUploadLocationRepository
 
 
@@ -83,8 +84,13 @@ def submit_runs(
         persisted_run = run_repository.save(run)
         
         # Generate URL for this run using the persisted ID
-        resource_name = f"job_{persisted_run.job_id}_run_{persisted_run.id}_run_config"
-        upload_location = upload_location_repository.get_upload_location(resource_name)
+        job_upload = JobUpload(
+            context="run",
+            job_type="config",
+            job_id=persisted_run.job_id,
+            run_id=persisted_run.id
+        )
+        upload_location = upload_location_repository.get_upload_location(job_upload)
         
         # Update the run with the URL
         persisted_run.url = upload_location.url

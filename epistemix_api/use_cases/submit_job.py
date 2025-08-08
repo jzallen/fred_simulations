@@ -8,6 +8,7 @@ import logging
 
 from epistemix_api.models.job import JobStatus
 from epistemix_api.models.upload_location import UploadLocation
+from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.repositories.interfaces import IJobRepository, IUploadLocationRepository
 
 
@@ -17,9 +18,7 @@ logger = logging.getLogger(__name__)
 def submit_job(
     job_repository: IJobRepository,
     upload_location_repository: IUploadLocationRepository,
-    job_id: int,
-    context: str = "job",
-    job_type: str = "input"
+    job_upload: JobUpload
 ) -> UploadLocation:
     """
     Submit a job for processing.
@@ -30,9 +29,7 @@ def submit_job(
     Args:
         job_repository: Repository for job persistence
         upload_location_repository: Repository for generating upload locations
-        job_id: ID of the job to submit
-        context: Context of the submission
-        job_type: Type of the job submission
+        job_upload: JobUpload object with job_id, context, and job_type
         
     Returns:
         UploadLocation containing pre-signed URL for job submission
@@ -40,33 +37,32 @@ def submit_job(
     Raises:
         ValueError: If job doesn't exist or can't be submitted
     """
-    job = job_repository.find_by_id(job_id)
+    job = job_repository.find_by_id(job_upload.job_id)
     if not job:
-        raise ValueError(f"Job {job_id} not found")
+        raise ValueError(f"Job {job_upload.job_id} not found")
     
     if job.status != JobStatus.CREATED:
         raise ValueError(
-            f"Job {job_id} must be in CREATED status to be submitted, "
+            f"Job {job_upload.job_id} must be in CREATED status to be submitted, "
             f"current status: {job.status.value}"
         )
     
-    # Generate the resource name for the upload location based on context and job type
-    resource_name = f"job_{job_id}_{context}_{job_type}"
-    
     # Use the upload location repository to generate the pre-signed URL
-    job_input_location = upload_location_repository.get_upload_location(resource_name)
+    job_input_location = upload_location_repository.get_upload_location(job_upload)
     
     # Update job status and save the upload URL
     job.update_status(JobStatus.SUBMITTED)
     
     # Store the URL based on the type
-    if job_type == "input":
+    if job_upload.job_type == "input":
         job.input_location = job_input_location.url
-    elif job_type == "config":
+    elif job_upload.job_type == "config":
         job.config_location = job_input_location.url
     
     job_repository.save(job)
     
-    logger.info(f"Job {job_id} submitted with context {context} and type {job_type}, URL: {job_input_location.url}")
+    # Sanitize URL for logging (remove query string with AWS credentials)
+    safe_url = job_input_location.url.split('?')[0] if '?' in job_input_location.url else job_input_location.url
+    logger.info(f"Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.job_type}, URL: {safe_url}")
 
     return job_input_location

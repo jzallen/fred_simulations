@@ -65,7 +65,8 @@ class TestGetJobUploads:
         # Assert
         assert len(uploads) == 1
         upload = uploads[0]
-        assert upload.upload_type == "job_input"
+        assert upload.context == "job"
+        assert upload.job_type == "input"
         assert upload.job_id == 1
         assert upload.location.url == "https://s3.amazonaws.com/bucket/job_1_input"
         assert upload.run_id is None
@@ -87,7 +88,8 @@ class TestGetJobUploads:
         # Assert
         assert len(uploads) == 1
         upload = uploads[0]
-        assert upload.upload_type == "job_config"
+        assert upload.context == "job"
+        assert upload.job_type == "config"
         assert upload.job_id == 1
         assert upload.location.url == "https://s3.amazonaws.com/bucket/job_1_config"
         assert upload.run_id is None
@@ -129,13 +131,15 @@ class TestGetJobUploads:
         assert len(uploads) == 2
         
         upload1 = uploads[0]
-        assert upload1.upload_type == "run_output"
+        assert upload1.context == "run"
+        assert upload1.job_type == "output"
         assert upload1.job_id == 1
         assert upload1.run_id == 1
         assert upload1.location.url == "https://s3.amazonaws.com/bucket/run_1_output"
         
         upload2 = uploads[1]
-        assert upload2.upload_type == "run_output"
+        assert upload2.context == "run"
+        assert upload2.job_type == "output"
         assert upload2.job_id == 1
         assert upload2.run_id == 2
         assert upload2.location.url == "https://s3.amazonaws.com/bucket/run_2_output"
@@ -170,11 +174,11 @@ class TestGetJobUploads:
         # Assert
         assert len(uploads) == 3
         
-        # Check upload types
-        upload_types = [u.upload_type for u in uploads]
-        assert "job_input" in upload_types
-        assert "job_config" in upload_types
-        assert "run_output" in upload_types
+        # Check upload types by combining context and job_type
+        upload_types = [(u.context, u.job_type) for u in uploads]
+        assert ("job", "input") in upload_types
+        assert ("job", "config") in upload_types
+        assert ("run", "output") in upload_types
         
         # Verify all have correct job_id
         for upload in uploads:

@@ -5,6 +5,7 @@ Tests for S3UploadLocationRepository.
 import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
+from freezegun import freeze_time
 
 from epistemix_api.repositories.s3_upload_location_repository import (
     S3UploadLocationRepository,
@@ -13,6 +14,7 @@ from epistemix_api.repositories.s3_upload_location_repository import (
 )
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.models.upload_content import UploadContent
+from epistemix_api.models.job_upload import JobUpload
 
 
 class TestS3UploadLocationRepository:
@@ -64,12 +66,17 @@ class TestS3UploadLocationRepository:
         assert repo.expiration_seconds == 7200
     
     def test_get_upload_location__valid_resource_name__returns_upload_location(self, repository, mock_s3_client):
-        """Test getting upload location with valid resource name."""
+        """Test getting upload location with valid JobUpload."""
         # Arrange
         mock_s3_client.generate_presigned_url.return_value = "https://test-bucket.s3.amazonaws.com/test-file?signature=abc123"
+        job_upload = JobUpload(
+            context="job",
+            job_type="input",
+            job_id=123
+        )
         
         # Act
-        result = repository.get_upload_location("test-file.txt")
+        result = repository.get_upload_location(job_upload)
         
         # Assert
         assert isinstance(result, UploadLocation)
@@ -77,38 +84,70 @@ class TestS3UploadLocationRepository:
         mock_s3_client.generate_presigned_url.assert_called_once()
     
     def test_get_upload_location__empty_resource_name__raises_value_error(self, repository):
-        """Test that empty resource name raises ValueError."""
-        with pytest.raises(ValueError, match="Resource name cannot be empty"):
-            repository.get_upload_location("")
-        
-        with pytest.raises(ValueError, match="Resource name cannot be empty"):
-            repository.get_upload_location("   ")
+        """Test that None JobUpload raises ValueError."""
+        with pytest.raises(ValueError, match="JobUpload cannot be None"):
+            repository.get_upload_location(None)
     
     def test_get_upload_location__s3_client_error__raises_value_error(self, repository, mock_s3_client):
         """Test that S3 client error is handled properly."""
         # Arrange
         error_response = {'Error': {'Code': 'AccessDenied', 'Message': 'Access Denied'}}
         mock_s3_client.generate_presigned_url.side_effect = ClientError(error_response, 'generate_presigned_url')
+        job_upload = JobUpload(
+            context="job",
+            job_type="config",
+            job_id=456
+        )
         
         # Act & Assert
         with pytest.raises(ValueError, match="Failed to generate upload location"):
-            repository.get_upload_location("test-file.txt")
+            repository.get_upload_location(job_upload)
     
+    @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__normal_filename__adds_timestamp_prefix(self, repository):
-        """Test that S3 key generation works correctly."""
+        """Test that S3 key generation works correctly for files without job_id."""
         result = repository._generate_s3_key("test-file.txt")
         
-        # Should have timestamp prefix format: YYYY/MM/DD/HHMMSS/test-file.txt
-        parts = result.split('/')
-        assert len(parts) == 5
-        assert parts[-1] == "test-file.txt"
+        # Should have timestamp prefix format for non-job files: YYYY/MM/DD/HHMMSS/test-file.txt
+        assert result == "2025/01/15/143045/test-file.txt"
     
+    @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__filename_with_spaces__replaces_spaces(self, repository):
         """Test that spaces in filename are replaced with underscores."""
         result = repository._generate_s3_key("test file name.txt")
+        assert result == "2025/01/15/143045/test_file_name.txt"
+    
+    @freeze_time("2025-02-28 09:15:30")
+    def test_generate_s3_key__job_input__creates_proper_structure(self, repository):
+        """Test that job_input resources get proper S3 key structure."""
+        result = repository._generate_s3_key("job_123_job_input")
         
-        assert "test_file_name.txt" in result
-        assert " " not in result
+        # Should have new format: /jobs/123/YYYY/MM/DD/HHMMSS/job_input.zip
+        assert result == "/jobs/123/2025/02/28/091530/job_input.zip"
+    
+    @freeze_time("2025-12-31 23:59:59")
+    def test_generate_s3_key__job_config__creates_proper_structure(self, repository):
+        """Test that job_config resources get proper S3 key structure."""
+        result = repository._generate_s3_key("job_456_job_config")
+        
+        # Should have new format: /jobs/456/YYYY/MM/DD/HHMMSS/job_config.json
+        assert result == "/jobs/456/2025/12/31/235959/job_config.json"
+    
+    @freeze_time("2025-07-04 16:20:00")
+    def test_generate_s3_key__run_config__creates_proper_structure(self, repository):
+        """Test that run_config resources get proper S3 key structure."""
+        result = repository._generate_s3_key("job_789_run_config")
+        
+        # Should have new format: /jobs/789/YYYY/MM/DD/HHMMSS/run_config.json
+        assert result == "/jobs/789/2025/07/04/162000/run_config.json"
+    
+    @freeze_time("2025-03-15 08:45:12")
+    def test_generate_s3_key__run_with_id_config__creates_proper_structure(self, repository):
+        """Test that run_config with run_id gets proper S3 key structure."""
+        result = repository._generate_s3_key("job_111_run_222_run_config")
+        
+        # Should have new format: /jobs/111/YYYY/MM/DD/HHMMSS/run_config.json
+        assert result == "/jobs/111/2025/03/15/084512/run_config.json"
     
     def test_read_content__valid_location__returns_upload_content(self, repository, mock_s3_client):
         """Test reading content from a valid location."""
@@ -206,16 +245,32 @@ class TestDummyS3UploadLocationRepository:
     def test_get_upload_location__returns_fixed_url(self):
         """Test that get_upload_location returns the fixed URL."""
         repository = DummyS3UploadLocationRepository()
-        result = repository.get_upload_location("test-resource")
+        job_upload = JobUpload(
+            context="job",
+            job_type="input",
+            job_id=789
+        )
+        result = repository.get_upload_location(job_upload)
         
         assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
     
     def test_get_upload_location__ignores_resource_name(self):
-        """Test that resource name is ignored and same URL is returned."""
+        """Test that different JobUploads return the same URL."""
         repository = DummyS3UploadLocationRepository()
-        result1 = repository.get_upload_location("resource1")
-        result2 = repository.get_upload_location("resource2")
+        job_upload1 = JobUpload(
+            context="job",
+            job_type="input",
+            job_id=111
+        )
+        job_upload2 = JobUpload(
+            context="run",
+            job_type="config",
+            job_id=222,
+            run_id=333
+        )
+        result1 = repository.get_upload_location(job_upload1)
+        result2 = repository.get_upload_location(job_upload2)
         
         assert result1.url == result2.url
     
