@@ -254,7 +254,7 @@ class TestJobController:
         uploads = result.unwrap()
         assert len(uploads) == 1
         assert uploads[0]["context"] == "job"
-        assert uploads[0]["jobType"] == "input"
+        assert uploads[0]["uploadType"] == "input"
         assert uploads[0]["jobId"] == 1
         assert uploads[0]["content"]["contentType"] == "text"
         assert uploads[0]["content"]["content"] == "test file content"
@@ -276,7 +276,7 @@ class TestJobController:
         uploads = result.unwrap()
         assert len(uploads) == 1
         assert uploads[0]["context"] == "job"
-        assert uploads[0]["jobType"] == "input"
+        assert uploads[0]["uploadType"] == "input"
         assert uploads[0]["error"] == "S3 error"
         assert "content" not in uploads[0]
 

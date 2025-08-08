@@ -68,7 +68,7 @@ class JobUpload:
         """Serialize the upload to a dictionary for API responses."""
         result = {
             "context": self.context,
-            "jobType": self.upload_type,
+            "uploadType": self.upload_type,
             "jobId": self.job_id,
             "runId": self.run_id,
         }
