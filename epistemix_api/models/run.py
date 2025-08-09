@@ -3,14 +3,15 @@ Run domain model for the Epistemix API.
 Contains the core business logic and rules for run entities.
 """
 
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 class RunStatus(Enum):
     """Enumeration of possible run statuses."""
+
     QUEUED = "QUEUED"
     NOT_STARTED = "NOT_STARTED"
     RUNNING = "RUNNING"
@@ -24,6 +25,7 @@ class RunStatus(Enum):
 
 class PodPhase(Enum):
     """Enumeration of possible pod phases."""
+
     PENDING = "Pending"
     RUNNING = "Running"
     SUCCEEDED = "Succeeded"
@@ -35,26 +37,26 @@ class PodPhase(Enum):
 class Run:
     """
     Run domain entity representing a run in the Epistemix system.
-    
+
     This is a core business entity that encapsulates the essential
     properties and behaviors of a run.
-    
+
     A Run can exist in two states:
     - Unpersisted: id is None (run has not been saved to repository)
     - Persisted: id is an integer (run has been saved and assigned an ID by repository)
     """
-    
+
     # Required fields
     job_id: int
     user_id: int
-    created_at: str  # ISO timestamp string
-    updated_at: str  # ISO timestamp string
+    created_at: datetime
+    updated_at: datetime
     request: Dict[str, Any]  # Full run request data
     pod_phase: PodPhase = PodPhase.RUNNING
-    
+
     # Repository-managed field (None until persisted)
     id: Optional[int] = None
-    
+
     # Optional fields with defaults
     pod_phase: PodPhase = PodPhase.RUNNING
     container_status: Optional[str] = None
@@ -62,7 +64,7 @@ class Run:
     user_deleted: bool = False
     epx_client_version: str = "1.2.2"
     url: Optional[str] = None  # Presigned URL for this run
-    
+
     @classmethod
     def create_unpersisted(
         cls,
@@ -74,11 +76,11 @@ class Run:
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        url: Optional[str] = None
+        url: Optional[str] = None,
     ) -> "Run":
         """
         Create a new unpersisted run.
-        
+
         Args:
             job_id: ID of the associated job
             user_id: ID of the user who created the run
@@ -88,7 +90,7 @@ class Run:
             status: Status of the run
             user_deleted: Whether the user has deleted the run
             epx_client_version: Version of the EPX client
-            
+
         Returns:
             A new Run instance with id=None
         """
@@ -104,41 +106,41 @@ class Run:
             status=status,
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
-            url=url
+            url=url,
         )
-    
+
     @classmethod
     def create_persisted(
         cls,
         run_id: int,
         job_id: int,
         user_id: int,
-        created_at: str,
-        updated_at: str,
+        created_at: datetime,
+        updated_at: datetime,
         request: Dict[str, Any],
         pod_phase: PodPhase = PodPhase.RUNNING,
         container_status: Optional[str] = None,
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        url: Optional[str] = None
+        url: Optional[str] = None,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
-        
+
         Args:
             run_id: ID of the run
             job_id: ID of the associated job
             user_id: ID of the user who created the run
-            created_at: ISO timestamp string
-            updated_at: ISO timestamp string
+            created_at: Datetime object
+            updated_at: Datetime object
             request: Full run request data
             pod_phase: Phase of the pod
             container_status: Status of the container
             status: Status of the run
             user_deleted: Whether the user has deleted the run
             epx_client_version: Version of the EPX client
-            
+
         Returns:
             A new Run instance with the specified ID
         """
@@ -154,27 +156,27 @@ class Run:
             status=status,
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
-            url=url
+            url=url,
         )
-    
+
     def is_persisted(self) -> bool:
         """Check if this run has been persisted to a repository."""
         return self.id is not None
-    
+
     def update_status(self, status: RunStatus) -> None:
         """Update the run status."""
         self.status = status
-    
+
     def update_pod_phase(self, pod_phase: PodPhase) -> None:
         """Update the pod phase."""
         self.pod_phase = pod_phase
-    
+
     # TODO: See if field from dataclass lets you alias names, if so asdict can be used which
     # supports serializing nested dataclasses and enums automatically.
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the run to a dictionary representation.
-        
+
         Returns:
             Dictionary representation of the run
         """
@@ -188,11 +190,11 @@ class Run:
             RunStatus.NOT_STARTED: "NOT_STARTED",
             RunStatus.RUNNING: "RUNNING",
             RunStatus.ERROR: "ERROR",
-            RunStatus.DONE: "DONE"
+            RunStatus.DONE: "DONE",
         }
-        
+
         mapped_status = status_mapping.get(self.status, self.status.value)
-        
+
         return {
             "id": self.id,
             "jobId": self.job_id,
@@ -204,13 +206,13 @@ class Run:
             "status": mapped_status,
             "userDeleted": self.user_deleted,
             "epxClientVersion": self.epx_client_version,
-            "url": self.url
+            "url": self.url,
         }
-    
+
     def to_run_response_dict(self) -> Dict[str, Any]:
         """
         Convert the run to a run response dictionary format.
-        
+
         Returns:
             Dictionary representation suitable for run responses
         """
@@ -219,9 +221,9 @@ class Run:
             "jobId": self.job_id,
             "status": self.status.value,
             "errors": None,
-            "runRequest": self.request
+            "runRequest": self.request,
         }
-    
+
     def __eq__(self, other: object) -> bool:
         """Check equality based on run ID and other fields."""
         if not isinstance(other, Run):

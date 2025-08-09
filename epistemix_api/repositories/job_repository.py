@@ -3,19 +3,17 @@ SQLAlchemy-based job repository implementation.
 This is a concrete implementation of the IJobRepository interface using SQLite.
 """
 
-import datetime
-from typing import List, Optional, Callable
 import logging
 from contextlib import contextmanager
+from typing import Callable, List, Optional
 
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from epistemix_api.repositories.database import get_db_session, JobRecord, JobStatusEnum
-from epistemix_api.repositories.interfaces import IJobRepository
-from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.mappers.job_mapper import JobMapper
-
+from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.repositories.database import JobRecord, JobStatusEnum, get_db_session
+from epistemix_api.repositories.interfaces import IJobRepository
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +21,15 @@ logger = logging.getLogger(__name__)
 class SQLAlchemyJobRepository:
     """
     SQLAlchemy-based implementation of the job repository.
-    
+
     This implementation stores jobs in a SQLite database using SQLAlchemy ORM.
     It provides the same interface as the in-memory repository but with persistent storage.
     """
-    
+
     def __init__(self, get_db_session_fn: Callable[[], Session] = get_db_session):
         """Initialize the repository."""
         self._session_factory = get_db_session_fn
-    
+
     @contextmanager
     def _get_session(self):
         """Context manager for database sessions with automatic cleanup."""
@@ -44,23 +42,23 @@ class SQLAlchemyJobRepository:
             raise
         finally:
             session.close()
-    
+
     def save(self, job: Job) -> Job:
         """
         Save a job to the database.
-        
+
         Uses JobMapper for strict conversion with no defaults.
         The caller is responsible for setting appropriate timestamps and other fields.
-        
+
         For unpersisted jobs (id is None), creates a new record and updates the job's ID.
         For persisted jobs (id is not None), updates the existing record.
-        
+
         Args:
             job: The job to save (must have all required fields populated)
-            
+
         Returns:
             The saved job as returned from the database
-            
+
         Raises:
             SQLAlchemyError: If database operation fails
         """
@@ -71,14 +69,16 @@ class SQLAlchemyJobRepository:
                 save_strategy_fn(job_record)
                 session.flush()
                 persisted_job = JobMapper.record_to_domain(job_record)
-                logger.info(f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}")
-                
+                logger.info(
+                    f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}"
+                )
+
         except SQLAlchemyError as e:
             logger.error(f"Database error saving job: {e}")
             raise
 
         return persisted_job
-    
+
     def find_by_id(self, job_id: int) -> Optional[Job]:
         try:
             with self._get_session() as session:
@@ -89,7 +89,7 @@ class SQLAlchemyJobRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error finding job {job_id}: {e}")
             raise
-    
+
     def find_by_user_id(self, user_id: int) -> List[Job]:
         """Find all jobs for a specific user."""
         try:
@@ -99,7 +99,7 @@ class SQLAlchemyJobRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error finding jobs for user {user_id}: {e}")
             raise
-    
+
     def find_by_status(self, status: JobStatus) -> List[Job]:
         """Find all jobs with a specific status."""
         try:
@@ -114,31 +114,31 @@ class SQLAlchemyJobRepository:
                     JobStatus.CANCELLED: JobStatusEnum.CANCELLED,
                 }
                 db_status = status_mapping[status]
-                
+
                 job_records = session.query(JobRecord).filter(JobRecord.status == db_status).all()
                 return [JobMapper.record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding jobs with status {status}: {e}")
             raise
-    
+
     def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
         """Find all jobs in the repository."""
         try:
             with self._get_session() as session:
                 query = session.query(JobRecord).order_by(JobRecord.created_at.desc())
-                
+
                 if offset > 0:
                     query = query.offset(offset)
-                
+
                 if limit is not None:
                     query = query.limit(limit)
-                
+
                 job_records = query.all()
                 return [JobMapper.record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding all jobs: {e}")
             raise
-    
+
     def exists(self, job_id: int) -> bool:
         """Check if a job exists."""
         try:
@@ -147,7 +147,7 @@ class SQLAlchemyJobRepository:
         except SQLAlchemyError as e:
             logger.error(f"Database error checking if job {job_id} exists: {e}")
             raise
-    
+
     def delete(self, job_id: int) -> bool:
         """Delete a job from the database."""
         try:
@@ -166,66 +166,67 @@ class SQLAlchemyJobRepository:
 class InMemoryJobRepository(IJobRepository):
     """
     In-memory implementation of the job repository.
-    
+
     This implementation stores jobs in memory and is suitable for development
     and testing. In production, use SQLAlchemyJobRepository instead.
     """
-    
+
     def __init__(self, starting_id: int = 123):
         """
         Initialize the repository.
-        
+
         Args:
             starting_id: The starting ID for job generation (defaults to Pact contract value)
         """
         from typing import Dict
+
         self._jobs: Dict[int, Job] = {}
         self._next_id = starting_id
-    
+
     def save(self, job: Job) -> Job:
         """Save a job to memory."""
         if not job.is_persisted():
             job.id = self.get_next_id()
             logger.info(f"Assigned new ID {job.id} to unpersisted job for user {job.user_id}")
-        
+
         self._jobs[job.id] = job
         logger.info(f"Job {job.id} saved to in-memory repository")
         return job
-    
+
     def find_by_id(self, job_id: int) -> Optional[Job]:
         """Find a job by its ID."""
         return self._jobs.get(job_id)
-    
+
     def find_by_user_id(self, user_id: int) -> List[Job]:
         """Find all jobs for a specific user."""
         return [job for job in self._jobs.values() if job.user_id == user_id]
-    
+
     def find_by_status(self, status: JobStatus) -> List[Job]:
         """Find all jobs with a specific status."""
         return [job for job in self._jobs.values() if job.status == status]
-    
+
     def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
         """Find all jobs in the repository."""
         all_jobs = sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
-        
+
         if offset > 0:
             all_jobs = all_jobs[offset:]
-        
+
         if limit is not None:
             all_jobs = all_jobs[:limit]
-        
+
         return all_jobs
-    
+
     def get_next_id(self) -> int:
         """Get the next available job ID."""
         current_id = self._next_id
         self._next_id += 1
         return current_id
-    
+
     def exists(self, job_id: int) -> bool:
         """Check if a job exists."""
         return job_id in self._jobs
-    
+
     def delete(self, job_id: int) -> bool:
         """Delete a job from memory."""
         if job_id in self._jobs:
@@ -233,7 +234,7 @@ class InMemoryJobRepository(IJobRepository):
             logger.info(f"Job {job_id} deleted from in-memory repository")
             return True
         return False
-    
+
     def reset_id_counter(self, starting_id: int = 123) -> None:
         """Reset the ID counter (for testing)."""
         self._next_id = starting_id

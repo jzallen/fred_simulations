@@ -1,19 +1,17 @@
-import os
-import json
 import base64
-import pytest
-from unittest.mock import Mock
-from freezegun import freeze_time
+import json
 from datetime import datetime
+from unittest.mock import Mock
 
-from epistemix_api.use_cases.get_runs import get_runs_by_job_id
-from epistemix_api.models.run import Run, RunStatus, PodPhase
+import pytest
+from freezegun import freeze_time
 
+from epistemix_api.models.run import PodPhase, Run, RunStatus
 from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository
+from epistemix_api.use_cases.get_runs import get_runs_by_job_id
 
 
 class TestGetRunsByJobIdUseCase:
-
     @pytest.fixture
     def run_repository(self):
         """Mocked run repository for testing."""
@@ -29,7 +27,7 @@ class TestGetRunsByJobIdUseCase:
                 pod_phase=PodPhase.PENDING,
                 request={"jobId": 1, "fredArgs": [], "fredFiles": []},
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),
             )
         ]
         run_repository.find_by_job_id.return_value = expected_runs
@@ -53,7 +51,6 @@ def bearer_token():
 
 
 class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
-
     @pytest.fixture
     def run_repository(self, db_session):
         """Create a run repository using the shared db_session fixture."""
@@ -61,14 +58,13 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_runs_by_job_id__given_job_id__returns_runs(self, run_repository):
-
         run = Run.create_unpersisted(
             job_id=1,
             user_id=123,
             request={"jobId": 1, "fredArgs": [], "fredFiles": []},
             pod_phase=PodPhase.PENDING,
             container_status=None,
-            status=RunStatus.SUBMITTED
+            status=RunStatus.SUBMITTED,
         )
         run_repository.save(run)
 
@@ -81,7 +77,7 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
                 pod_phase=PodPhase.PENDING,
                 request={"jobId": 1, "fredArgs": [], "fredFiles": []},
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0)
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),
             )
         ]
         runs = get_runs_by_job_id(run_repository, job_id=1)
