@@ -52,7 +52,6 @@ class Run:
     created_at: datetime
     updated_at: datetime
     request: Dict[str, Any]  # Full run request data
-    pod_phase: PodPhase = PodPhase.RUNNING
 
     # Repository-managed field (None until persisted)
     id: Optional[int] = None
