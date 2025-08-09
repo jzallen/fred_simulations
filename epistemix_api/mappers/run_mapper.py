@@ -2,26 +2,26 @@
 Run mapper for converting between Run domain objects and RunRecord database records.
 """
 
-from epistemix_api.repositories.database import RunRecord, RunStatusEnum, PodPhaseEnum
-from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.models.run import PodPhase, Run, RunStatus
+from epistemix_api.repositories.database import PodPhaseEnum, RunRecord, RunStatusEnum
 
 
 class RunMapper:
     """
     Handles conversion between Run domain objects and RunRecord database records.
-    
+
     This mapper provides bidirectional conversion methods to separate
     the mapping logic from the repository implementation.
     """
-    
+
     @staticmethod
     def record_to_domain(run_record: RunRecord) -> Run:
         """
         Convert a RunRecord database record to a Run domain object.
-        
+
         Args:
             run_record: The database record to convert
-            
+
         Returns:
             A Run domain object with the same data
         """
@@ -37,17 +37,17 @@ class RunMapper:
             status=RunMapper._enum_to_run_status(run_record.status),
             user_deleted=bool(run_record.user_deleted),
             epx_client_version=run_record.epx_client_version,
-            url=run_record.url
+            url=run_record.url,
         )
-    
+
     @staticmethod
     def domain_to_record(run: Run) -> RunRecord:
         """
         Convert a Run domain object to a RunRecord database record.
-        
+
         Args:
             run: The domain object to convert
-            
+
         Returns:
             A RunRecord database record with the same data
         """
@@ -63,14 +63,14 @@ class RunMapper:
             status=RunMapper._run_status_to_enum(run.status),
             user_deleted=1 if run.user_deleted else 0,
             epx_client_version=run.epx_client_version,
-            url=run.url
+            url=run.url,
         )
-    
+
     @staticmethod
     def update_record_from_domain(record: RunRecord, run: Run) -> None:
         """
         Update a RunRecord database record from a Run domain object.
-        
+
         Args:
             record: The database record to update
             run: The domain object with new data
@@ -86,7 +86,7 @@ class RunMapper:
         record.user_deleted = 1 if run.user_deleted else 0
         record.epx_client_version = run.epx_client_version
         record.url = run.url
-    
+
     @staticmethod
     def _run_status_to_enum(status: RunStatus) -> RunStatusEnum:
         """Convert RunStatus to RunStatusEnum."""
@@ -103,7 +103,7 @@ class RunMapper:
             RunStatus.CANCELLED: RunStatusEnum.CANCELLED,
         }
         return status_to_db_mapping.get(status, RunStatusEnum(status.value))
-    
+
     @staticmethod
     def _enum_to_run_status(status_enum: RunStatusEnum) -> RunStatus:
         """Convert RunStatusEnum to RunStatus."""
@@ -121,12 +121,12 @@ class RunMapper:
             RunStatusEnum.CANCELLED: RunStatus.CANCELLED,
         }
         return db_to_status_mapping.get(status_enum, RunStatus(status_enum.value))
-    
+
     @staticmethod
     def _pod_phase_to_enum(pod_phase: PodPhase) -> PodPhaseEnum:
         """Convert PodPhase to PodPhaseEnum."""
         return PodPhaseEnum(pod_phase.value)
-    
+
     @staticmethod
     def _enum_to_pod_phase(pod_phase_enum: PodPhaseEnum) -> PodPhase:
         """Convert PodPhaseEnum to PodPhase."""

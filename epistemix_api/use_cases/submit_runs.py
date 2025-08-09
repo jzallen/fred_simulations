@@ -3,29 +3,32 @@ Run submission use case for the Epistemix API.
 This module implements the core business logic for run submission operations.
 """
 
-from typing import Dict, List, Any, TypedDict
 import logging
+from typing import Any, Dict, List, TypedDict
 
-from epistemix_api.models.run import Run, RunStatus, PodPhase
-from epistemix_api.models.user import UserToken
 from epistemix_api.models.job_upload import JobUpload
+from epistemix_api.models.run import PodPhase, Run, RunStatus
+from epistemix_api.models.user import UserToken
 from epistemix_api.repositories.interfaces import IRunRepository, IUploadLocationRepository
 
 
 class FredArgDict(TypedDict):
     """Type definition for FRED command line arguments."""
+
     flag: str
     value: str
 
 
 class PopulationDict(TypedDict):
     """Type definition for population configuration."""
+
     version: str
     locations: List[str]
 
 
 class RunRequestDict(TypedDict):
     """Type definition for individual run request data."""
+
     jobId: int
     workingDir: str
     size: str
@@ -43,14 +46,14 @@ def submit_runs(
     upload_location_repository: IUploadLocationRepository,
     run_requests: List[RunRequestDict],
     user_token_value: str,
-    epx_version: str = "epx_client_1.2.2"
+    epx_version: str = "epx_client_1.2.2",
 ) -> List[Run]:
     """
     Submit multiple run requests for processing.
-    
+
     This use case implements the core business logic for run submission.
     It processes multiple run requests and returns run responses.
-    
+
     Args:
         run_repository: Repository for run persistence
         upload_location_repository: Repository for generating upload locations
@@ -63,10 +66,10 @@ def submit_runs(
     """
     user_token = UserToken.from_bearer_token(user_token_value)
     run_responses = []
-    
+
     for run_request in run_requests:
         # Extract client version from user agent
-        epx_client_version = epx_version.split('_')[-1] if '_' in epx_version else "1.2.2"
+        epx_client_version = epx_version.split("_")[-1] if "_" in epx_version else "1.2.2"
 
         # Create a new Run domain object (without URL initially)
         run = Run.create_unpersisted(
@@ -77,29 +80,29 @@ def submit_runs(
             container_status=None,
             status=RunStatus.SUBMITTED,
             user_deleted=False,
-            epx_client_version=epx_client_version
+            epx_client_version=epx_client_version,
         )
-        
+
         # Save the run to get an ID
         persisted_run = run_repository.save(run)
-        
+
         # Generate URL for this run using the persisted ID
         job_upload = JobUpload(
             context="run",
             upload_type="config",
             job_id=persisted_run.job_id,
-            run_id=persisted_run.id
+            run_id=persisted_run.id,
         )
         upload_location = upload_location_repository.get_upload_location(job_upload)
-        
+
         # Update the run with the URL
         persisted_run.url = upload_location.url
-        
+
         # Save the updated run with the URL
         final_run = run_repository.save(persisted_run)
-        
+
         run_responses.append(final_run)
-    
+
     return run_responses
 
 
@@ -109,10 +112,11 @@ def submit_runs(
 runs_storage: Dict[int, Dict[str, Any]] = {}
 next_run_id = 978
 
+
 def get_runs_storage() -> Dict[int, Dict[str, Any]]:
     """
     Get the runs storage dictionary for external access.
-    
+
     DEPRECATED: This function is for backward compatibility only.
     Use the RunRepository instead.
     """

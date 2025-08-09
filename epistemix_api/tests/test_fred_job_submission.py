@@ -1,11 +1,9 @@
 import os
 import unittest
-
 from pathlib import Path
 
 from pact import Consumer, Provider
-from pact.matchers import Like, EachLike
-
+from pact.matchers import EachLike, Like
 
 from simulations.agent_info_demo.agent_info_job import info_job
 
@@ -23,8 +21,8 @@ EPISTEMIX_LOGS_DIR = EPISTEMIX_API_FOLDER / "logs"
 
 
 # Define mock server for epistemix api
-epistemix_pact = Consumer('epx').has_pact_with(
-    Provider('Epistemix'),
+epistemix_pact = Consumer("epx").has_pact_with(
+    Provider("Epistemix"),
     host_name=EPISTEMIX_MOCK_HOST,
     port=EPISTEMIX_MOCK_PORT,
     pact_dir=EPISTEMIX_PACTS_DIR,
@@ -32,8 +30,8 @@ epistemix_pact = Consumer('epx').has_pact_with(
 )
 
 # Define mock server for S3 api
-s3_pact = Consumer('epx').has_pact_with(
-    Provider('S3'),
+s3_pact = Consumer("epx").has_pact_with(
+    Provider("S3"),
     host_name=S3_MOCK_HOST,
     port=S3_MOCK_PORT,
     pact_dir=EPISTEMIX_PACTS_DIR,
@@ -53,11 +51,9 @@ class TestAgentInfoJob(unittest.TestCase):
         epistemix_pact.start_service()
         s3_pact.start_service()
 
-
         # Define job registration response
         (
-            epistemix_pact
-            .upon_receiving("a job registration request")
+            epistemix_pact.upon_receiving("a job registration request")
             .with_request(
                 method="POST",
                 path="/jobs/register",
@@ -65,11 +61,9 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
-                    "user-agent": "epx_client_1.2.2"
+                    "user-agent": "epx_client_1.2.2",
                 },
-                body={
-                    "tags": ["info_job"]
-                }
+                body={"tags": ["info_job"]},
             )
             .will_respond_with(
                 status=200,
@@ -77,14 +71,13 @@ class TestAgentInfoJob(unittest.TestCase):
                     "id": 123,
                     "userId": 456,
                     "tags": ["info_job"],
-                }
+                },
             )
         )
 
         # Define job input submission response
         (
-            epistemix_pact
-            .upon_receiving("a job input submission request")
+            epistemix_pact.upon_receiving("a job input submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
@@ -92,39 +85,29 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
-                    "user-agent": "epx_client_1.2.2"
+                    "user-agent": "epx_client_1.2.2",
                 },
-                body={
-                    "jobId": 123,
-                    "context": "job",
-                    "type": "input"
-                }
+                body={"jobId": 123, "context": "job", "type": "input"},
             )
             .will_respond_with(
                 status=200,
                 body={
                     "url": f"http://{S3_MOCK_HOST}:{S3_MOCK_PORT}/pre-signed-url",
-                }
+                },
             )
         )
 
         # Define job input upload response
-        (   s3_pact
-            .upon_receiving("a job input upload request")
-            .with_request(
-                method="PUT",
-                path="/pre-signed-url"
-            )
-            .will_respond_with(
-                status=200,
-                body={}
-            )
+        (
+            s3_pact.upon_receiving("a job input upload request")
+            .with_request(method="PUT", path="/pre-signed-url")
+            .will_respond_with(status=200, body={})
         )
 
         # Define job run submission response
         (
-            epistemix_pact
-            .upon_receiving("a run submission request").with_request(
+            epistemix_pact.upon_receiving("a run submission request")
+            .with_request(
                 method="POST",
                 path="/runs",
                 headers={
@@ -135,60 +118,65 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
+                    "Offline-Token": Like(
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "Fredcli-Version": Like("0.4.0"),
-                    "Version": Like("HTTP/1.1")
+                    "Version": Like("HTTP/1.1"),
                 },
                 body={
-                    "runRequests": EachLike({
-                        "jobId": Like(123),
-                        "workingDir": Like("/workspaces/fred_simulations"),
-                        "size": Like("hot"),
-                        "fredVersion": Like("latest"),
-                        "population": {
-                            "version": Like("US_2010.v5"),
-                            "locations": EachLike("Loving_County_TX")
-                        },
-                        "fredArgs": EachLike({
-                            "flag": Like("-p"),
-                            "value": Like("main.fred")
-                        }),
-                        "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred")
-                    })
-                }
-            )
-            .will_respond_with(
-                status=200,
-                body={
-                    "runResponses": [{
-                        "runId": 978,
-                        "jobId": 123,
-                        "status": "Submitted",
-                        "errors": None,
-                        "runRequest": {
+                    "runRequests": EachLike(
+                        {
                             "jobId": Like(123),
                             "workingDir": Like("/workspaces/fred_simulations"),
                             "size": Like("hot"),
                             "fredVersion": Like("latest"),
                             "population": {
                                 "version": Like("US_2010.v5"),
-                                "locations": EachLike("Loving_County_TX")
+                                "locations": EachLike("Loving_County_TX"),
                             },
-                            "fredArgs": EachLike({
-                                "flag": Like("-p"),
-                                "value": Like("main.fred")
-                            }),
-                            "fredFiles": EachLike("/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred")
+                            "fredArgs": EachLike({"flag": Like("-p"), "value": Like("main.fred")}),
+                            "fredFiles": EachLike(
+                                "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                            ),
                         }
-                    }]
-                }
+                    )
+                },
+            )
+            .will_respond_with(
+                status=200,
+                body={
+                    "runResponses": [
+                        {
+                            "runId": 978,
+                            "jobId": 123,
+                            "status": "Submitted",
+                            "errors": None,
+                            "runRequest": {
+                                "jobId": Like(123),
+                                "workingDir": Like("/workspaces/fred_simulations"),
+                                "size": Like("hot"),
+                                "fredVersion": Like("latest"),
+                                "population": {
+                                    "version": Like("US_2010.v5"),
+                                    "locations": EachLike("Loving_County_TX"),
+                                },
+                                "fredArgs": EachLike(
+                                    {"flag": Like("-p"), "value": Like("main.fred")}
+                                ),
+                                "fredFiles": EachLike(
+                                    "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                                ),
+                            },
+                        }
+                    ]
+                },
             )
         )
 
         # Define job run config submission response
         (
-            epistemix_pact
-            .upon_receiving("a job run config submission request")
+            epistemix_pact.upon_receiving("a job run config submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
@@ -196,27 +184,21 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
-                    "user-agent": "epx_client_1.2.2"
+                    "user-agent": "epx_client_1.2.2",
                 },
-                body={
-                    "jobId": 123,
-                    "context": "run",
-                    "type": "config",
-                    "runId": 978
-                }
+                body={"jobId": 123, "context": "run", "type": "config", "runId": 978},
             )
             .will_respond_with(
                 status=200,
                 body={
                     "url": f"http://{S3_MOCK_HOST}:{S3_MOCK_PORT}/pre-signed-url-run",
-                }
+                },
             )
         )
 
         # Define job config submission response
         (
-            epistemix_pact
-            .upon_receiving("a job config submission request")
+            epistemix_pact.upon_receiving("a job config submission request")
             .with_request(
                 method="POST",
                 path="/jobs",
@@ -224,25 +206,25 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
-                    "user-agent": "epx_client_1.2.2"
+                    "user-agent": "epx_client_1.2.2",
                 },
                 body={
                     "jobId": 123,
                     "context": "job",
                     "type": "config",
-                }
+                },
             )
             .will_respond_with(
                 status=200,
                 body={
                     "url": f"http://{S3_MOCK_HOST}:{S3_MOCK_PORT}/pre-signed-url-job-config",
-                }
+                },
             )
         )
 
         (
-            epistemix_pact
-            .upon_receiving("a request to get runs by job_id").with_request(
+            epistemix_pact.upon_receiving("a request to get runs by job_id")
+            .with_request(
                 method="GET",
                 path="/runs",
                 query="job_id=123",
@@ -253,11 +235,14 @@ class TestAgentInfoJob(unittest.TestCase):
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
                     "Connection": "keep-alive",
-                    "Offline-Token": Like("Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="),
+                    "Offline-Token": Like(
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "Fredcli-Version": Like("0.4.0"),
-                    "Version": Like("HTTP/1.1")
-                }
-            ).will_respond_with(
+                    "Version": Like("HTTP/1.1"),
+                },
+            )
+            .will_respond_with(
                 status=200,
                 body={
                     "runs": [
@@ -273,13 +258,12 @@ class TestAgentInfoJob(unittest.TestCase):
                                 "fredVersion": "latest",
                                 "population": {
                                     "version": "US_2010.v5",
-                                    "locations": ["Loving_County_TX"]
+                                    "locations": ["Loving_County_TX"],
                                 },
-                                "fredArgs": [{
-                                    "flag": "-p",
-                                    "value": "main.fred"
-                                }],
-                                "fredFiles": ["/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"]
+                                "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                                "fredFiles": [
+                                    "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                                ],
                             },
                             "podPhase": "Running",
                             "containerStatus": None,
@@ -289,36 +273,23 @@ class TestAgentInfoJob(unittest.TestCase):
                             "url": "http://localhost:5001/pre-signed-url-run",
                         }
                     ]
-                }
+                },
             )
         )
 
         # Define run config upload response
-        (   s3_pact
-            .upon_receiving("a run config upload request")
-            .with_request(
-                method="PUT",
-                path="/pre-signed-url-run"
-            )
-            .will_respond_with(
-                status=200,
-                body={}
-            )
+        (
+            s3_pact.upon_receiving("a run config upload request")
+            .with_request(method="PUT", path="/pre-signed-url-run")
+            .will_respond_with(status=200, body={})
         )
 
         # Define job config upload response
-        (   s3_pact
-            .upon_receiving("a job config upload request")
-            .with_request(
-                method="PUT",
-                path="/pre-signed-url-job-config"
-            )
-            .will_respond_with(
-                status=200,
-                body={}
-            )
+        (
+            s3_pact.upon_receiving("a job config upload request")
+            .with_request(method="PUT", path="/pre-signed-url-job-config")
+            .will_respond_with(status=200, body={})
         )
-        
 
     def tearDown(self):
         # Stop the pact mock service after each test
@@ -342,14 +313,12 @@ class TestAgentInfoJob(unittest.TestCase):
 
         # Execute the FREDJob
         with epistemix_pact, s3_pact:
-            
             try:
                 info_job.execute(300)
             except Exception as e:
                 self.fail(f"Job execution failed: {e}")
 
-        self.assertEqual(str(info_job.status), 'DONE')
-
+        self.assertEqual(str(info_job.status), "DONE")
 
 
 if __name__ == "__main__":

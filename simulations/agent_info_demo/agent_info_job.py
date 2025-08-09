@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from epx import FREDJob, FREDModelConfig, SynthPop
 
 # Update path to reference the local agent_info.fred file

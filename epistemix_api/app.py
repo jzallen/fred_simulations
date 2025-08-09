@@ -3,23 +3,26 @@ Flask app that implements the Epistemix API based on the Pact contract.
 This app follows Clean Architecture principles with proper separation of concerns.
 """
 
-from flask import Flask, request, jsonify, g
-from flask_cors import CORS
+import logging
 import os
 from datetime import datetime
-from typing import List
-import logging
 from functools import wraps
-from returns.pipeline import is_successful
+from typing import List
+
+from flask import Flask, g, jsonify, request
+from flask_cors import CORS
 from pydantic import ValidationError
+from returns.pipeline import is_successful
 
 # Import our business models and controllers
 from epistemix_api.controllers.job_controller import JobController
+from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
+from epistemix_api.repositories.database import get_database_manager
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_api.repositories.run_repository import SQLAlchemyRunRepository
-from epistemix_api.repositories.s3_upload_location_repository import create_upload_location_repository
-from epistemix_api.repositories.database import get_database_manager
-from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
+from epistemix_api.repositories.s3_upload_location_repository import (
+    create_upload_location_repository,
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -29,7 +32,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure database
-app.config['DATABASE_URL'] = os.getenv('DATABASE_URL', 'sqlite:///epistemix_jobs.db')
+app.config["DATABASE_URL"] = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
 
 
 # Global error handlers
@@ -50,9 +53,9 @@ def handle_value_error(e):
 def handle_general_exception(e):
     """Handle all other exceptions globally."""
     # Don't log HTTP exceptions (4xx, 5xx) that are intentionally raised
-    if hasattr(e, 'code') and e.code is not None:
+    if hasattr(e, "code") and e.code is not None:
         return e
-    
+
     logger.error(f"Unexpected error: {e}", exc_info=True)
     return jsonify({"error": "Internal server error"}), 500
 
@@ -60,19 +63,19 @@ def handle_general_exception(e):
 @app.before_request
 def before_request():
     """Initialize database session for each request."""
-    database_url = app.config['DATABASE_URL']
+    database_url = app.config["DATABASE_URL"]
     db_manager = get_database_manager(database_url)
-    
+
     # Ensure tables are created
     db_manager.create_tables()
-    
+
     g.db_session = db_manager.get_session()
 
 
 @app.teardown_appcontext
 def close_db_session(error):
     """Close database session after each request."""
-    db_session = getattr(g, 'db_session', None)
+    db_session = getattr(g, "db_session", None)
     if db_session is not None:
         if error:
             db_session.rollback()
@@ -88,20 +91,18 @@ def close_db_session(error):
 def get_upload_location_repository():
     """Get the upload location repository based on environment."""
     # Get environment from app config, defaulting to production
-    env = app.config.get('ENVIRONMENT', 'PRODUCTION')
-    
+    env = app.config.get("ENVIRONMENT", "PRODUCTION")
+
     # For testing environment, use the dummy repository
-    if app.config.get('TESTING', False):
-        env = 'TESTING'
-    
+    if app.config.get("TESTING", False):
+        env = "TESTING"
+
     # Configure S3 parameters from environment variables
-    bucket_name = app.config.get('S3_UPLOAD_BUCKET')
-    region_name = app.config.get('AWS_REGION')
-    
+    bucket_name = app.config.get("S3_UPLOAD_BUCKET")
+    region_name = app.config.get("AWS_REGION")
+
     return create_upload_location_repository(
-        env=env,
-        bucket_name=bucket_name,
-        region_name=region_name
+        env=env, bucket_name=bucket_name, region_name=region_name
     )
 
 
@@ -111,11 +112,9 @@ def get_job_controller():
     job_repository = SQLAlchemyJobRepository(session_factory)
     run_repository = SQLAlchemyRunRepository(session_factory)
     upload_location_repository = get_upload_location_repository()
-    
+
     return JobController.create_with_repositories(
-        job_repository, 
-        run_repository, 
-        upload_location_repository
+        job_repository, run_repository, upload_location_repository
     )
 
 
@@ -133,28 +132,32 @@ def require_headers(*headers):
         def decorated_function(*args, **kwargs):
             if not validate_headers(list(headers)):
                 return jsonify({"error": "Missing required headers"}), 400
-            
+
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
-def require_json(content_type='application/json'):
+def require_json(content_type="application/json"):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Validate content type
-            if request.headers.get('content-type') != content_type:
+            if request.headers.get("content-type") != content_type:
                 return jsonify({"error": f"Content-Type must be {content_type}"}), 400
-            
+
             # Get and validate JSON data
             raw_data = request.get_json()
             if not raw_data:
                 return jsonify({"error": "Invalid JSON"}), 400
-            
+
             # Pass the JSON data as the first argument to the route function
             return f(raw_data, *args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
@@ -163,29 +166,30 @@ def inject_user_token():
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Extract the Offline-Token header
-            user_token_value = request.headers.get('Offline-Token')
+            user_token_value = request.headers.get("Offline-Token")
             if not user_token_value:
                 return jsonify({"error": "Missing Offline-Token header"}), 400
 
             return f(user_token_value, *args, **kwargs)
+
         return decorated_function
+
     return decorator
 
 
-@app.route('/jobs/register', methods=['POST'])
-@require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
-@require_json('application/json')
+@app.route("/jobs/register", methods=["POST"])
+@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
+@require_json("application/json")
 @inject_user_token()
 def register_job(user_token_value, json_data):
     """Persists a new job to Epistemix platform."""
     request_data = RegisterJobRequest(**json_data)
-    
+
     job_controller = get_job_controller()
     job_result = job_controller.register_job(
-        user_token_value=user_token_value,
-        tags=request_data.tags
+        user_token_value=user_token_value, tags=request_data.tags
     )
-    
+
     if not is_successful(job_result):
         error_message = job_result.failure()
         logger.warning(f"Business logic error in job registration: {error_message}")
@@ -201,30 +205,28 @@ def register_job(user_token_value, json_data):
     return jsonify(job_response), 200
 
 
-@app.route('/jobs', methods=['POST'])
-@require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
-@require_json('application/json')
+@app.route("/jobs", methods=["POST"])
+@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
+@require_json("application/json")
 def submit_job(json_data):
     """Submit registered job for processing to Epistemix platform."""
     request_data = SubmitJobRequest(**json_data)
-    
+
     job_controller = get_job_controller()
     job_submission_result = job_controller.submit_job(
-        job_id=request_data.jobId, 
-        context=request_data.context, 
-        job_type=request_data.type
+        job_id=request_data.jobId, context=request_data.context, job_type=request_data.type
     )
-    
+
     if not is_successful(job_submission_result):
         error_message = job_submission_result.failure()
         logger.warning(f"Business logic error in job submission: {error_message}")
         return jsonify({"error": error_message}), 400
-    
+
     return jsonify(job_submission_result.unwrap()), 200
 
 
-@app.route('/runs', methods=['POST'])
-@require_headers('Offline-Token', 'content-type', 'fredcli-version', 'user-agent')
+@app.route("/runs", methods=["POST"])
+@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
 @require_json()
 @inject_user_token()
 def submit_runs(user_token_value, json_data):
@@ -235,124 +237,120 @@ def submit_runs(user_token_value, json_data):
     submit_runs_request = SubmitRunsRequest(**json_data)
     run_requests = [run_request.model_dump() for run_request in submit_runs_request.runRequests]
 
-    
     job_controller = get_job_controller()
     run_submission_result = job_controller.submit_runs(
-        run_requests=run_requests,
-        user_token_value=user_token_value
+        run_requests=run_requests, user_token_value=user_token_value
     )
-    
+
     if not is_successful(run_submission_result):
         error_message = run_submission_result.failure()
         logger.warning(f"Business logic error in run submission: {error_message}")
         return jsonify({"error": error_message}), 400
-    
+
     run_responses = run_submission_result.unwrap()
-    response = {
-        "runResponses": run_responses
-    }
+    response = {"runResponses": run_responses}
     return jsonify(response), 200
 
 
-@app.route('/runs', methods=['GET'])
-@require_headers('Offline-Token', 'Fredcli-Version')
+@app.route("/runs", methods=["GET"])
+@require_headers("Offline-Token", "Fredcli-Version")
 def get_runs():
     """
     Get runs by job ID.
     Implements the get runs interaction from the Pact contract.
     """
-    job_id = request.args.get('job_id')
+    job_id = request.args.get("job_id")
     if not job_id:
         return jsonify({"error": "Missing job_id parameter"}), 400
-    
+
     try:
         job_id = int(job_id)
     except ValueError:
         return jsonify({"error": "Invalid job_id parameter"}), 400
-    
+
     job_controller = get_job_controller()
     runs_result = job_controller.get_runs(job_id=job_id)
-    
+
     if not is_successful(runs_result):
         error_message = runs_result.failure()
         logger.warning(f"Business logic error in get runs: {error_message}")
         return jsonify({"error": error_message}), 400
-    
-    response = {
-        "runs": runs_result.unwrap()
-    }
-    
+
+    response = {"runs": runs_result.unwrap()}
+
     return jsonify(response), 200
 
 
-@app.route('/jobs/results', methods=['GET'])
-@require_headers('Offline-Token', 'Fredcli-Version')
+@app.route("/jobs/results", methods=["GET"])
+@require_headers("Offline-Token", "Fredcli-Version")
 def get_job_results():
     """
     Get URLs for runs by job ID.
     Returns a JSON response with URLs for all runs associated with the job.
     """
-    job_id = request.args.get('job_id')
+    job_id = request.args.get("job_id")
     if not job_id:
         return jsonify({"error": "Missing job_id parameter"}), 400
-    
+
     try:
         job_id = int(job_id)
     except ValueError:
         return jsonify({"error": "Invalid job_id parameter"}), 400
-    
+
     job_controller = get_job_controller()
     runs_result = job_controller.get_runs(job_id=job_id)
-    
+
     if not is_successful(runs_result):
         error_message = runs_result.failure()
         logger.warning(f"Business logic error in get job results: {error_message}")
         return jsonify({"error": error_message}), 400
-    
+
     runs = runs_result.unwrap()
-    
+
     # Extract URLs from runs
     urls = [
-        {
-            "run_id": run.get('id'),
-            "url": run.get('url')
-        }
-        for run in runs 
-        if run.get('url') is not None
+        {"run_id": run.get("id"), "url": run.get("url")}
+        for run in runs
+        if run.get("url") is not None
     ]
-    
+
     return jsonify({"urls": urls}), 200
 
 
-@app.route('/health', methods=['GET'])
+@app.route("/health", methods=["GET"])
 def health_check():
     """Basic health check endpoint."""
     return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()}), 200
 
 
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def root():
     """Root endpoint with API information."""
-    return jsonify({
-        "name": "Epistemix API",
-        "version": "1.0.0",
-        "description": "Interface for creating and running jobs on Epistemix platform",
-        "endpoints": {
-            "POST /jobs/register": "Register a new job",
-            "POST /jobs": "Submit a job for processing", 
-            "POST /runs": "Submit run requests",
-            "GET /runs": "Get runs by job_id",
-            "GET /jobs/results": "Get URLs for runs by job_id",
-            "GET /jobs/statistics": "Get job statistics",
-            "GET /health": "Health check"
-        }
-    }), 200
+    return (
+        jsonify(
+            {
+                "name": "Epistemix API",
+                "version": "1.0.0",
+                "description": "Interface for creating and running jobs on Epistemix platform",
+                "endpoints": {
+                    "POST /jobs/register": "Register a new job",
+                    "POST /jobs": "Submit a job for processing",
+                    "POST /runs": "Submit run requests",
+                    "GET /runs": "Get runs by job_id",
+                    "GET /jobs/results": "Get URLs for runs by job_id",
+                    "GET /jobs/statistics": "Get job statistics",
+                    "GET /health": "Health check",
+                },
+            }
+        ),
+        200,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Load environment variables
-    host = os.getenv('FLASK_HOST', '0.0.0.0')
-    port = int(os.getenv('FLASK_PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    
+    host = os.getenv("FLASK_HOST", "0.0.0.0")
+    port = int(os.getenv("FLASK_PORT", 5000))
+    debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+
     app.run(host=host, port=port, debug=debug)

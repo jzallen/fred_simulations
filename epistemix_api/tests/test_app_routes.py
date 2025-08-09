@@ -2,12 +2,13 @@
 Tests for the refactored Flask app using Clean Architecture.
 """
 
-import pytest
-import os
-import json
 import base64
-from freezegun import freeze_time
+import json
+import os
 from datetime import datetime
+
+import pytest
+from freezegun import freeze_time
 
 from epistemix_api.app import app
 from epistemix_api.models.job import JobStatus
@@ -16,17 +17,17 @@ from epistemix_api.models.job import JobStatus
 @pytest.fixture
 def client(tmp_path_factory):
     """Create a test client for the Flask app with a fresh test database using tmp_path_factory."""
-    
+
     # Create a unique temporary database using tmp_path_factory
     tmp_dir = tmp_path_factory.mktemp("db")
     db_path = os.path.join(tmp_dir, "test_job_routes.sqlite")
     test_db_url = f"sqlite:///{db_path}"
-    
+
     # Configure Flask app to use test database and testing environment
-    app.config['TESTING'] = True
-    app.config['DATABASE_URL'] = test_db_url
-    app.config['ENVIRONMENT'] = 'TESTING'
-    
+    app.config["TESTING"] = True
+    app.config["DATABASE_URL"] = test_db_url
+    app.config["ENVIRONMENT"] = "TESTING"
+
     with app.test_client() as client:
         yield client
 
@@ -40,21 +41,20 @@ def bearer_token():
 
 
 class TestJobRoutes:
-    
     def test_job_registration_creates_business_model(self, client, bearer_token):
         """Test that job registration creates proper business models."""
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
-        
+
         body = {"tags": ["info_job"]}
-        
-        response = client.post('/jobs/register', headers=headers, json=body)
+
+        response = client.post("/jobs/register", headers=headers, json=body)
         assert response.status_code == 200
-        
+
         expected_registered_job_data = {
             "id": 1,
             "userId": 123,
@@ -66,30 +66,26 @@ class TestJobRoutes:
     def test_job_submission__valid_request__returns_successful_response(self, client, bearer_token):
         # First register a job
         register_headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
 
-        register_body = {"tags": ["info_job"] }
-        client.post('/jobs/register', headers=register_headers, json=register_body)
-        
+        register_body = {"tags": ["info_job"]}
+        client.post("/jobs/register", headers=register_headers, json=register_body)
+
         # Now submit the registered job
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
-        }
-        
-        submit_body = {
-            "jobId": 1,
-            "context": "job",
-            "type": "input"
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
 
-        response = client.post('/jobs', headers=headers, json=submit_body)
+        submit_body = {"jobId": 1, "context": "job", "type": "input"}
+
+        response = client.post("/jobs", headers=headers, json=submit_body)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -97,24 +93,20 @@ class TestJobRoutes:
             "url": "http://localhost:5001/pre-signed-url",
         }
         assert data == expected_job_submission_data
-    
+
     def test_job_submission__invalid_job_id__returns_error_response(self, client):
         """Test that job submission validates business rules."""
         headers = {
-            'Offline-Token': 'Bearer fake-token',
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
-        }
-        
-        # Try to submit a non-existent job
-        submit_body = {
-            "jobId": 99999,  # Non-existent job
-            "context": "job",
-            "type": "input"
+            "Offline-Token": "Bearer fake-token",
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
 
-        response = client.post('/jobs', headers=headers, json=submit_body)
+        # Try to submit a non-existent job
+        submit_body = {"jobId": 99999, "context": "job", "type": "input"}  # Non-existent job
+
+        response = client.post("/jobs", headers=headers, json=submit_body)
 
         assert response.status_code == 400
         data = response.get_json()
@@ -126,95 +118,73 @@ class TestJobRoutes:
     def test_run_submission__valid_request__returns_successful_response(self, client, bearer_token):
         """Test submitting multiple runs."""
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
-        
+
         run_requests = {
-          "runRequests": [
-            {
-              "jobId": 123,
-              "workingDir": "/workspaces/fred_simulations",
-              "size": "hot",
-              "fredVersion": "latest",
-              "population": {
-                "version": "US_2010.v5",
-                "locations": [
-                  "Loving_County_TX"
-                ]
-              },
-              "fredArgs": [
+            "runRequests": [
                 {
-                  "flag": "-p",
-                  "value": "main.fred"
+                    "jobId": 123,
+                    "workingDir": "/workspaces/fred_simulations",
+                    "size": "hot",
+                    "fredVersion": "latest",
+                    "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
+                    "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                    "fredFiles": [
+                        "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                    ],
                 }
-              ],
-              "fredFiles": [
-                "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
-              ]
-            }
-          ]
+            ]
         }
-        
-        response = client.post('/runs', headers=headers, json=run_requests)
-        
+
+        response = client.post("/runs", headers=headers, json=run_requests)
+
         assert response.status_code == 200
         expected_response = {
-          "runResponses": [
-            {
-              "runId": 1,
-              "jobId": 123,
-              "status": "Submitted",
-              "errors": None,
-              "runRequest": {
-                "jobId": 123,
-                "workingDir": "/workspaces/fred_simulations",
-                "size": "hot",
-                "fredVersion": "latest",
-                "population": {
-                  "version": "US_2010.v5",
-                  "locations": [
-                    "Loving_County_TX"
-                  ]
-                },
-                "fredArgs": [
-                  {
-                    "flag": "-p",
-                    "value": "main.fred"
-                  }
-                ],
-                "fredFiles": [
-                  "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
-                ]
-              }
-            }
-          ]
+            "runResponses": [
+                {
+                    "runId": 1,
+                    "jobId": 123,
+                    "status": "Submitted",
+                    "errors": None,
+                    "runRequest": {
+                        "jobId": 123,
+                        "workingDir": "/workspaces/fred_simulations",
+                        "size": "hot",
+                        "fredVersion": "latest",
+                        "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
+                        "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                        "fredFiles": [
+                            "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                        ],
+                    },
+                }
+            ]
         }
         data = response.get_json()
         assert data == expected_response
-        
-    def test_job_config_submission__valid_request__returns_successful_response(self, client, bearer_token):
+
+    def test_job_config_submission__valid_request__returns_successful_response(
+        self, client, bearer_token
+    ):
         """Test submitting job configuration."""
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
-        }
-        
-        # First register a job so it exists in the repository
-        register_body = {"tags": ["test_job"]}
-        client.post('/jobs/register', headers=headers, json=register_body)
-        
-        submit_body = {
-            "jobId": 1,
-            "context": "job",
-            "type": "config"
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
 
-        response = client.post('/jobs', headers=headers, json=submit_body)
+        # First register a job so it exists in the repository
+        register_body = {"tags": ["test_job"]}
+        client.post("/jobs/register", headers=headers, json=register_body)
+
+        submit_body = {"jobId": 1, "context": "job", "type": "config"}
+
+        response = client.post("/jobs", headers=headers, json=submit_body)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -223,23 +193,20 @@ class TestJobRoutes:
         }
         assert data == expected_job_submission_data
 
-    def test_run_config_submission__valid_request__returns_successful_response(self, client, bearer_token):
+    def test_run_config_submission__valid_request__returns_successful_response(
+        self, client, bearer_token
+    ):
         """Test submitting run configuration."""
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
-        }
-        
-        submit_body = {
-          "jobId": 1,
-          "context": "run",
-          "type": "config",
-          "runId": 1
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
 
-        response = client.post('/jobs', headers=headers, json=submit_body)
+        submit_body = {"jobId": 1, "context": "run", "type": "config", "runId": 1}
+
+        response = client.post("/jobs", headers=headers, json=submit_body)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -247,89 +214,69 @@ class TestJobRoutes:
             "url": "http://localhost:5001/pre-signed-url",
         }
         assert data == expected_run_submission_data
-    
+
     @freeze_time("2025-01-01 12:00:00")
     def test_get_runs_by_job_id__valid_job_id__returns_runs(self, client, bearer_token):
         """Test getting runs by job ID."""
         headers = {
-            'Offline-Token': bearer_token,
-            'content-type': 'application/json',
-            'fredcli-version': '0.4.0',
-            'user-agent': 'epx_client_1.2.2'
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
         }
-        
+
         # First register a job
-        client.post('/jobs/register', headers=headers, json={"tags": ["info_job"]})
-        
+        client.post("/jobs/register", headers=headers, json={"tags": ["info_job"]})
+
         # Now submit a run for that job
         run_requests = {
-          "runRequests": [
-            {
-              "jobId": 1,
-              "workingDir": "/workspaces/fred_simulations",
-              "size": "hot",
-              "fredVersion": "latest",
-              "population": {
-                "version": "US_2010.v5",
-                "locations": [
-                  "Loving_County_TX"
-                ]
-              },
-              "fredArgs": [
+            "runRequests": [
                 {
-                  "flag": "-p",
-                  "value": "main.fred"
+                    "jobId": 1,
+                    "workingDir": "/workspaces/fred_simulations",
+                    "size": "hot",
+                    "fredVersion": "latest",
+                    "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
+                    "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                    "fredFiles": [
+                        "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                    ],
                 }
-              ],
-              "fredFiles": [
-                "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
-              ]
-            }
-          ]
+            ]
         }
-        
-        client.post('/runs', headers=headers, json=run_requests)
-        
+
+        client.post("/runs", headers=headers, json=run_requests)
+
         # Now get runs by job ID
-        response = client.get('/runs', headers=headers, query_string={"job_id": 1})
+        response = client.get("/runs", headers=headers, query_string={"job_id": 1})
 
         assert response.status_code == 200
         data = response.get_json()
         expected_runs_data = {
-          "runs": [
-            {
-              "id": 1,
-              "jobId": 1,
-              "userId": 123,
-              "createdTs": datetime(2025, 1, 1, 12, 0, 0).isoformat(),
-              "request": {
-                "jobId": 1,
-                "workingDir": "/workspaces/fred_simulations",
-                "size": "hot",
-                "fredVersion": "latest",
-                "population": {
-                  "version": "US_2010.v5",
-                  "locations": [
-                    "Loving_County_TX"
-                  ]
-                },
-                "fredArgs": [
-                  {
-                    "flag": "-p",
-                    "value": "main.fred"
-                  }
-                ],
-                "fredFiles": [
-                  "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
-                ]
-              },
-              "podPhase": "Pending",
-              "containerStatus": None,
-              "status": "QUEUED",
-              "userDeleted": False,
-              "epxClientVersion": "1.2.2",
-              "url": "http://localhost:5001/pre-signed-url"
-            }
-          ]
+            "runs": [
+                {
+                    "id": 1,
+                    "jobId": 1,
+                    "userId": 123,
+                    "createdTs": datetime(2025, 1, 1, 12, 0, 0).isoformat(),
+                    "request": {
+                        "jobId": 1,
+                        "workingDir": "/workspaces/fred_simulations",
+                        "size": "hot",
+                        "fredVersion": "latest",
+                        "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
+                        "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                        "fredFiles": [
+                            "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                        ],
+                    },
+                    "podPhase": "Pending",
+                    "containerStatus": None,
+                    "status": "QUEUED",
+                    "userDeleted": False,
+                    "epxClientVersion": "1.2.2",
+                    "url": "http://localhost:5001/pre-signed-url",
+                }
+            ]
         }
         assert data == expected_runs_data

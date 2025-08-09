@@ -9,4 +9,4 @@ __email__ = "j.zachary.allen@gmail.com"
 from .app import app
 from .config import config
 
-__all__ = ['app', 'config']
+__all__ = ["app", "config"]

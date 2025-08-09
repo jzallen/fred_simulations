@@ -3,29 +3,29 @@ Unit tests for RunMapper class.
 """
 
 import datetime
+
 from epistemix_api.mappers.run_mapper import RunMapper
-from epistemix_api.repositories.database import RunRecord, RunStatusEnum, PodPhaseEnum
-from epistemix_api.models.run import Run, RunStatus, PodPhase
+from epistemix_api.models.run import PodPhase, Run, RunStatus
+from epistemix_api.repositories.database import PodPhaseEnum, RunRecord, RunStatusEnum
 
 
 class TestRunMapper:
-
     def test_record_to_domain__converts_all_fields_correctly(self):
         created_at = datetime.datetime(2025, 1, 15, 10, 30, 0)
         updated_at = datetime.datetime(2025, 1, 15, 11, 30, 0)
-        
+
         run_record = RunRecord(
             id=123,
             job_id=456,
             user_id=789,
             created_at=created_at,
             updated_at=updated_at,
-            request={'simulation': 'test_sim', 'parameters': {'population': 10000}},
+            request={"simulation": "test_sim", "parameters": {"population": 10000}},
             pod_phase=PodPhaseEnum.RUNNING,
-            container_status='healthy',
+            container_status="healthy",
             status=RunStatusEnum.RUNNING,
             user_deleted=0,
-            epx_client_version='1.5.0'
+            epx_client_version="1.5.0",
         )
 
         run = RunMapper.record_to_domain(run_record)
@@ -35,12 +35,12 @@ class TestRunMapper:
         assert run.user_id == 789
         assert run.created_at == created_at
         assert run.updated_at == updated_at
-        assert run.request == {'simulation': 'test_sim', 'parameters': {'population': 10000}}
+        assert run.request == {"simulation": "test_sim", "parameters": {"population": 10000}}
         assert run.pod_phase == PodPhase.RUNNING
-        assert run.container_status == 'healthy'
+        assert run.container_status == "healthy"
         assert run.status == RunStatus.RUNNING
         assert run.user_deleted is False
-        assert run.epx_client_version == '1.5.0'
+        assert run.epx_client_version == "1.5.0"
         assert run.is_persisted() is True
 
     def test_record_to_domain__with_user_deleted_true(self):
@@ -50,12 +50,12 @@ class TestRunMapper:
             user_id=222,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'minimal': 'test'},
+            request={"minimal": "test"},
             pod_phase=PodPhaseEnum.SUCCEEDED,
             container_status=None,
             status=RunStatusEnum.DONE,
             user_deleted=1,  # True
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         run = RunMapper.record_to_domain(run_record)
@@ -74,7 +74,7 @@ class TestRunMapper:
             container_status=None,
             status=RunStatusEnum.SUBMITTED,
             user_deleted=0,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         run = RunMapper.record_to_domain(run_record)
@@ -88,11 +88,11 @@ class TestRunMapper:
             user_id=1,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'status'},
+            request={"test": "status"},
             pod_phase=PodPhaseEnum.RUNNING,
-            container_status='test',
+            container_status="test",
             user_deleted=0,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         status_mappings = [
@@ -115,11 +115,11 @@ class TestRunMapper:
             user_id=1,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'pod_phase'},
-            container_status='test',
+            request={"test": "pod_phase"},
+            container_status="test",
             status=RunStatusEnum.RUNNING,
             user_deleted=0,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         phase_mappings = [
@@ -138,19 +138,19 @@ class TestRunMapper:
     def test_domain_to_record__converts_all_fields_correctly(self):
         created_at = datetime.datetime(2025, 1, 15, 10, 30, 0)
         updated_at = datetime.datetime(2025, 1, 15, 11, 30, 0)
-        
+
         run = Run.create_persisted(
             run_id=456,
             job_id=789,
             user_id=101,
             created_at=created_at,
             updated_at=updated_at,
-            request={'simulation': 'covid_model', 'config': {'duration': 365}},
+            request={"simulation": "covid_model", "config": {"duration": 365}},
             pod_phase=PodPhase.SUCCEEDED,
-            container_status='completed',
+            container_status="completed",
             status=RunStatus.DONE,
             user_deleted=True,
-            epx_client_version='2.0.1'
+            epx_client_version="2.0.1",
         )
 
         run_record = RunMapper.domain_to_record(run)
@@ -160,12 +160,12 @@ class TestRunMapper:
         assert run_record.user_id == 101
         assert run_record.created_at == created_at
         assert run_record.updated_at == updated_at
-        assert run_record.request == {'simulation': 'covid_model', 'config': {'duration': 365}}
+        assert run_record.request == {"simulation": "covid_model", "config": {"duration": 365}}
         assert run_record.pod_phase == PodPhaseEnum.SUCCEEDED
-        assert run_record.container_status == 'completed'
+        assert run_record.container_status == "completed"
         assert run_record.status == RunStatusEnum.DONE
         assert run_record.user_deleted == 1  # Boolean True converted to 1
-        assert run_record.epx_client_version == '2.0.1'
+        assert run_record.epx_client_version == "2.0.1"
 
     def test_domain_to_record__with_user_deleted_false(self):
         run = Run.create_persisted(
@@ -174,12 +174,12 @@ class TestRunMapper:
             user_id=789,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'user_deleted_false'},
+            request={"test": "user_deleted_false"},
             pod_phase=PodPhase.RUNNING,
-            container_status='active',
+            container_status="active",
             status=RunStatus.RUNNING,
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
         run_record = RunMapper.domain_to_record(run)
         assert run_record.user_deleted == 0  # Boolean False converted to 0
@@ -191,14 +191,14 @@ class TestRunMapper:
             user_id=222,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'none_container'},
+            request={"test": "none_container"},
             pod_phase=PodPhase.PENDING,
             container_status=None,
             status=RunStatus.SUBMITTED,
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
-        
+
         run_record = RunMapper.domain_to_record(run)
 
         assert run_record.container_status is None
@@ -210,12 +210,12 @@ class TestRunMapper:
             user_id=1,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'status'},
+            request={"test": "status"},
             pod_phase=PodPhase.RUNNING,
-            container_status='test',
+            container_status="test",
             status=RunStatus.SUBMITTED,  # Will be overridden
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         status_mappings = [
@@ -238,12 +238,12 @@ class TestRunMapper:
             user_id=1,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            request={'test': 'pod_phase'},
+            request={"test": "pod_phase"},
             pod_phase=PodPhase.PENDING,  # Will be overridden
-            container_status='test',
+            container_status="test",
             status=RunStatus.RUNNING,
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         phase_mappings = [
@@ -266,12 +266,12 @@ class TestRunMapper:
             user_id=222,
             created_at=datetime.datetime(2025, 1, 1, 10, 0, 0),
             updated_at=datetime.datetime(2025, 1, 1, 10, 0, 0),
-            request={'old': 'data'},
+            request={"old": "data"},
             pod_phase=PodPhaseEnum.PENDING,
-            container_status='starting',
+            container_status="starting",
             status=RunStatusEnum.SUBMITTED,
             user_deleted=0,
-            epx_client_version='1.0.0'
+            epx_client_version="1.0.0",
         )
 
         updated_run = Run.create_persisted(
@@ -280,12 +280,12 @@ class TestRunMapper:
             user_id=444,  # New user_id
             created_at=datetime.datetime(2025, 1, 2, 10, 0, 0),  # New created_at
             updated_at=datetime.datetime(2025, 1, 2, 11, 0, 0),  # New updated_at
-            request={'new': 'updated_data'},  # New request
+            request={"new": "updated_data"},  # New request
             pod_phase=PodPhase.RUNNING,  # New pod_phase
-            container_status='healthy',  # New container_status
+            container_status="healthy",  # New container_status
             status=RunStatus.RUNNING,  # New status
             user_deleted=True,  # New user_deleted
-            epx_client_version='2.1.0'  # New epx_client_version
+            epx_client_version="2.1.0",  # New epx_client_version
         )
 
         RunMapper.update_record_from_domain(original_record, updated_run)
@@ -295,12 +295,12 @@ class TestRunMapper:
         assert original_record.user_id == 444
         assert original_record.created_at == datetime.datetime(2025, 1, 2, 10, 0, 0)
         assert original_record.updated_at == datetime.datetime(2025, 1, 2, 11, 0, 0)
-        assert original_record.request == {'new': 'updated_data'}
+        assert original_record.request == {"new": "updated_data"}
         assert original_record.pod_phase == PodPhaseEnum.RUNNING
-        assert original_record.container_status == 'healthy'
+        assert original_record.container_status == "healthy"
         assert original_record.status == RunStatusEnum.RUNNING
         assert original_record.user_deleted == 1
-        assert original_record.epx_client_version == '2.1.0'
+        assert original_record.epx_client_version == "2.1.0"
 
     def test_round_trip_conversion__preserves_all_data(self):
         """Test that converting record -> domain -> record preserves all data."""
@@ -310,12 +310,12 @@ class TestRunMapper:
             user_id=999,
             created_at=datetime.datetime(2025, 2, 1, 14, 15, 16),
             updated_at=datetime.datetime(2025, 2, 1, 15, 20, 25),
-            request={'simulation': 'flu_model', 'params': {'R0': 2.5, 'duration': 180}},
+            request={"simulation": "flu_model", "params": {"R0": 2.5, "duration": 180}},
             pod_phase=PodPhaseEnum.SUCCEEDED,
-            container_status='completed_successfully',
+            container_status="completed_successfully",
             status=RunStatusEnum.DONE,
             user_deleted=1,
-            epx_client_version='1.8.3'
+            epx_client_version="1.8.3",
         )
 
         run = RunMapper.record_to_domain(original_record)
@@ -341,12 +341,12 @@ class TestRunMapper:
             user_id=333,
             created_at=datetime.datetime(2025, 3, 10, 9, 0, 0),
             updated_at=datetime.datetime(2025, 3, 10, 10, 30, 45),
-            request={'model': 'measles', 'config': {'vaccination_rate': 0.85}},
+            request={"model": "measles", "config": {"vaccination_rate": 0.85}},
             pod_phase=PodPhase.FAILED,
-            container_status='error_exit_code_1',
+            container_status="error_exit_code_1",
             status=RunStatus.FAILED,
             user_deleted=False,
-            epx_client_version='1.9.2'
+            epx_client_version="1.9.2",
         )
 
         run_record = RunMapper.domain_to_record(original_run)
@@ -369,12 +369,12 @@ class TestRunMapper:
         run = Run.create_unpersisted(
             job_id=444,
             user_id=555,
-            request={'test': 'unpersisted'},
+            request={"test": "unpersisted"},
             pod_phase=PodPhase.PENDING,
             container_status=None,
             status=RunStatus.SUBMITTED,
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
 
         run_record = RunMapper.domain_to_record(run)
@@ -382,12 +382,12 @@ class TestRunMapper:
         assert run_record.id is None  # Should remain None for unpersisted runs
         assert run_record.job_id == 444
         assert run_record.user_id == 555
-        assert run_record.request == {'test': 'unpersisted'}
+        assert run_record.request == {"test": "unpersisted"}
         assert run_record.pod_phase == PodPhaseEnum.PENDING
         assert run_record.container_status is None
         assert run_record.status == RunStatusEnum.SUBMITTED
         assert run_record.user_deleted == 0
-        assert run_record.epx_client_version == '1.2.2'
+        assert run_record.epx_client_version == "1.2.2"
 
     def test_record_to_domain__with_empty_request(self):
         run_record = RunRecord(
@@ -398,10 +398,10 @@ class TestRunMapper:
             updated_at=datetime.datetime.utcnow(),
             request={},  # Empty dict
             pod_phase=PodPhaseEnum.RUNNING,
-            container_status='active',
+            container_status="active",
             status=RunStatusEnum.RUNNING,
             user_deleted=0,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
         run = RunMapper.record_to_domain(run_record)
         assert run.request == {}
@@ -415,10 +415,10 @@ class TestRunMapper:
             updated_at=datetime.datetime.utcnow(),
             request={},  # Empty dict
             pod_phase=PodPhase.SUCCEEDED,
-            container_status='completed',
+            container_status="completed",
             status=RunStatus.DONE,
             user_deleted=False,
-            epx_client_version='1.2.2'
+            epx_client_version="1.2.2",
         )
         run_record = RunMapper.domain_to_record(run)
         assert run_record.request == {}

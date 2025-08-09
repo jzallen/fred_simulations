@@ -3,9 +3,10 @@ Unit tests for JobMapper class.
 """
 
 import datetime
+
 from epistemix_api.mappers.job_mapper import JobMapper
-from epistemix_api.repositories.database import JobRecord, JobStatusEnum
 from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.repositories.database import JobRecord, JobStatusEnum
 
 
 class TestJobMapper:
@@ -16,15 +17,15 @@ class TestJobMapper:
         # Arrange
         created_at = datetime.datetime(2025, 1, 15, 10, 30, 0)
         updated_at = datetime.datetime(2025, 1, 15, 11, 30, 0)
-        
+
         job_record = JobRecord(
             id=123,
             user_id=456,
-            tags=['test', 'demo', 'development'],
+            tags=["test", "demo", "development"],
             status=JobStatusEnum.PROCESSING,
             created_at=created_at,
             updated_at=updated_at,
-            job_metadata={'config': 'test_config.json', 'priority': 'high'}
+            job_metadata={"config": "test_config.json", "priority": "high"},
         )
 
         # Act
@@ -33,11 +34,11 @@ class TestJobMapper:
         # Assert
         assert job.id == 123
         assert job.user_id == 456
-        assert job.tags == ['test', 'demo', 'development']
+        assert job.tags == ["test", "demo", "development"]
         assert job.status == JobStatus.PROCESSING
         assert job.created_at == created_at
         assert job.updated_at == updated_at
-        assert job.metadata == {'config': 'test_config.json', 'priority': 'high'}
+        assert job.metadata == {"config": "test_config.json", "priority": "high"}
         assert job.is_persisted() is True
 
     def test_record_to_domain__with_empty_metadata(self):
@@ -46,11 +47,11 @@ class TestJobMapper:
         job_record = JobRecord(
             id=789,
             user_id=101,
-            tags=['minimal'],
+            tags=["minimal"],
             status=JobStatusEnum.CREATED,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            job_metadata={}
+            job_metadata={},
         )
 
         # Act
@@ -64,10 +65,10 @@ class TestJobMapper:
         base_record = JobRecord(
             id=1,
             user_id=1,
-            tags=['status_test'],
+            tags=["status_test"],
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            job_metadata={}
+            job_metadata={},
         )
 
         status_mappings = [
@@ -94,15 +95,15 @@ class TestJobMapper:
         # Arrange
         created_at = datetime.datetime(2025, 1, 15, 10, 30, 0)
         updated_at = datetime.datetime(2025, 1, 15, 11, 30, 0)
-        
+
         job = Job.create_persisted(
             job_id=456,
             user_id=789,
-            tags=['production', 'urgent'],
+            tags=["production", "urgent"],
             status=JobStatus.COMPLETED,
             created_at=created_at,
             updated_at=updated_at,
-            metadata={'result': 'success', 'output_file': 'results.csv'}
+            metadata={"result": "success", "output_file": "results.csv"},
         )
 
         # Act
@@ -111,11 +112,11 @@ class TestJobMapper:
         # Assert
         assert job_record.id == 456
         assert job_record.user_id == 789
-        assert job_record.tags == ['production', 'urgent']
+        assert job_record.tags == ["production", "urgent"]
         assert job_record.status == JobStatusEnum.COMPLETED
         assert job_record.created_at == created_at
         assert job_record.updated_at == updated_at
-        assert job_record.job_metadata == {'result': 'success', 'output_file': 'results.csv'}
+        assert job_record.job_metadata == {"result": "success", "output_file": "results.csv"}
 
     def test_domain_to_record__with_none_metadata(self):
         """Test domain_to_record conversion when job metadata is None."""
@@ -123,11 +124,11 @@ class TestJobMapper:
         job = Job.create_persisted(
             job_id=999,
             user_id=111,
-            tags=['test'],
+            tags=["test"],
             status=JobStatus.CREATED,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            metadata=None
+            metadata=None,
         )
 
         # Act
@@ -141,11 +142,11 @@ class TestJobMapper:
         base_job = Job.create_persisted(
             job_id=1,
             user_id=1,
-            tags=['status_test'],
+            tags=["status_test"],
             status=JobStatus.CREATED,  # Will be overridden
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            metadata={}
+            metadata={},
         )
 
         status_mappings = [
@@ -173,11 +174,11 @@ class TestJobMapper:
         original_record = JobRecord(
             id=555,
             user_id=666,
-            tags=['round_trip', 'test', 'data_integrity'],
+            tags=["round_trip", "test", "data_integrity"],
             status=JobStatusEnum.PROCESSING,
             created_at=datetime.datetime(2025, 2, 1, 14, 15, 16),
             updated_at=datetime.datetime(2025, 2, 1, 15, 20, 25),
-            job_metadata={'param1': 'value1', 'param2': 42, 'param3': [1, 2, 3]}
+            job_metadata={"param1": "value1", "param2": 42, "param3": [1, 2, 3]},
         )
 
         # Act
@@ -199,11 +200,11 @@ class TestJobMapper:
         original_job = Job.create_persisted(
             job_id=777,
             user_id=888,
-            tags=['reverse', 'round_trip', 'validation'],
+            tags=["reverse", "round_trip", "validation"],
             status=JobStatus.FAILED,
             created_at=datetime.datetime(2025, 3, 10, 9, 0, 0),
             updated_at=datetime.datetime(2025, 3, 10, 10, 30, 45),
-            metadata={'error_code': 500, 'error_message': 'Internal server error'}
+            metadata={"error_code": 500, "error_message": "Internal server error"},
         )
 
         # Act
@@ -230,7 +231,7 @@ class TestJobMapper:
             status=JobStatusEnum.CREATED,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            job_metadata={'note': 'no tags'}
+            job_metadata={"note": "no tags"},
         )
 
         # Act
@@ -249,7 +250,7 @@ class TestJobMapper:
             status=JobStatus.SUBMITTED,
             created_at=datetime.datetime.utcnow(),
             updated_at=datetime.datetime.utcnow(),
-            metadata={'note': 'no tags'}
+            metadata={"note": "no tags"},
         )
 
         # Act

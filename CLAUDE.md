@@ -40,17 +40,24 @@ make clean
 # Install dependencies
 poetry install --no-root
 
-# Run tests for epistemix_api
-poetry run pytest epistemix_api/tests/ -v
+# Run tests for epistemix_api (in parallel)
+make test
+# or
+poetry run pytest epistemix_api/ -n auto
 
 # Run specific test file
 poetry run pytest epistemix_api/tests/test_pact_compliance.py -v
 
-# Format Python code
-poetry run black .
+# Code Quality Commands
+make format       # Format code with black and isort
+make lint         # Run all linters (black, flake8, pylint)
+make lint-fix     # Auto-fix formatting and show remaining issues
+make pre-commit   # Run pre-commit hooks on all files
 
-# Lint Python code
-poetry run flake8 .
+# Or use Poetry directly:
+poetry run black epistemix_api/ simulations/ *.py
+poetry run flake8 epistemix_api/ simulations/ *.py
+poetry run pylint epistemix_api/ simulations/ *.py
 ```
 
 ### Epistemix API Server
@@ -91,13 +98,18 @@ The `epistemix_api/` directory implements a Flask-based mock server following Pa
 - **epistemix_api/pacts/**: Pact contracts defining API specifications
 
 ## Testing Strategy
-- **Unit tests**: Located in `epistemix_api/tests/` using pytest
+- **Unit tests**: Located in `epistemix_api/tests/` using pytest with parallel execution (`-n auto`)
 - **Pact compliance**: `test_pact_compliance.py` validates API contract
 - **Integration tests**: Test database repositories and API endpoints
-- **No linting/formatting enforcement** currently configured for CI/CD
+- **Code Quality Enforcement**:
+  - **Pre-commit hooks**: Automatically run black, isort, flake8, and pylint on commit
+  - **Pre-push hooks**: Run all epistemix_api tests in parallel before push
+  - **Linting**: PEP8 compliance via black (formatting) and flake8 (style checks)
+  - **Static analysis**: pylint configured with project-specific rules in `.pylintrc`
 
 ## Important Notes
 - FRED_HOME environment variable should point to `/workspaces/fred_simulations/fred-framework`
 - The project uses Poetry for Python dependency management - always use `poetry run` or activate the virtual environment
 - API server runs on port 5000 by default with CORS enabled
 - Simulation output goes to `output/` directory with run-specific subdirectories
+
