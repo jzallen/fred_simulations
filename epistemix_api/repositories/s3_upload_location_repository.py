@@ -404,7 +404,8 @@ class S3UploadLocationRepository:
                         content_parts.append(f"   {line}")
 
             content_summary = "\n".join(content_parts)
-            return UploadContent.create_zip_archive(content_summary, entries)
+            # Pass the original binary content along with the summary
+            return UploadContent.create_zip_archive(content_bytes, entries, content_summary)
 
     def _looks_like_json(self, content: str) -> bool:
         """Check if content looks like JSON."""

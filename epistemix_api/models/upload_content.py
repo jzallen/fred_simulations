@@ -44,9 +44,10 @@ class UploadContent:
     """
 
     content_type: ContentType
-    raw_content: str  # Text representation of the content
+    raw_content: str  # Text representation of the content (or base64 for ZIP)
     encoding: str = "utf-8"
     zip_entries: Optional[List[ZipFileEntry]] = None  # For ZIP archives
+    summary: Optional[str] = None  # Human-readable summary for ZIP archives
 
     def __post_init__(self):
         """Post-initialization validation."""
@@ -77,9 +78,12 @@ class UploadContent:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize the content to a dictionary for API responses."""
+        # For ZIP archives, show the summary instead of raw base64 content
+        display_content = self.summary if self.summary else self.raw_content
+
         result = {
             "contentType": self.content_type.value,
-            "content": self.raw_content,
+            "content": display_content,
             "encoding": self.encoding,
             "size": self.get_size(),
         }
@@ -102,14 +106,26 @@ class UploadContent:
 
     @classmethod
     def create_zip_archive(
-        cls, content_summary: str, entries: List[ZipFileEntry]
+        cls, binary_content: bytes, entries: List[ZipFileEntry], summary: str
     ) -> "UploadContent":
-        """Factory method for creating ZIP archive content."""
+        """Factory method for creating ZIP archive content.
+
+        Args:
+            binary_content: The raw bytes of the ZIP file
+            entries: List of file entries in the ZIP
+            summary: Human-readable summary of the ZIP contents
+        """
+        import base64
+
+        # Store the binary content as base64 in raw_content
+        base64_content = base64.b64encode(binary_content).decode("ascii")
+
         return cls(
             content_type=ContentType.ZIP_ARCHIVE,
-            raw_content=content_summary,
-            encoding="utf-8",
+            raw_content=base64_content,
+            encoding="base64",  # Indicate this is base64 encoded
             zip_entries=entries,
+            summary=summary,
         )
 
     @classmethod

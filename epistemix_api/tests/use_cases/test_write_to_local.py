@@ -2,8 +2,6 @@
 Tests for the write_to_local use case.
 """
 
-import base64
-
 import pytest
 
 from epistemix_api.models.upload_content import UploadContent
@@ -44,13 +42,13 @@ class TestWriteToLocal:
         zip_bytes = (
             b"PK\x05\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         )
-        base64_content = base64.b64encode(zip_bytes).decode("utf-8")
 
         # Create a dummy zip entry to satisfy validation
         zip_entry = ZipFileEntry(name="dummy.txt", size=100, compressed_size=50)
 
+        # Create UploadContent with binary data and summary
         content = UploadContent.create_zip_archive(
-            content_summary=base64_content, entries=[zip_entry]
+            binary_content=zip_bytes, entries=[zip_entry], summary="[ZIP Archive Contents - 1 file]"
         )
 
         write_to_local(file_path, content)
