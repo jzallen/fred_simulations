@@ -69,13 +69,13 @@ def get_job_uploads(
 
     # Add run-related uploads
     for run in runs:
-        # Check if run has a URL stored
-        if hasattr(run, "url") and run.url:
+        # Check if run has a config URL stored
+        if hasattr(run, "config_url") and run.config_url:
             upload = JobUpload(
                 context="run",
                 upload_type="output",
                 job_id=job_id,
-                location=UploadLocation(url=run.url),
+                location=UploadLocation(url=run.config_url),
                 run_id=run.id,
             )
             uploads.append(upload)

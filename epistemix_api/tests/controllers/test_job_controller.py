@@ -434,7 +434,7 @@ class TestJobControllerIntegration:
             request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            url="https://s3.amazonaws.com/test-bucket/presigned-url",
+            config_url="https://s3.amazonaws.com/test-bucket/presigned-url",
         )
         saved_run = run_repository.find_by_id(1)
         assert saved_run == expected_run
@@ -458,7 +458,7 @@ class TestJobControllerIntegration:
             request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            url="https://s3.amazonaws.com/test-bucket/presigned-url",
+            config_url="https://s3.amazonaws.com/test-bucket/presigned-url",
         )
         assert runs_result.unwrap() == [expected_run.to_dict()]
 

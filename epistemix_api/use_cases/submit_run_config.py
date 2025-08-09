@@ -44,7 +44,7 @@ def submit_run_config(
         if not run:
             raise ValueError(f"Run {job_upload.run_id} not found")
 
-        run.url = run_configuration_location.url
+        run.config_url = run_configuration_location.url
         run_repository.save(run)
         # Sanitize URL for logging
         safe_url = (

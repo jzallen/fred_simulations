@@ -111,7 +111,7 @@ class TestGetJobUploads:
             status=RunStatus.DONE,
             pod_phase=PodPhase.SUCCEEDED,
             request={},
-            url="https://s3.amazonaws.com/bucket/run_1_output",
+            config_url="https://s3.amazonaws.com/bucket/run_1_output",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -122,7 +122,7 @@ class TestGetJobUploads:
             status=RunStatus.DONE,
             pod_phase=PodPhase.SUCCEEDED,
             request={},
-            url="https://s3.amazonaws.com/bucket/run_2_output",
+            config_url="https://s3.amazonaws.com/bucket/run_2_output",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -168,7 +168,7 @@ class TestGetJobUploads:
             status=RunStatus.DONE,
             pod_phase=PodPhase.SUCCEEDED,
             request={},
-            url="https://s3.amazonaws.com/bucket/run_1_output",
+            config_url="https://s3.amazonaws.com/bucket/run_1_output",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )

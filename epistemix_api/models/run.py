@@ -63,7 +63,7 @@ class Run:
     status: RunStatus = RunStatus.SUBMITTED
     user_deleted: bool = False
     epx_client_version: str = "1.2.2"
-    url: Optional[str] = None  # Presigned URL for this run
+    config_url: Optional[str] = None  # Presigned URL for run configuration
 
     @classmethod
     def create_unpersisted(
@@ -76,7 +76,7 @@ class Run:
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        url: Optional[str] = None,
+        config_url: Optional[str] = None,
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -106,7 +106,7 @@ class Run:
             status=status,
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
-            url=url,
+            config_url=config_url,
         )
 
     @classmethod
@@ -123,7 +123,7 @@ class Run:
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        url: Optional[str] = None,
+        config_url: Optional[str] = None,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -156,7 +156,7 @@ class Run:
             status=status,
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
-            url=url,
+            config_url=config_url,
         )
 
     def is_persisted(self) -> bool:
@@ -206,7 +206,7 @@ class Run:
             "status": mapped_status,
             "userDeleted": self.user_deleted,
             "epxClientVersion": self.epx_client_version,
-            "url": self.url,
+            "config_url": self.config_url,
         }
 
     def to_run_response_dict(self) -> Dict[str, Any]:
