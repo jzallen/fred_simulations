@@ -43,11 +43,12 @@ def main():
 
         # Display any additional job information
         if hasattr(info_job, "list_runs"):
-            runs = info_job.list_runs()
-            if runs:
-                print(f"\nNumber of runs: {len(runs)}")
-                for i, run in enumerate(runs, 1):
-                    print(f"  Run {i}: {run.get('status', 'Unknown status')}")
+            user_requests = info_job.list_runs()
+
+            if user_requests.runs:
+                print(f"\nNumber of runs: {len(user_requests.runs)}")
+                for i, run in enumerate(user_requests.runs, 1):
+                    print(f"  Run {i}: {run.status}")
 
     except Exception as e:
         print(f"\n✗ Error executing job: {e}")
