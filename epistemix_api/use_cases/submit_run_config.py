@@ -41,16 +41,18 @@ def submit_run_config(
     # If we have a run_id, persist the URL to the run
     if job_upload.run_id is not None:
         run = run_repository.find_by_id(job_upload.run_id)
-        if run:
-            run.url = run_configuration_location.url
-            run_repository.save(run)
-            # Sanitize URL for logging
-            safe_url = (
-                run_configuration_location.url.split("?")[0]
-                if "?" in run_configuration_location.url
-                else run_configuration_location.url
-            )
-            logger.info(f"Run {job_upload.run_id} config URL persisted: {safe_url}")
+        if not run:
+            raise ValueError(f"Run {job_upload.run_id} not found")
+
+        run.url = run_configuration_location.url
+        run_repository.save(run)
+        # Sanitize URL for logging
+        safe_url = (
+            run_configuration_location.url.split("?")[0]
+            if "?" in run_configuration_location.url
+            else run_configuration_location.url
+        )
+        logger.info(f"Run {job_upload.run_id} config URL persisted: {safe_url}")
 
     logger.info(
         f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context "

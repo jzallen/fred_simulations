@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 
+import pytest
+
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.run import Run
 from epistemix_api.models.upload_location import UploadLocation
@@ -98,3 +100,26 @@ class TestSubmitRunConfigUseCase:
 
         # Assert
         mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
+
+    def test_submit_run_config__raises_error_when_run_not_found(self):
+        # Arrange
+        job_id = 123
+        run_id = 456
+        context = "run"
+        job_type = "config"
+
+        mock_run_repo = Mock(spec=IRunRepository)
+        mock_run_repo.find_by_id.return_value = None  # Run not found
+
+        mock_upload_location_repo = Mock(spec=IUploadLocationRepository)
+        mock_upload_location_repo.get_upload_location.return_value = UploadLocation(
+            url="https://example.com/presigned"
+        )
+
+        # Act & Assert
+        job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
+        with pytest.raises(ValueError) as exc_info:
+            submit_run_config(mock_run_repo, mock_upload_location_repo, job_upload)
+
+        assert str(exc_info.value) == f"Run {run_id} not found"
+        mock_run_repo.find_by_id.assert_called_once_with(run_id)
