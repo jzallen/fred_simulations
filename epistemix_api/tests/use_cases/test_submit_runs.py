@@ -68,7 +68,7 @@ class TestSubmitRunsUseCase:
             request=run_request,
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            url="https://example.com/presigned-url",
+            config_url="https://example.com/presigned-url",
         )
 
         expected_runs = [
@@ -81,7 +81,7 @@ class TestSubmitRunsUseCase:
                 request=run_request,
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
                 updated_at=datetime(2025, 1, 1, 12, 0, 0),
-                url="https://example.com/presigned-url",
+                config_url="https://example.com/presigned-url",
             )
         ]
         result = submit_runs(
@@ -136,7 +136,7 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
                 request=run_request,
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
                 updated_at=datetime(2025, 1, 1, 12, 0, 0),
-                url="https://example.com/presigned-url",
+                config_url="https://example.com/presigned-url",
             )
         ]
         result = submit_runs(run_repository, upload_location_repository, run_requests, bearer_token)
@@ -166,7 +166,7 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
             request=run_request,
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            url="https://example.com/presigned-url",
+            config_url="https://example.com/presigned-url",
         )
         saved_run = run_repository.find_by_id(1)
         assert saved_run == expected_run

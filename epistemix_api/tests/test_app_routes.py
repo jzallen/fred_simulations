@@ -276,7 +276,7 @@ class TestJobRoutes:
                     "status": "QUEUED",
                     "userDeleted": False,
                     "epxClientVersion": "1.2.2",
-                    "url": "http://localhost:5001/pre-signed-url",
+                    "config_url": "http://localhost:5001/pre-signed-url",
                 }
             ]
         }

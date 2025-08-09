@@ -96,7 +96,7 @@ def submit_runs(
         upload_location = upload_location_repository.get_upload_location(job_upload)
 
         # Update the run with the URL
-        persisted_run.url = upload_location.url
+        persisted_run.config_url = upload_location.url
 
         # Save the updated run with the URL
         final_run = run_repository.save(persisted_run)
