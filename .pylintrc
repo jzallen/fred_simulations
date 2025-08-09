@@ -59,4 +59,3 @@ ignored-modules=boto3,botocore
 [EXCEPTIONS]
 # Exceptions that will emit a warning when being caught.
 overgeneral-exceptions=builtins.BaseException,builtins.Exception
-

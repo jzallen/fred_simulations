@@ -3,7 +3,6 @@ Job domain model for the Epistemix API.
 Contains the core business logic and rules for job entities.
 """
 
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -241,4 +240,7 @@ class Job:
 
     def __repr__(self) -> str:
         id_str = str(self.id) if self.is_persisted() else "unpersisted"
-        return f"Job(id={id_str}, user_id={self.user_id}, status={self.status.value}, tags={self.tags})"
+        return (
+            f"Job(id={id_str}, user_id={self.user_id}, status={self.status.value}, "
+            f"tags={self.tags})"
+        )

@@ -2,7 +2,6 @@
 Tests for submit_job use case.
 """
 
-import os
 from datetime import datetime
 from unittest.mock import Mock
 

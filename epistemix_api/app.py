@@ -108,7 +108,10 @@ def get_upload_location_repository():
 
 def get_job_controller():
     """Get a JobController instance with the current request's database session."""
-    session_factory = lambda: g.db_session
+
+    def session_factory():
+        return g.db_session
+
     job_repository = SQLAlchemyJobRepository(session_factory)
     run_repository = SQLAlchemyRunRepository(session_factory)
     upload_location_repository = get_upload_location_repository()

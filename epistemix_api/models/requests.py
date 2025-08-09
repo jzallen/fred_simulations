@@ -2,7 +2,7 @@
 Pydantic models for API request validation.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,7 +97,10 @@ class SubmitRunsRequest(BaseModel):
                         "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
                         "fredArgs": [{"flag": "-p", "value": "main.fred"}],
                         "fredFiles": [
-                            "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                            (
+                                "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                "agent_info.fred"
+                            )
                         ],
                     }
                 ]

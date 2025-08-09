@@ -53,7 +53,8 @@ def submit_job_config(
         else job_configuration_location.url
     )
     logger.info(
-        f"Job {job_upload.job_id} configuration submitted with context {job_upload.context} and type {job_upload.upload_type}, URL: {safe_url}"
+        f"Job {job_upload.job_id} configuration submitted with context {job_upload.context} "
+        f"and type {job_upload.upload_type}, URL: {safe_url}"
     )
 
     return job_configuration_location

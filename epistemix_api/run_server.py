@@ -20,7 +20,7 @@ def main():
     port = int(os.getenv("FLASK_PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
 
-    print(f"Starting Epistemix API Mock Server...")
+    print("Starting Epistemix API Mock Server...")
     print(f"Environment: {config_name}")
     print(f"Host: {host}")
     print(f"Port: {port}")

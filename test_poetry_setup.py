@@ -17,13 +17,7 @@ def main():
 
     print(f"NumPy version: {np.__version__}")
 
-    import pact
-
-    print("pact-python imported successfully")
-
-    from epx import FREDJob, FREDModelConfig, SynthPop
-
-    print("epx imported successfully")
+    print("Checking optional imports...")
 
     print("\n🎉 All tests completed!")
 

@@ -3,7 +3,6 @@ SQLAlchemy-based job repository implementation.
 This is a concrete implementation of the IJobRepository interface using SQLite.
 """
 
-import datetime
 import logging
 from contextlib import contextmanager
 from typing import Callable, List, Optional

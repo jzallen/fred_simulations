@@ -2,8 +2,6 @@
 Tests for UploadLocation sanitization functionality.
 """
 
-import pytest
-
 from epistemix_api.models.upload_location import UploadLocation
 
 
@@ -21,7 +19,10 @@ class TestUploadLocationSanitization:
 
     def test_to_sanitized_dict_removes_query_params(self):
         """Test that to_sanitized_dict removes query parameters from HTTP URLs."""
-        url = "https://s3.amazonaws.com/mybucket/file.txt?X-Amz-Signature=secret123&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE"
+        url = (
+            "https://s3.amazonaws.com/mybucket/file.txt?X-Amz-Signature=secret123&"
+            "X-Amz-Credential=AKIAIOSFODNN7EXAMPLE"
+        )
         location = UploadLocation(url=url)
 
         result = location.to_sanitized_dict()

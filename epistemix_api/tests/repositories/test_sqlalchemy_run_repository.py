@@ -56,7 +56,7 @@ class TestSQLAlchemyJobRepository:
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
         )
-        saved_run = repository.save(run)
+        repository.save(run)
         db_session.commit()
 
         expected_run = Run.create_persisted(

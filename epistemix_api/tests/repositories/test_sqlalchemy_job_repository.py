@@ -50,7 +50,6 @@ class TestSQLAlchemyJobRepository:
         # Arrange - First create and save a job
         saved_job = repository.save(sample_job)
         original_id = saved_job.id
-        original_created_at = saved_job.created_at
 
         # Move time forward for the update
         with freeze_time("2025-01-01 12:05:00"):
@@ -114,7 +113,7 @@ class TestSQLAlchemyJobRepository:
             saved_job.add_tag("analysis_job")
             saved_job.update_status(JobStatus.SUBMITTED)
             saved_job.metadata["updated"] = True
-            updated_job = repository.save(saved_job)
+            repository.save(saved_job)
 
         # Act - Find the job by ID
         found_job = repository.find_by_id(job_id)
@@ -268,7 +267,7 @@ class TestSQLAlchemyJobRepository:
         assert user_jobs == [saved_job1, saved_job2, saved_job3]
 
         # Act - Delete one job
-        deletion_result = repository.delete(saved_job2.id)
+        repository.delete(saved_job2.id)
 
         # Assert
         user_jobs_after_deletion = repository.find_by_user_id(user_id)

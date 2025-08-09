@@ -127,7 +127,10 @@ def create_visualizations(out_data, influenza_data):
 
         summary_text += f"Population: {population_data['Popsize'].iloc[0]:,}\n"
         summary_text += f"Days simulated: {len(population_data)}\n"
-        summary_text += f"Date range: {population_data['Date'].iloc[0]} to {population_data['Date'].iloc[-1]}\n\n"
+        summary_text += (
+            f"Date range: {population_data['Date'].iloc[0]} to "
+            f"{population_data['Date'].iloc[-1]}\n\n"
+        )
 
         summary_text += f"Disease data points: {len(disease_data)}\n"
         summary_text += f"Disease metrics: {len(disease_data.columns)}\n"
@@ -158,7 +161,7 @@ def create_visualizations(out_data, influenza_data):
     # Show the plot if in interactive mode
     try:
         plt.show()
-    except:
+    except Exception:
         print("Plot created but not displayed (non-interactive environment)")
 
 

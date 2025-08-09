@@ -3,12 +3,10 @@ Tests for the write_to_local use case.
 """
 
 import base64
-import tempfile
-from pathlib import Path
 
 import pytest
 
-from epistemix_api.models.upload_content import ContentType, UploadContent
+from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.use_cases.write_to_local import write_to_local
 
 

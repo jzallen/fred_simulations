@@ -4,7 +4,6 @@ This module implements the core business logic for run submission configuration.
 """
 
 import logging
-from typing import Optional
 
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.upload_location import UploadLocation
@@ -54,7 +53,8 @@ def submit_run_config(
             logger.info(f"Run {job_upload.run_id} config URL persisted: {safe_url}")
 
     logger.info(
-        f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.upload_type}"
+        f"Run {job_upload.run_id} config for Job {job_upload.job_id} submitted with context "
+        f"{job_upload.context} and type {job_upload.upload_type}"
     )
 
     return run_configuration_location

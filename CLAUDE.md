@@ -112,4 +112,3 @@ The `epistemix_api/` directory implements a Flask-based mock server following Pa
 - The project uses Poetry for Python dependency management - always use `poetry run` or activate the virtual environment
 - API server runs on port 5000 by default with CORS enabled
 - Simulation output goes to `output/` directory with run-specific subdirectories
-

@@ -7,7 +7,6 @@ handling both text and binary content appropriately.
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from epistemix_api.models.upload_content import ContentType, UploadContent
 
@@ -74,7 +73,8 @@ def write_to_local(file_path: Path, content: UploadContent, force: bool = False)
         try:
             file_path.write_text(content.raw_content, encoding=content.encoding)
             logger.info(
-                f"Wrote {content.content_type.value} content to {file_path} ({content.get_size()} bytes)"
+                f"Wrote {content.content_type.value} content to {file_path} "
+                f"({content.get_size()} bytes)"
             )
         except Exception as e:
             raise IOError(

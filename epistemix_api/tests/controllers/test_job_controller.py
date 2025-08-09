@@ -4,7 +4,6 @@ Tests for the refactored Flask app using Clean Architecture.
 
 import base64
 import json
-import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -201,7 +200,7 @@ class TestJobController:
         assert is_successful(job_result)
         assert job_result.unwrap() == expected_response
 
-    def test_submit_job__context_run_type_config__calls_submit_run_config_fn_with_correct_parameters(
+    def test_submit_job__context_run_type_config__calls_submit_run_config_fn_with_correct_parameters(  # noqa: E501
         self, service
     ):
         service.submit_job(job_id=1, run_id=2, context="run", job_type="config")

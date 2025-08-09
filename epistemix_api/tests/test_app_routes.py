@@ -11,7 +11,6 @@ import pytest
 from freezegun import freeze_time
 
 from epistemix_api.app import app
-from epistemix_api.models.job import JobStatus
 
 
 @pytest.fixture
@@ -158,7 +157,8 @@ class TestJobRoutes:
                         "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
                         "fredArgs": [{"flag": "-p", "value": "main.fred"}],
                         "fredFiles": [
-                            "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                            "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                            "agent_info.fred"
                         ],
                     },
                 }
@@ -267,7 +267,8 @@ class TestJobRoutes:
                         "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
                         "fredArgs": [{"flag": "-p", "value": "main.fred"}],
                         "fredFiles": [
-                            "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                            "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                            "agent_info.fred"
                         ],
                     },
                     "podPhase": "Pending",

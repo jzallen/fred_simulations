@@ -6,15 +6,15 @@ This is a concrete implementation of the IUploadLocationRepository interface usi
 import io
 import logging
 import zipfile
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Optional
 from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 from epistemix_api.models.job_upload import JobUpload
-from epistemix_api.models.upload_content import ContentType, UploadContent, ZipFileEntry
+from epistemix_api.models.upload_content import UploadContent, ZipFileEntry
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories.interfaces import IUploadLocationRepository
 
@@ -97,7 +97,8 @@ class S3UploadLocationRepository:
             # Sanitize URL for logging (remove query string with AWS credentials)
             safe_url = presigned_url.split("?")[0] if "?" in presigned_url else presigned_url
             logger.info(
-                f"Generated pre-signed URL for job {job_upload.job_id} -> {object_key} (URL: {safe_url})"
+                f"Generated pre-signed URL for job {job_upload.job_id} -> {object_key} "
+                f"(URL: {safe_url})"
             )
             return UploadLocation(url=presigned_url)
 
@@ -116,7 +117,8 @@ class S3UploadLocationRepository:
         """Produces valid S3 object key from JobUpload object.
 
         New format: /jobs/<job_id>/<year>/<month>/<day>/<timestamp>/<filename>.<extension>
-        For runs: /jobs/<job_id>/<year>/<month>/<day>/<timestamp>/run_<run_id>_<filename>.<extension>
+        For runs: /jobs/<job_id>/<year>/<month>/<day>/<timestamp>/
+        run_<run_id>_<filename>.<extension>
 
         Args:
             job_upload: JobUpload object containing job details
@@ -396,8 +398,8 @@ class S3UploadLocationRepository:
                 content_parts.append(f"   Size: {info.file_size} bytes")
                 content_parts.append(f"   Compressed: {info.compress_size} bytes")
                 if preview:
-                    content_parts.append(f"   Preview:")
-                    content_parts.append(f"   {'-' * 40}")
+                    content_parts.append("   Preview:")
+                    content_parts.append("   " + "-" * 40)
                     for line in preview.split("\n")[:10]:
                         content_parts.append(f"   {line}")
 

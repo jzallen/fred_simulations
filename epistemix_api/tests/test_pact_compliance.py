@@ -51,7 +51,7 @@ Tests for the Epistemix API Flask app to validate Pact contract compliance.
 #     # Check if the process is still running
 #     if server_process.poll() is not None:
 #         stdout, stderr = server_process.communicate()
-#         pytest.fail(f"Server failed to start. STDOUT: {stdout.decode()}, STDERR: {stderr.decode()}")
+# pytest.fail(f"Server failed to start. STDOUT: {stdout.decode()}, STDERR: {stderr.decode()}")  # noqa: E501
 
 #     yield
 

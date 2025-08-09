@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from epistemix_api.models.job import Job, JobStatus
+from epistemix_api.models.job import Job
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories.interfaces import IJobRepository, IUploadLocationRepository

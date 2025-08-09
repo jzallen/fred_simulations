@@ -8,7 +8,6 @@ from unittest.mock import Mock
 import pytest
 
 from epistemix_api.models.job import Job
-from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.run import PodPhase, Run, RunStatus
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.use_cases.get_job_uploads import get_job_uploads

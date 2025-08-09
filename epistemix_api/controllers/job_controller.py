@@ -18,7 +18,6 @@ from epistemix_api.models.run import Run
 from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
-from epistemix_api.use_cases import get_job as get_job_use_case
 from epistemix_api.use_cases import (
     get_job_uploads,
 )
@@ -160,8 +159,8 @@ class JobController:
         except ValueError as e:
             logger.exception(f"Validation error in register_job: {e}")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in register_job")
+        except Exception:
+            logger.exception("Unexpected error in register_job")
             return Failure("An unexpected error occurred while registering the job")
 
     def submit_job(
@@ -303,7 +302,8 @@ class JobController:
                         # Include error information if content couldn't be read
                         upload_dict["error"] = str(e)
                         logger.warning(
-                            f"Failed to read content for upload {upload.context}_{upload.upload_type} (job_id={job_id}): {e}"
+                            f"Failed to read content for upload "
+                            f"{upload.context}_{upload.upload_type} (job_id={job_id}): {e}"
                         )
 
                 results.append(upload_dict)
@@ -314,8 +314,8 @@ class JobController:
         except ValueError as e:
             logger.error(f"Validation error in get_job_uploads: {e}")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in get_job_uploads")
+        except Exception:
+            logger.exception("Unexpected error in get_job_uploads")
             return Failure("An unexpected error occurred while retrieving uploads")
 
     def download_job_uploads(
@@ -351,11 +351,13 @@ class JobController:
             existing_files = list(base_path.iterdir())
             if existing_files and should_force:
                 logger.info(
-                    f"Directory {base_path} contains {len(existing_files)} existing files that may be overwritten (should_force=True)"
+                    f"Directory {base_path} contains {len(existing_files)} existing files "
+                    f"that may be overwritten (should_force=True)"
                 )
             elif existing_files:
                 logger.warning(
-                    f"Directory {base_path} contains {len(existing_files)} existing files - will skip existing files (use should_force=True to overwrite)"
+                    f"Directory {base_path} contains {len(existing_files)} existing files - "
+                    f"will skip existing files (use should_force=True to overwrite)"
                 )
 
             logger.info(
@@ -422,6 +424,6 @@ class JobController:
         except ValueError as e:
             logger.error(f"Validation error in download_job_uploads: {e}")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in download_job_uploads")
+        except Exception:
+            logger.exception("Unexpected error in download_job_uploads")
             return Failure("An unexpected error occurred while downloading uploads")

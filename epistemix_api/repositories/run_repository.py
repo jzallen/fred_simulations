@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.run import Run, RunStatus
 from epistemix_api.repositories.database import RunRecord, get_db_session
-from epistemix_api.repositories.interfaces import IRunRepository
 
 
 class SQLAlchemyRunRepository:

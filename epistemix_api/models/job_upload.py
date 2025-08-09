@@ -66,7 +66,8 @@ class JobUpload:
             "logs",
         ]:
             raise ValueError(
-                f"Run context only supports 'config', 'output', 'results', and 'logs' types, got '{self.upload_type}'"
+                f"Run context only supports 'config', 'output', 'results', and 'logs' types, "
+                f"got '{self.upload_type}'"
             )
 
     def is_job_upload(self) -> bool:
@@ -131,4 +132,7 @@ class JobUpload:
     def __repr__(self) -> str:
         run_str = f", run_id={self.run_id}" if self.run_id else ""
         location_str = f", location={self.location.url}" if self.location else ""
-        return f"JobUpload(context={self.context}, type={self.upload_type}, job_id={self.job_id}{run_str}{location_str})"
+        return (
+            f"JobUpload(context={self.context}, type={self.upload_type}, "
+            f"job_id={self.job_id}{run_str}{location_str})"
+        )

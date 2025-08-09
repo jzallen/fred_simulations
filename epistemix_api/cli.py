@@ -18,8 +18,6 @@ from typing import Dict, Optional
 import click
 from dotenv import load_dotenv
 from returns.pipeline import is_successful
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from epistemix_api.controllers.job_controller import JobController
 from epistemix_api.repositories.database import get_database_manager
@@ -107,7 +105,7 @@ def format_job_uploads(uploads: list) -> str:
 
     # Display run uploads
     if run_uploads:
-        output.append(f"\nRun Uploads:")
+        output.append("\nRun Uploads:")
         output.append("-" * 80)
 
         # Group by run ID
@@ -264,7 +262,9 @@ def list_all_jobs(limit: Optional[int], offset: int, user_id: Optional[int], jso
     try:
         # Get database session
         session = get_database_session()
-        session_factory = lambda: session
+
+        def session_factory():
+            return session
 
         # Create repository
         job_repository = SQLAlchemyJobRepository(session_factory)
@@ -315,7 +315,9 @@ def get_job_info(job_id: int, json_output: bool):
     try:
         # Get database session
         session = get_database_session()
-        session_factory = lambda: session
+
+        def session_factory():
+            return session
 
         # Create repositories
         job_repository = SQLAlchemyJobRepository(session_factory)
@@ -392,7 +394,9 @@ def list_job_uploads(job_id: int, json_output: bool):
 
         # Get database session
         session = get_database_session()
-        session_factory = lambda: session
+
+        def session_factory():
+            return session
 
         # Create repositories
         job_repository = SQLAlchemyJobRepository(session_factory)
@@ -475,7 +479,9 @@ def download_job_uploads(job_id: int, output_dir: Optional[str], force: bool):
 
         # Get database session
         session = get_database_session()
-        session_factory = lambda: session
+
+        def session_factory():
+            return session
 
         # Create repositories
         job_repository = SQLAlchemyJobRepository(session_factory)

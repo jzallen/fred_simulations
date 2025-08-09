@@ -11,7 +11,6 @@ Usage:
     python run_info_job.py
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -19,8 +18,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-# Import the info_job
-from simulations.agent_info_demo.agent_info_job import info_job
+from simulations.agent_info_demo.agent_info_job import info_job  # noqa: E402
 
 
 def main():
@@ -44,10 +42,12 @@ def main():
             print(f"⚠ Job ended with status: {info_job.status}")
 
         # Display any additional job information
-        if hasattr(info_job, "runs") and info_job.runs:
-            print(f"\nNumber of runs: {len(info_job.runs)}")
-            for i, run in enumerate(info_job.runs, 1):
-                print(f"  Run {i}: {run.get('status', 'Unknown status')}")
+        if hasattr(info_job, "list_runs"):
+            runs = info_job.list_runs()
+            if runs:
+                print(f"\nNumber of runs: {len(runs)}")
+                for i, run in enumerate(runs, 1):
+                    print(f"  Run {i}: {run.get('status', 'Unknown status')}")
 
     except Exception as e:
         print(f"\n✗ Error executing job: {e}")

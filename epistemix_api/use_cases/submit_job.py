@@ -4,7 +4,6 @@ This module implements the core business logic for job submission operations.
 """
 
 import logging
-from typing import Any, Dict
 
 from epistemix_api.models.job import JobStatus
 from epistemix_api.models.job_upload import JobUpload
@@ -67,7 +66,8 @@ def submit_job(
         else job_input_location.url
     )
     logger.info(
-        f"Job {job_upload.job_id} submitted with context {job_upload.context} and type {job_upload.upload_type}, URL: {safe_url}"
+        f"Job {job_upload.job_id} submitted with context {job_upload.context} and type "
+        f"{job_upload.upload_type}, URL: {safe_url}"
     )
 
     return job_input_location

@@ -66,4 +66,3 @@ repos:
         always_run: true
 
 exclude: ^fred-framework/
-

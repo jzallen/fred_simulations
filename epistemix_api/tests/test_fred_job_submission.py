@@ -58,7 +58,9 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs/register",
                 headers={
-                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+                    "Offline-Token": (
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2",
@@ -82,7 +84,9 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+                    "Offline-Token": (
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2",
@@ -137,7 +141,10 @@ class TestAgentInfoJob(unittest.TestCase):
                             },
                             "fredArgs": EachLike({"flag": Like("-p"), "value": Like("main.fred")}),
                             "fredFiles": EachLike(
-                                "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                                (
+                                    "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                    "agent_info.fred"
+                                )
                             ),
                         }
                     )
@@ -165,7 +172,10 @@ class TestAgentInfoJob(unittest.TestCase):
                                     {"flag": Like("-p"), "value": Like("main.fred")}
                                 ),
                                 "fredFiles": EachLike(
-                                    "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                                    (
+                                        "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                        "agent_info.fred"
+                                    )
                                 ),
                             },
                         }
@@ -181,7 +191,9 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+                    "Offline-Token": (
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2",
@@ -203,7 +215,9 @@ class TestAgentInfoJob(unittest.TestCase):
                 method="POST",
                 path="/jobs",
                 headers={
-                    "Offline-Token": "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0=",
+                    "Offline-Token": (
+                        "Bearer eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
+                    ),
                     "content-type": "application/json",
                     "fredcli-version": "0.4.0",
                     "user-agent": "epx_client_1.2.2",
@@ -262,7 +276,10 @@ class TestAgentInfoJob(unittest.TestCase):
                                 },
                                 "fredArgs": [{"flag": "-p", "value": "main.fred"}],
                                 "fredFiles": [
-                                    "/workspaces/fred_simulations/simulations/agent_info_demo/agent_info.fred"
+                                    (
+                                        "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                        "agent_info.fred"
+                                    )
                                 ],
                             },
                             "podPhase": "Running",

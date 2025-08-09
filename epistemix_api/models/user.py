@@ -280,4 +280,7 @@ class User:
 
     def __repr__(self) -> str:
         """String representation for debugging."""
-        return f"User(id={self.id}, username={self.username}, role={self.role.value}, status={self.status.value})"
+        return (
+            f"User(id={self.id}, username={self.username}, role={self.role.value}, "
+            f"status={self.status.value})"
+        )

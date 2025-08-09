@@ -77,7 +77,7 @@ def run_job_with_debugging():
 
     try:
         # Execute the job
-        result = info_job.execute()
+        info_job.execute()
 
         print("\n" + "-" * 60)
         print("Job execution completed")
@@ -86,10 +86,11 @@ def run_job_with_debugging():
         # Display results
         print(f"\nFinal Status: {info_job.status}")
 
-        if hasattr(info_job, "runs"):
-            print(f"\nRuns Information:")
-            if info_job.runs:
-                for i, run in enumerate(info_job.runs, 1):
+        if hasattr(info_job, "list_runs"):
+            print("\nRuns Information:")
+            runs = info_job.list_runs()
+            if runs:
+                for i, run in enumerate(runs, 1):
                     print(f"\n  Run {i}:")
                     for key, value in run.items():
                         print(f"    {key}: {value}")
@@ -105,7 +106,7 @@ def run_job_with_debugging():
             return 1
 
     except Exception as e:
-        print(f"\n✗ ERROR: Job execution failed!")
+        print("\n✗ ERROR: Job execution failed!")
         print(f"  Exception: {type(e).__name__}")
         print(f"  Message: {e}")
 
