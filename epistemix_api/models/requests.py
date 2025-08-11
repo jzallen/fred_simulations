@@ -2,7 +2,7 @@
 Pydantic models for API request validation.
 """
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -26,12 +26,17 @@ class SubmitJobRequest(BaseModel):
 
     model_config = ConfigDict(
         extra="ignore",
-        json_schema_extra={"example": {"jobId": 12345, "context": "job", "type": "input"}},
+        json_schema_extra={
+            "example": {"jobId": 12345, "context": "job", "type": "input", "runId": None}
+        },
     )
 
     jobId: int = Field(description="ID of the job to submit")
     context: str = Field(default="job", description="Context for the job submission")
-    type: str = Field(default="input", description="Type of the job submission")
+    uploadType: str = Field(alias="type", default="input", description="Type of the job submission")
+    runId: Optional[int] = Field(
+        default=None, description="ID of the run associated with the job submission"
+    )
 
 
 class FredArg(BaseModel):

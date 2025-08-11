@@ -194,14 +194,14 @@ class JobController:
             # Route to the appropriate use case based on context and type
             match (context, job_type):
                 case ("job", "input"):
-                    job_configuration_location = self._dependencies.submit_job_fn(job_upload)
+                    upload_location = self._dependencies.submit_job_fn(job_upload)
                 case ("job", "config"):
-                    job_configuration_location = self._dependencies.submit_job_config_fn(job_upload)
+                    upload_location = self._dependencies.submit_job_config_fn(job_upload)
                 case ("run", "config"):
-                    job_configuration_location = self._dependencies.submit_run_config_fn(job_upload)
+                    upload_location = self._dependencies.submit_run_config_fn(job_upload)
                 case _:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
-            return Success(job_configuration_location.to_dict())
+            return Success(upload_location.to_dict())
         except ValueError as e:
             return Failure(str(e))
         except Exception as e:

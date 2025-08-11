@@ -73,13 +73,13 @@ def get_job_uploads(
         if hasattr(run, "config_url") and run.config_url:
             upload = JobUpload(
                 context="run",
-                upload_type="output",
+                upload_type="config",  # This is a config URL, not output
                 job_id=job_id,
                 location=UploadLocation(url=run.config_url),
                 run_id=run.id,
             )
             uploads.append(upload)
-            logger.info(f"Found run_output for run {run.id}")
+            logger.info(f"Found run_config for run {run.id}")
 
         # Check for run config if stored separately
         if hasattr(run, "config_location") and run.config_location:
