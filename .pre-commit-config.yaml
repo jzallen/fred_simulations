@@ -5,8 +5,10 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: '^epistemix_api/infrastructure/.*\.yml$'
       - id: check-added-large-files
       - id: check-json
+        exclude: '^\.devcontainer/.*\.json$'
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
@@ -66,6 +68,16 @@ repos:
           - seaborn
           - python-dotenv
           - epx
+
+  # CloudFormation linter for infrastructure files
+  - repo: local
+    hooks:
+      - id: cfn-lint
+        name: CloudFormation Linter
+        entry: poetry run cfn-lint
+        language: system
+        files: '^epistemix_api/infrastructure/.*\.yml$'
+        pass_filenames: true
 
   # Pre-push hook for running tests
   - repo: local

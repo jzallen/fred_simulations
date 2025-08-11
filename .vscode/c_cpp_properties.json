@@ -10,7 +10,7 @@
             "defines": [
                 "LINUX",
                 "FREDVERBOSE",
-                "FREDSTATUS", 
+                "FREDSTATUS",
                 "FREDWARNING",
                 "DFREDDEBUG",
                 "NCPU=1"

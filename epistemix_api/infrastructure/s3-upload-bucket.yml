@@ -9,7 +9,7 @@ Parameters:
     MaxLength: 63
     AllowedPattern: '^[a-z0-9][a-z0-9\-]*[a-z0-9]$'
     ConstraintDescription: Bucket name must be between 3 and 63 characters, start and end with lowercase letter or number, and contain only lowercase letters, numbers, and hyphens
-  
+
   Environment:
     Type: String
     Description: Environment name for tagging
@@ -18,7 +18,7 @@ Parameters:
       - dev
       - staging
       - production
-  
+
   AllowedOrigins:
     Type: CommaDelimitedList
     Description: List of origins allowed for CORS requests
@@ -111,19 +111,19 @@ Outputs:
     Value: !Ref UploadBucket
     Export:
       Name: !Sub '${AWS::StackName}-BucketName'
-  
+
   BucketArn:
     Description: ARN of the created S3 bucket
     Value: !GetAtt UploadBucket.Arn
     Export:
       Name: !Sub '${AWS::StackName}-BucketArn'
-  
+
   BucketDomainName:
     Description: Domain name of the S3 bucket
     Value: !GetAtt UploadBucket.DomainName
     Export:
       Name: !Sub '${AWS::StackName}-BucketDomainName'
-  
+
   UploadRoleArn:
     Description: ARN of the IAM role for S3 uploads
     Value: !GetAtt S3UploadRole.Arn

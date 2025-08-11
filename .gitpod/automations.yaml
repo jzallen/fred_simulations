@@ -6,30 +6,30 @@ tasks:
             set -e
             # Update package lists and install system dependencies
             sudo apt-get update && sudo apt-get install -y build-essential g++ make cmake pkg-config libboost-all-dev
-            
+
             # Install Node.js and npm separately with verification
             sudo apt-get install -y nodejs npm
             hash -r  # Refresh command cache
-            
+
             # Verify npm is available
             which npm || { echo "npm not found after installation"; exit 1; }
             npm --version
-            
+
             # Build FRED framework
             cd /workspaces/fred_simulations/fred-framework/src && make
             cd /workspaces/fred_simulations
-            
+
             # Install Poetry
             curl -sSL https://install.python-poetry.org | python3 -
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
             export PATH="$HOME/.local/bin:$PATH"
             poetry install --no-root
-            
+
             # Install Claude CLI
             npm install @anthropic-ai/claude-code
             echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
         triggeredBy: ['postEnvironmentStart', 'manual']
-    
+
     setup_epx_config:
         name: Setup EPX Configuration
         description: generates ~/.epx/config.json with API configuration
