@@ -210,6 +210,7 @@ class JobController:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(upload_location.to_dict())
         except ValueError as e:
+            logger.error(f"Validation error in submit_job: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in submit_job: {e}")
@@ -245,6 +246,7 @@ class JobController:
             run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
         except ValueError as e:
+            logger.error(f"Validation error in submit_runs: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in submit_runs: {e}")
@@ -268,6 +270,7 @@ class JobController:
             runs = self._dependencies.get_runs_by_job_id_fn(job_id=job_id)
             return Success([run.to_dict() for run in runs])
         except ValueError as e:
+            logger.error(f"Validation error in get_runs_by_job_id: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
@@ -402,7 +405,7 @@ class JobController:
                 except Exception as e:
                     error_msg = f"Failed to download {upload.context}_{upload.upload_type}: {e}"
                     errors.append(error_msg)
-                    logger.error(error_msg)
+                    logger.exception(error_msg)
 
             # Report results
             if errors and not downloaded_files:
