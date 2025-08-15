@@ -217,7 +217,10 @@ def submit_job(json_data):
 
     job_controller = get_job_controller()
     job_submission_result = job_controller.submit_job(
-        job_id=request_data.jobId, context=request_data.context, job_type=request_data.type
+        job_id=request_data.jobId,
+        context=request_data.context,
+        job_type=request_data.uploadType,
+        run_id=request_data.runId,
     )
 
     if not is_successful(job_submission_result):
@@ -341,7 +344,6 @@ def root():
                     "POST /runs": "Submit run requests",
                     "GET /runs": "Get runs by job_id",
                     "GET /jobs/results": "Get URLs for runs by job_id",
-                    "GET /jobs/statistics": "Get job statistics",
                     "GET /health": "Health check",
                 },
             }

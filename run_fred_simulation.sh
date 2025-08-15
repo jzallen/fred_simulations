@@ -63,12 +63,12 @@ echo "Using RUN_NUMBER: $RUN_NUMBER"
 # Check if simulation completed successfully
 if [ $? -eq 0 ]; then
     echo "FRED simulation completed successfully!"
-    
+
     # Display some basic results if available
     if [ -d "$OUTPUT_DIR" ]; then
         echo "Output directory contents:"
         ls -la "$OUTPUT_DIR/"
-        
+
         # Try to show some basic statistics if files exist
         if [ -f "$OUTPUT_DIR/out1.txt" ]; then
             echo "Sample output from simulation:"

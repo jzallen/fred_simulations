@@ -18,7 +18,7 @@ info_job.execute(timeout=300)
 
 This simulation collects:
 - Agent age
-- Agent race  
+- Agent race
 - Agent sex
 
 The data is captured in shared tables that are output at each simulation interval.

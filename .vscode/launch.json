@@ -193,6 +193,30 @@
                 "DATABASE_URL": "sqlite:///epistemix_jobs.db",
                 "AWS_PROFILE": "default"
             }
+        },
+        {
+            "name": "Debug: CLI jobs uploads download",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "epistemix_api.cli",
+            "args": [
+                "jobs",
+                "uploads",
+                "download",
+                "--job-id=${input:downloadJobId}",
+                "--output-dir=${input:outputDir}"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/fred-simulations-b9ZcTgbH-py3.11/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "S3_UPLOAD_BUCKET": "epistemix-uploads-dev",
+                "DATABASE_URL": "sqlite:///epistemix_jobs.db",
+                "AWS_PROFILE": "default",
+                "AWS_REGION": "us-east-1"
+            }
         }
     ],
     "compounds": [
@@ -216,6 +240,18 @@
             "id": "jobId",
             "description": "Enter the Job ID to retrieve uploads for",
             "default": "2",
+            "type": "promptString"
+        },
+        {
+            "id": "downloadJobId",
+            "description": "Enter the Job ID to download uploads for",
+            "default": "10",
+            "type": "promptString"
+        },
+        {
+            "id": "outputDir",
+            "description": "Enter the output directory for downloaded files",
+            "default": "test_download",
             "type": "promptString"
         }
     ]

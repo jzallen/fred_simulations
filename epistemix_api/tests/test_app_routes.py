@@ -204,6 +204,27 @@ class TestJobRoutes:
             "user-agent": "epx_client_1.2.2",
         }
 
+        # First register a job
+        register_body = {"tags": ["test_job"]}
+        client.post("/jobs/register", headers=headers, json=register_body)
+
+        # Then submit a run to create it with proper format
+        run_submit_body = {
+            "runRequests": [
+                {
+                    "jobId": 1,
+                    "workingDir": "/workspaces/fred_simulations",
+                    "size": "hot",
+                    "fredVersion": "latest",
+                    "population": {"version": "US_2010.v5", "locations": ["Loving_County_TX"]},
+                    "fredArgs": [{"flag": "-p", "value": "main.fred"}],
+                    "fredFiles": ["/workspaces/fred_simulations/simulations/test.fred"],
+                }
+            ]
+        }
+        client.post("/runs", headers=headers, json=run_submit_body)
+
+        # Now submit the run config
         submit_body = {"jobId": 1, "context": "run", "type": "config", "runId": 1}
 
         response = client.post("/jobs", headers=headers, json=submit_body)

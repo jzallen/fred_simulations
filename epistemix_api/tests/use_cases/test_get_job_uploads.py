@@ -138,14 +138,14 @@ class TestGetJobUploads:
 
         upload1 = uploads[0]
         assert upload1.context == "run"
-        assert upload1.upload_type == "output"
+        assert upload1.upload_type == "config"  # config_url should be config type
         assert upload1.job_id == 1
         assert upload1.run_id == 1
         assert upload1.location.url == "https://s3.amazonaws.com/bucket/run_1_output"
 
         upload2 = uploads[1]
         assert upload2.context == "run"
-        assert upload2.upload_type == "output"
+        assert upload2.upload_type == "config"  # config_url should be config type
         assert upload2.job_id == 1
         assert upload2.run_id == 2
         assert upload2.location.url == "https://s3.amazonaws.com/bucket/run_2_output"
@@ -186,7 +186,7 @@ class TestGetJobUploads:
         upload_types = [(u.context, u.upload_type) for u in uploads]
         assert ("job", "input") in upload_types
         assert ("job", "config") in upload_types
-        assert ("run", "output") in upload_types
+        assert ("run", "config") in upload_types  # config_url should be config type
 
         # Verify all have correct job_id
         for upload in uploads:

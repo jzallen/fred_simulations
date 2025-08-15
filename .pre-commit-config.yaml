@@ -5,8 +5,10 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: '^epistemix_api/infrastructure/.*\.yml$'
       - id: check-added-large-files
       - id: check-json
+        exclude: '^\.devcontainer/.*\.json$'
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
@@ -16,8 +18,21 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
+        name: black (commit - staged files only)
         language_version: python3.11
         exclude: ^fred-framework/
+        stages: [pre-commit]
+
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        name: black (push - all files)
+        language_version: python3.11
+        exclude: ^fred-framework/
+        stages: [pre-push]
+        pass_filenames: false
+        args: [.]
 
   - repo: https://github.com/pycqa/isort
     rev: 6.0.1
@@ -53,6 +68,16 @@ repos:
           - seaborn
           - python-dotenv
           - epx
+
+  # CloudFormation linter for infrastructure files
+  - repo: local
+    hooks:
+      - id: cfn-lint
+        name: CloudFormation Linter
+        entry: poetry run cfn-lint
+        language: system
+        files: '^epistemix_api/infrastructure/.*\.yml$'
+        pass_filenames: true
 
   # Pre-push hook for running tests
   - repo: local
