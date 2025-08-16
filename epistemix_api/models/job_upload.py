@@ -22,9 +22,9 @@ class JobUpload:
     context: str  # "job" or "run"
     upload_type: str  # "config", "input", "output", "results", "logs"
     job_id: int
-    location: Optional[UploadLocation] = (
-        None  # Optional to allow creation before location is generated
-    )
+    location: Optional[
+        UploadLocation
+    ] = None  # Optional to allow creation before location is generated
     run_id: Optional[int] = None
 
     def __post_init__(self):

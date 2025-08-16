@@ -44,6 +44,19 @@ def service():
         updated_at=datetime(2025, 1, 1, 12, 0, 0),
     )
 
+    # Create mock locations for archive testing
+    mock_location1 = Mock(spec=UploadLocation)
+    mock_location1.url = "http://s3.amazonaws.com/bucket/job1/file1.txt"
+    mock_location1.to_sanitized_dict = Mock(
+        return_value={"url": "http://s3.amazonaws.com/bucket/job1/file1.txt"}
+    )
+
+    mock_location2 = Mock(spec=UploadLocation)
+    mock_location2.url = "http://s3.amazonaws.com/bucket/job1/file2.txt"
+    mock_location2.to_sanitized_dict = Mock(
+        return_value={"url": "http://s3.amazonaws.com/bucket/job1/file2.txt"}
+    )
+
     service = JobController()
     service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
@@ -59,6 +72,7 @@ def service():
         get_job_uploads_fn=Mock(return_value=[]),
         read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
         write_to_local_fn=Mock(return_value=None),
+        archive_uploads_fn=Mock(return_value=[mock_location1, mock_location2]),
     )
     return service
 
@@ -294,6 +308,79 @@ class TestJobController:
         assert uploads[0]["uploadType"] == "input"
         assert uploads[0]["error"] == "S3 error"
         assert "content" not in uploads[0]
+
+    def test_archive_job_uploads__calls_archive_uploads_fn_with_correct_parameters(self, service):
+        # Setup mock uploads with proper UploadLocation
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+
+        service.archive_job_uploads(job_id=1, days_since_create=7, dry_run=True)
+
+        service._dependencies.get_job_uploads_fn.assert_called_once_with(job_id=1)
+        service._dependencies.archive_uploads_fn.assert_called_once_with(
+            upload_locations=[mock_location],
+            days_since_create=7,
+            hours_since_create=None,
+            dry_run=True,
+        )
+
+    def test_archive_job_uploads__returns_success_result_with_archived_locations(self, service):
+        # Setup mock uploads to be returned by get_job_uploads_fn
+        mock_location1 = UploadLocation(url="http://example.com/file1.txt")
+        mock_location2 = UploadLocation(url="http://example.com/file2.txt")
+        mock_upload1 = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location1, run_id=None
+        )
+        mock_upload2 = JobUpload(
+            context="job", upload_type="config", job_id=1, location=mock_location2, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload1, mock_upload2]
+
+        result = service.archive_job_uploads(job_id=1)
+
+        assert is_successful(result)
+        archived = result.unwrap()
+        assert len(archived) == 2
+        assert archived[0]["url"] == "http://s3.amazonaws.com/bucket/job1/file1.txt"
+        assert archived[1]["url"] == "http://s3.amazonaws.com/bucket/job1/file2.txt"
+
+    def test_archive_job_uploads__when_no_uploads_found__returns_empty_list(self, service):
+        service._dependencies.get_job_uploads_fn.return_value = []
+
+        result = service.archive_job_uploads(job_id=999)
+
+        assert is_successful(result)
+        assert result.unwrap() == []
+        service._dependencies.archive_uploads_fn.assert_not_called()
+
+    def test_archive_job_uploads__when_value_error_raised__returns_failure_result(self, service):
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+        service._dependencies.archive_uploads_fn.side_effect = ValueError("Invalid age threshold")
+
+        result = service.archive_job_uploads(job_id=1, days_since_create=-1)
+
+        assert not is_successful(result)
+        assert result.failure() == "Invalid age threshold"
+
+    def test_archive_job_uploads__when_exception_raised__returns_failure_result(self, service):
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+        service._dependencies.archive_uploads_fn.side_effect = Exception("S3 error")
+
+        result = service.archive_job_uploads(job_id=1)
+
+        assert not is_successful(result)
+        assert result.failure() == "An unexpected error occurred while archiving uploads"
 
 
 @pytest.fixture

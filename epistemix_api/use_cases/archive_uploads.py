@@ -60,12 +60,6 @@ def archive_uploads(
         f"({len(upload_locations)} locations provided)"
     )
 
-    # Log the locations being considered for archival (with sanitized URLs)
-    for location in upload_locations:
-        # Sanitize URL by removing query parameters (AWS signatures)
-        sanitized_url = location.url.split("?")[0] if "?" in location.url else location.url
-        logger.debug(f"  Considering: {sanitized_url}")
-
     if dry_run:
         # In dry run, the repository will return what would be archived
         # based on the age threshold without making changes
@@ -78,7 +72,7 @@ def archive_uploads(
 
         logger.info(f"Would archive {len(locations_to_archive)} uploads")
         for location in locations_to_archive:
-            sanitized_url = location.url.split("?")[0] if "?" in location.url else location.url
+            sanitized_url = location.get_sanitized_url()
             logger.debug(f"  Would archive: {sanitized_url}")
 
         return locations_to_archive
@@ -93,7 +87,7 @@ def archive_uploads(
 
     # Log archived locations with sanitized URLs
     for location in archived_locations:
-        sanitized_url = location.url.split("?")[0] if "?" in location.url else location.url
+        sanitized_url = location.get_sanitized_url()
         logger.debug(f"  Archived: {sanitized_url}")
 
     return archived_locations

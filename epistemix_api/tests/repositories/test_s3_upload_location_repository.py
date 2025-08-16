@@ -2,10 +2,13 @@
 Tests for S3UploadLocationRepository.
 """
 
+from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
+import boto3
 import pytest
 from botocore.exceptions import ClientError
+from botocore.stub import Stubber
 from freezegun import freeze_time
 
 from epistemix_api.models.job_upload import JobUpload
@@ -211,6 +214,204 @@ class TestS3UploadLocationRepository:
         # Act & Assert
         with pytest.raises(ValueError):
             repository.read_content(location)
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_filter_by_age__with_age_threshold__returns_old_uploads(
+        self, repository, mock_s3_client
+    ):
+        """Test filter_by_age returns only uploads older than threshold."""
+        # Setup locations with different S3 keys
+        location1 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/10/file1.txt")
+        location2 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/14/file2.txt")
+        location3 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/15/file3.txt")
+
+        # Mock S3 head_object responses with different ages
+        mock_s3_client.head_object.side_effect = [
+            {"LastModified": datetime(2025, 1, 10, 10, 0, 0)},  # 5 days old
+            {"LastModified": datetime(2025, 1, 14, 10, 0, 0)},  # 1 day old
+            {"LastModified": datetime(2025, 1, 15, 10, 0, 0)},  # 2 hours old
+        ]
+
+        # Filter for files older than 2 days
+        age_threshold = datetime(2025, 1, 13, 12, 0, 0)
+        result = repository.filter_by_age([location1, location2, location3], age_threshold)
+
+        # Should only return the 5-day old file
+        assert len(result) == 1
+        assert result[0] == location1
+
+    def test_filter_by_age__without_threshold__returns_all(self, repository, mock_s3_client):
+        """Test filter_by_age returns all uploads when no threshold."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
+        ]
+
+        result = repository.filter_by_age(locations, None)
+
+        assert result == locations
+        mock_s3_client.head_object.assert_not_called()
+
+    def test_filter_by_age__handles_s3_errors_gracefully(self, repository, mock_s3_client):
+        """Test filter_by_age skips files with S3 errors."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
+        ]
+
+        # First file has error, second file is accessible
+        error_response = {"Error": {"Code": "NoSuchKey", "Message": "Key not found"}}
+        mock_s3_client.head_object.side_effect = [
+            ClientError(error_response, "head_object"),
+            {"LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+        ]
+
+        age_threshold = datetime(2025, 1, 15, 12, 0, 0)
+        result = repository.filter_by_age(locations, age_threshold)
+
+        # Should return only the second file (first had error)
+        assert len(result) == 1
+        assert result[0] == locations[1]
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_archive_uploads__transitions_to_glacier(self, repository, mock_s3_client):
+        """Test archive_uploads transitions objects to Glacier storage class."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/job1/file1.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/job2/file2.txt"),
+        ]
+
+        # Mock head_object to return STANDARD storage class
+        mock_s3_client.head_object.side_effect = [
+            {"StorageClass": "STANDARD", "LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+            {"StorageClass": "STANDARD", "LastModified": datetime(2025, 1, 11, 10, 0, 0)},
+        ]
+
+        # Mock successful copy operations
+        mock_s3_client.copy_object.return_value = {"CopyObjectResult": {}}
+
+        result = repository.archive_uploads(locations)
+
+        # Should return both locations as archived
+        assert len(result) == 2
+        assert result == locations
+
+        # Verify copy_object was called with Glacier storage class
+        assert mock_s3_client.copy_object.call_count == 2
+        for call in mock_s3_client.copy_object.call_args_list:
+            assert call[1]["StorageClass"] == "GLACIER"
+            assert call[1]["Bucket"] == "test-bucket"
+
+    def test_archive_uploads__attempts_to_archive_all_files(self, repository, mock_s3_client):
+        """Test archive_uploads attempts to archive all files regardless of current state."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
+        ]
+
+        # First file already in Glacier, second in Standard
+        mock_s3_client.head_object.side_effect = [
+            {"StorageClass": "GLACIER", "LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+            {"StorageClass": "STANDARD", "LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+        ]
+
+        mock_s3_client.copy_object.return_value = {"CopyObjectResult": {}}
+
+        result = repository.archive_uploads(locations)
+
+        # Should attempt to archive both files (S3 will handle if already in Glacier)
+        assert len(result) == 2
+        assert result == locations
+
+        # copy_object should be called twice (once for each file)
+        assert mock_s3_client.copy_object.call_count == 2
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_archive_uploads__with_age_threshold__filters_by_age(self, repository, mock_s3_client):
+        """Test archive_uploads with age threshold only archives old files."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/old_file.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/new_file.txt"),
+        ]
+
+        # First file is old, second is recent
+        mock_s3_client.head_object.side_effect = [
+            {
+                "StorageClass": "STANDARD",
+                "LastModified": datetime(2025, 1, 5, 10, 0, 0),
+            },  # 10 days old
+            {
+                "StorageClass": "STANDARD",
+                "LastModified": datetime(2025, 1, 14, 10, 0, 0),
+            },  # 1 day old
+        ]
+
+        mock_s3_client.copy_object.return_value = {"CopyObjectResult": {}}
+
+        # Archive files older than 7 days
+        age_threshold = datetime(2025, 1, 8, 12, 0, 0)
+        result = repository.archive_uploads(locations, age_threshold=age_threshold)
+
+        # Should only archive the old file
+        assert len(result) == 1
+        assert result[0] == locations[0]
+
+        # copy_object should only be called once
+        mock_s3_client.copy_object.assert_called_once()
+
+    def test_archive_uploads__handles_copy_errors(self, repository, mock_s3_client):
+        """Test archive_uploads handles S3 copy errors gracefully."""
+        locations = [
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
+            UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
+        ]
+
+        # Both files need archiving
+        mock_s3_client.head_object.side_effect = [
+            {"StorageClass": "STANDARD", "LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+            {"StorageClass": "STANDARD", "LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+        ]
+
+        # First copy fails, second succeeds
+        error_response = {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}
+        mock_s3_client.copy_object.side_effect = [
+            ClientError(error_response, "copy_object"),
+            {"CopyObjectResult": {}},
+        ]
+
+        result = repository.archive_uploads(locations)
+
+        # Should only return the successfully archived file
+        assert len(result) == 1
+        assert result[0] == locations[1]
+
+    def test_archive_uploads__empty_list__returns_empty(self, repository):
+        """Test archive_uploads with empty list returns empty result."""
+        result = repository.archive_uploads([])
+
+        assert result == []
+
+    def test_archive_uploads__validates_glacier_transition(self, repository, mock_s3_client):
+        """Test archive_uploads validates successful transition to Glacier."""
+        location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/file.txt")
+
+        # File starts in STANDARD
+        mock_s3_client.head_object.return_value = {
+            "StorageClass": "STANDARD",
+            "LastModified": datetime(2025, 1, 10, 10, 0, 0),
+        }
+
+        # Copy succeeds
+        mock_s3_client.copy_object.return_value = {"CopyObjectResult": {}}
+
+        result = repository.archive_uploads([location])
+
+        assert len(result) == 1
+
+        # Verify the copy operation included metadata preservation
+        copy_call = mock_s3_client.copy_object.call_args[1]
+        assert copy_call["MetadataDirective"] == "COPY"
+        assert copy_call["StorageClass"] == "GLACIER"
 
 
 class TestDummyS3UploadLocationRepository:
