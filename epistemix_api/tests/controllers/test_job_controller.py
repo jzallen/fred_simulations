@@ -398,10 +398,10 @@ def run_repository(db_session):
 @pytest.fixture
 def upload_location_repository():
     repo = Mock(spec=IUploadLocationRepository)
-    repo.get_upload_location.return_value = UploadLocation(
-        url="https://s3.amazonaws.com/test-bucket/presigned-url"
-    )
+    mock_upload = UploadLocation(url="https://s3.amazonaws.com/test-bucket/presigned-url")
+    repo.get_upload_location.return_value = mock_upload
     repo.read_content.return_value = UploadContent.create_text("test content from repository")
+    repo.archive_uploads.return_value = [mock_upload]
     return repo
 
 
@@ -455,7 +455,7 @@ class TestJobControllerIntegration:
         retrieved_job = job_repository.find_by_id(job_dict["id"])
         assert retrieved_job.to_dict() == expected_job_data
 
-    def test_service__returns_success_result_with_job_config_url(
+    def test_register_job__returns_success_result_with_job_config_url(
         self, job_controller, bearer_token
     ):
         register_result = job_controller.register_job(
@@ -553,6 +553,25 @@ class TestJobControllerIntegration:
         runs_result = job_controller.get_runs(job_id=999)
         assert is_successful(runs_result)
         assert runs_result.unwrap() == []
+
+    def test_archive_job_uploads__when_only_job_id__returns_list_of_all_uploads(
+        self, job_controller, run_requests, bearer_token, upload_location_repository
+    ):
+        register_result = job_controller.register_job(
+            user_token_value=bearer_token, tags=["status_test"]
+        )
+        job_dict = register_result.unwrap()
+        job_controller.submit_job(job_dict["id"])
+
+        archive_result = job_controller.archive_job_uploads(job_id=1)
+        assert is_successful(archive_result)
+
+        archived_uploads = archive_result.unwrap()
+        expected_uploads = [
+            upload.to_sanitized_dict()
+            for upload in upload_location_repository.archive_uploads.return_value
+        ]
+        assert archived_uploads == expected_uploads
 
 
 @pytest.fixture
