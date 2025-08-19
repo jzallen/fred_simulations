@@ -107,7 +107,7 @@ class S3UploadLocationRepository:
             )
 
             # Sanitize URL for logging (remove query string with AWS credentials)
-            safe_url = presigned_url.split("?")[0] if "?" in presigned_url else presigned_url
+            safe_url, _ = presigned_url.split("?")
             logger.info(
                 f"Generated pre-signed URL for job {job_upload.job_id} -> {object_key} "
                 f"(URL: {safe_url})"
