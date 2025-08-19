@@ -3,7 +3,7 @@ Tests for the archive_uploads use case.
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, call, patch
 
 import pytest
 from freezegun import freeze_time
@@ -314,7 +314,7 @@ class TestArchiveUploadsUseCase:
             call(f"  Would archive: {location.get_sanitized_url()}")
             for location in sample_upload_locations
         ]
-        
+
         mock_logger.debug.assert_has_calls(expected_debug_calls)
 
     @patch("epistemix_api.use_cases.archive_uploads.logger")
@@ -331,10 +331,9 @@ class TestArchiveUploadsUseCase:
 
         # Verify debug logs contain sanitized URLs for archived items
         expected_debug_calls = [
-            call(f"  Archived: {location.get_sanitized_url()}")
-            for location in archived
+            call(f"  Archived: {location.get_sanitized_url()}") for location in archived
         ]
-        
+
         mock_logger.debug.assert_has_calls(expected_debug_calls)
 
     @freeze_time("2025-01-15 14:30:00")
@@ -389,10 +388,7 @@ class TestArchiveUploadsUseCase:
             upload_locations=locations_with_dupes,
         )
 
-        mock_repository.archive_uploads.assert_called_once_with(
-            [location1],
-            age_threshold=None
-        )
+        mock_repository.archive_uploads.assert_called_once_with([location1], age_threshold=None)
 
     def test_raises_no_exception_when_repository_returns_empty_list(
         self, mock_repository, sample_upload_locations

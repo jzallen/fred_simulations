@@ -31,7 +31,7 @@ class UploadLocation:
         if not isinstance(other, UploadLocation):
             return False
         return self.url == other.url
-    
+
     def __hash__(self):
         return hash(self.url)
 
