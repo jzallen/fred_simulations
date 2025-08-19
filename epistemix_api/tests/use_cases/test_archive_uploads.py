@@ -2,15 +2,13 @@
 Tests for the archive_uploads use case.
 """
 
-from copy import deepcopy
 from datetime import datetime, timedelta
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from freezegun import freeze_time
 
 from epistemix_api.models.upload_location import UploadLocation
-from epistemix_api.repositories.interfaces import IUploadLocationRepository
 from epistemix_api.use_cases.archive_uploads import archive_uploads
 
 
@@ -131,7 +129,7 @@ class TestArchiveUploadsUseCase:
         """Test that hours_since_create takes precedence over days_since_create."""
         mock_repository.archive_uploads.return_value = sample_upload_locations
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             days_since_create=30,  # This should be ignored
@@ -241,7 +239,7 @@ class TestArchiveUploadsUseCase:
         """Test dry run with threshold calls filter_by_age exactly once with correct params."""
         mock_repository.filter_by_age.return_value = sample_upload_locations[:1]
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             days_since_create=5,
@@ -264,7 +262,7 @@ class TestArchiveUploadsUseCase:
         """Test non-dry run calls archive_uploads exactly once with correct params."""
         mock_repository.archive_uploads.return_value = sample_upload_locations
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             hours_since_create=24,
@@ -284,14 +282,14 @@ class TestArchiveUploadsUseCase:
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         """Test that DRY RUN prefix appears in logs when dry_run=True."""
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             dry_run=True,
         )
 
-        # Check info logs contain DRY RUN prefix
-        info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
+        # Check info logs don't contain DRY RUN prefix
+        info_calls = [call_obj[0][0] for call_obj in mock_logger.info.call_args_list]
         assert any("DRY RUN:" in msg for msg in info_calls)
         assert any("Dry run mode" in msg for msg in info_calls)
         assert any("Would archive" in msg for msg in info_calls)
@@ -303,7 +301,7 @@ class TestArchiveUploadsUseCase:
         """Test that logs report the number of locations provided."""
         mock_repository.archive_uploads.return_value = sample_upload_locations[:2]
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
         )
@@ -318,14 +316,14 @@ class TestArchiveUploadsUseCase:
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         """Test that sanitized URLs are logged for each location in dry run."""
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             dry_run=True,
         )
 
         # Verify debug logs contain sanitized URLs
-        debug_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
+        debug_calls = [call_obj[0][0] for call_obj in mock_logger.debug.call_args_list]
 
         # Each location should have its sanitized URL logged
         for location in sample_upload_locations:
@@ -341,13 +339,13 @@ class TestArchiveUploadsUseCase:
         archived = sample_upload_locations[:2]
         mock_repository.archive_uploads.return_value = archived
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
         )
 
         # Verify debug logs contain sanitized URLs for archived items
-        debug_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
+        debug_calls = [call_obj[0][0] for call_obj in mock_logger.debug.call_args_list]
 
         for location in archived:
             sanitized = location.get_sanitized_url()
@@ -362,7 +360,7 @@ class TestArchiveUploadsUseCase:
         original_refs = sample_upload_locations.copy()  # Shallow copy to keep references
         mock_repository.archive_uploads.return_value = sample_upload_locations[:1]
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
         )
@@ -381,7 +379,7 @@ class TestArchiveUploadsUseCase:
         """Test that zero hours threshold means current time."""
         mock_repository.archive_uploads.return_value = []
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             hours_since_create=0,
@@ -399,7 +397,7 @@ class TestArchiveUploadsUseCase:
         """Test that zero days threshold means current time."""
         mock_repository.archive_uploads.return_value = []
 
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             days_since_create=0,
@@ -450,7 +448,7 @@ class TestArchiveUploadsUseCase:
         mock_repository.archive_uploads.return_value = sample_upload_locations
 
         # Test with current time (no freeze_time) - should work regardless of timezone
-        result = archive_uploads(
+        archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             hours_since_create=24,

@@ -52,7 +52,8 @@ class S3UploadLocationRepository:
             bucket_name: The S3 bucket name to upload files to
             region_name: AWS region name (optional, will use default region from config/environment)
             expiration_seconds: How long the pre-signed URL should be valid (default: 1 hour)
-            s3_client: Optional S3 client instance (for testing). If not provided, creates a new one.
+            s3_client: Optional S3 client instance (for testing).
+                If not provided, creates a new one.
         """
         self.bucket_name = bucket_name
         self.expiration_seconds = expiration_seconds

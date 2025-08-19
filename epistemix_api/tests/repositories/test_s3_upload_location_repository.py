@@ -1,12 +1,12 @@
 """
 Tests for S3UploadLocationRepository.
 """
+
 import os
 from datetime import datetime
 from unittest.mock import Mock, patch
 
 import boto3
-from botocore.stub import Stubber
 import pytest
 from botocore.exceptions import ClientError, NoCredentialsError
 from botocore.stub import Stubber
@@ -45,39 +45,44 @@ class TestS3UploadLocationRepository:
     def repository(self, s3_stubber):
         """Create a repository instance with mocked S3 client."""
         s3_client, _ = s3_stubber
-        repo = S3UploadLocationRepository(bucket_name="test-bucket", region_name="us-east-1", s3_client=s3_client)
+        repo = S3UploadLocationRepository(
+            bucket_name="test-bucket", region_name="us-east-1", s3_client=s3_client
+        )
         return repo
 
-
-    @freeze_time('2025-01-01 12:00:00')
+    @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_job_and_upload_type_input__returns_zip_upload_location(
         self, repository
     ):
         """Test getting upload location with valid JobUpload."""
         # arrange
-        current_time = datetime.fromisoformat('2025-01-01 12:00:00')
+        current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
         job_upload = JobUpload(context="job", upload_type="input", job_id=123)
-        
+
         # act
         result = repository.get_upload_location(job_upload)
         url, querystring = result.url.split("?")
         key, sig, expr = querystring.split("&")
-        
+
         # assert
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
         assert isinstance(result, UploadLocation)
-        assert url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_input.zip"
+        assert (
+            url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_input.zip"
+        )
         assert key.startswith("AWSAccessKeyId=")
         assert sig.startswith("Signature=")
         assert expr == f"Expires={expected_expires_timestamp}"
 
-    @freeze_time('2025-01-01 12:00:00')
-    def test_get_upload_location__context_job_and_upload_type_config__returns_json_upload_location(self, repository):
+    @freeze_time("2025-01-01 12:00:00")
+    def test_get_upload_location__context_job_and_upload_type_config__returns_json_upload_location(
+        self, repository
+    ):
         """Test getting upload location with valid JobUpload."""
         # arrange
-        current_time = datetime.fromisoformat('2025-01-01 12:00:00')
+        current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
         job_upload = JobUpload(context="job", upload_type="config", job_id=123)
 
@@ -90,16 +95,20 @@ class TestS3UploadLocationRepository:
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
         assert isinstance(result, UploadLocation)
-        assert url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_config.json"
+        assert (
+            url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_config.json"
+        )
         assert key.startswith("AWSAccessKeyId=")
         assert sig.startswith("Signature=")
         assert expr == f"Expires={expected_expires_timestamp}"
 
-    @freeze_time('2025-01-01 12:00:00')
-    def test_get_upload_location__context_run_and_upload_type_config__returns_json_upload_location(self, repository):
+    @freeze_time("2025-01-01 12:00:00")
+    def test_get_upload_location__context_run_and_upload_type_config__returns_json_upload_location(
+        self, repository
+    ):
         """Test getting upload location with valid JobUpload."""
         # arrange
-        current_time = datetime.fromisoformat('2025-01-01 12:00:00')
+        current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
         job_upload = JobUpload(context="run", upload_type="config", job_id=123, run_id=456)
 
@@ -112,7 +121,10 @@ class TestS3UploadLocationRepository:
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
         assert isinstance(result, UploadLocation)
-        assert url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/run_456_config.json"
+        assert (
+            url
+            == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/run_456_config.json"
+        )
         assert key.startswith("AWSAccessKeyId=")
         assert sig.startswith("Signature=")
         assert expr == f"Expires={expected_expires_timestamp}"
@@ -124,16 +136,16 @@ class TestS3UploadLocationRepository:
 
     def test_get_upload_location__s3_client_error__raises_value_error(self, repository, s3_stubber):
         s3_client, _ = s3_stubber
-        # generate_presigned_url is a local operation and Stubber is only able to mock actual requests to S3
+        # generate_presigned_url is a local operation and Stubber is only able to mock
+        # actual requests to S3
         s3_client.generate_presigned_url = Mock(
             side_effect=ClientError({"Error": {}}, "GeneratePresignedUrl")
         )
         job_upload = JobUpload(context="job", upload_type="config", job_id=456)
-        
+
         with pytest.raises(ValueError, match="Failed to generate upload location"):
             repository.get_upload_location(job_upload)
-            
-        
+
     @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__normal_filename__adds_timestamp_prefix(self, repository):
         """Test that S3 key generation works correctly for files without job_id."""
@@ -185,12 +197,9 @@ class TestS3UploadLocationRepository:
         # Arrange
         _, s3_stub = s3_stubber
         s3_stub.add_response(
-            'get_object',
+            "get_object",
             {"Body": Mock(read=Mock(return_value=b"Hello, World!"))},
-            expected_params={
-                "Bucket": "test-bucket",
-                "Key": "2024/01/01/test-file.txt"
-            }
+            expected_params={"Bucket": "test-bucket", "Key": "2024/01/01/test-file.txt"},
         )
         location = UploadLocation(
             url="https://test-bucket.s3.amazonaws.com/2024/01/01/test-file.txt"
@@ -211,12 +220,9 @@ class TestS3UploadLocationRepository:
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/config.json")
         json_data = '{"key": "value", "number": 42}'
         s3_stub.add_response(
-            'get_object',
+            "get_object",
             {"Body": Mock(read=Mock(return_value=json_data.encode()))},
-            expected_params={
-                "Bucket": "test-bucket",
-                "Key": "config.json"
-            }
+            expected_params={"Bucket": "test-bucket", "Key": "config.json"},
         )
 
         # Act
@@ -234,12 +240,9 @@ class TestS3UploadLocationRepository:
         # This binary data can actually be decoded as latin-1, which is expected behavior
         binary_data = b"\x00\x01\x02\x03\x04\x05"
         s3_stub.add_response(
-            'get_object',
+            "get_object",
             {"Body": Mock(read=Mock(return_value=binary_data))},
-            expected_params={
-                "Bucket": "test-bucket",
-                "Key": "binary.dat"
-            }
+            expected_params={"Bucket": "test-bucket", "Key": "binary.dat"},
         )
 
         # Act
@@ -257,13 +260,10 @@ class TestS3UploadLocationRepository:
         _, s3_stub = s3_stubber
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/missing.txt")
         s3_stub.add_client_error(
-            'get_object',
+            "get_object",
             service_error_code="NoSuchKey",
             service_message="Key not found",
-            expected_params={
-                "Bucket": "test-bucket",
-                "Key": "missing.txt"
-            },
+            expected_params={"Bucket": "test-bucket", "Key": "missing.txt"},
         )
 
         # Act & Assert
@@ -273,9 +273,9 @@ class TestS3UploadLocationRepository:
     def test_read_content__no_aws_credentials__raises_value_error(self):
         mock_s3_client = Mock()
         mock_s3_client.get_object.side_effect = NoCredentialsError
-        repository = S3UploadLocationRepository(bucket_name='test-bucket', s3_client=mock_s3_client)
+        repository = S3UploadLocationRepository(bucket_name="test-bucket", s3_client=mock_s3_client)
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/file.txt")
-        
+
         with pytest.raises(ValueError, match="AWS credentials error: Unable to locate credentials"):
             repository.read_content(location)
 
@@ -293,50 +293,35 @@ class TestS3UploadLocationRepository:
         """Test filter_by_age returns only uploads older than threshold."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
-        
+
         # Setup locations with different S3 keys
         location1 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/10/file1.txt")
         location2 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/14/file2.txt")
         location3 = UploadLocation(url="https://test-bucket.s3.amazonaws.com/2025/01/15/file3.txt")
-    
+
         # Add stubbed responses for head_object calls
         s3_stub.add_response(
-            'head_object',
-            {
-                'LastModified': datetime(2025, 1, 10, 10, 0, 0)  # 5 days old
-            },
-            {
-                'Bucket': 'test-bucket',
-                'Key': '2025/01/10/file1.txt'
-            }
+            "head_object",
+            {"LastModified": datetime(2025, 1, 10, 10, 0, 0)},  # 5 days old
+            {"Bucket": "test-bucket", "Key": "2025/01/10/file1.txt"},
         )
-        
+
         s3_stub.add_response(
-            'head_object',
-            {
-                'LastModified': datetime(2025, 1, 14, 10, 0, 0)  # 1 day old
-            },
-            {
-                'Bucket': 'test-bucket',
-                'Key': '2025/01/14/file2.txt'
-            }
+            "head_object",
+            {"LastModified": datetime(2025, 1, 14, 10, 0, 0)},  # 1 day old
+            {"Bucket": "test-bucket", "Key": "2025/01/14/file2.txt"},
         )
-        
+
         s3_stub.add_response(
-            'head_object',
-            {
-                'LastModified': datetime(2025, 1, 15, 10, 0, 0)  # 2 hours old
-            },
-            {
-                'Bucket': 'test-bucket',
-                'Key': '2025/01/15/file3.txt'
-            }
+            "head_object",
+            {"LastModified": datetime(2025, 1, 15, 10, 0, 0)},  # 2 hours old
+            {"Bucket": "test-bucket", "Key": "2025/01/15/file3.txt"},
         )
-    
+
         # Filter for files older than 2 days
         age_threshold = datetime(2025, 1, 13, 12, 0, 0)
         result = repository.filter_by_age([location1, location2, location3], age_threshold)
-    
+
         # Should only return the 5-day old file
         assert len(result) == 1
         assert result[0] == location1
@@ -345,7 +330,7 @@ class TestS3UploadLocationRepository:
         """Test filter_by_age returns all uploads when no threshold."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
-        
+
         # Setup locations
         locations = [
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
@@ -366,7 +351,7 @@ class TestS3UploadLocationRepository:
         """Test filter_by_age skips files with S3 errors."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
-        
+
         locations = [
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
@@ -374,25 +359,17 @@ class TestS3UploadLocationRepository:
 
         # Add error response for first file
         s3_stub.add_client_error(
-            'head_object',
-            service_error_code='NoSuchKey',
-            service_message='The specified key does not exist.',
-            expected_params={
-                'Bucket': 'test-bucket',
-                'Key': 'file1.txt'
-            }
+            "head_object",
+            service_error_code="NoSuchKey",
+            service_message="The specified key does not exist.",
+            expected_params={"Bucket": "test-bucket", "Key": "file1.txt"},
         )
 
         # Add successful response for second file
         s3_stub.add_response(
-            'head_object',
-            {
-                'LastModified': datetime(2025, 1, 10, 10, 0, 0)
-            },
-            {
-                'Bucket': 'test-bucket',
-                'Key': 'file2.txt'
-            }
+            "head_object",
+            {"LastModified": datetime(2025, 1, 10, 10, 0, 0)},
+            {"Bucket": "test-bucket", "Key": "file2.txt"},
         )
 
         age_threshold = datetime(2025, 1, 15, 12, 0, 0)
@@ -410,36 +387,36 @@ class TestS3UploadLocationRepository:
         """Test archive_uploads transitions objects to Glacier storage class."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
-        
+
         locations = [
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/job1/file1.txt"),
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/job2/file2.txt"),
         ]
-        
+
         # Then copy_object to transition file1 to Glacier
         s3_stub.add_response(
-            'copy_object',
-            {'CopyObjectResult': {}},
+            "copy_object",
+            {"CopyObjectResult": {}},
             expected_params={
-                'Bucket': 'test-bucket',
-                'CopySource': {'Bucket': 'test-bucket', 'Key': 'job1/file1.txt'},
-                'Key': 'job1/file1.txt',
-                'MetadataDirective': 'COPY',
-                'StorageClass': 'GLACIER',
-            }
+                "Bucket": "test-bucket",
+                "CopySource": {"Bucket": "test-bucket", "Key": "job1/file1.txt"},
+                "Key": "job1/file1.txt",
+                "MetadataDirective": "COPY",
+                "StorageClass": "GLACIER",
+            },
         )
-        
+
         # Then copy_object for file2
         s3_stub.add_response(
-            'copy_object',
-            {'CopyObjectResult': {}},
+            "copy_object",
+            {"CopyObjectResult": {}},
             expected_params={
-                'Bucket': 'test-bucket',
-                'CopySource': {'Bucket': 'test-bucket', 'Key': 'job2/file2.txt'},
-                'Key': 'job2/file2.txt',
-                'MetadataDirective': 'COPY',
-                'StorageClass': 'GLACIER',
-            }
+                "Bucket": "test-bucket",
+                "CopySource": {"Bucket": "test-bucket", "Key": "job2/file2.txt"},
+                "Key": "job2/file2.txt",
+                "MetadataDirective": "COPY",
+                "StorageClass": "GLACIER",
+            },
         )
 
         result = repository.archive_uploads(locations)
@@ -455,7 +432,7 @@ class TestS3UploadLocationRepository:
     def test_archive_uploads__with_age_threshold__filters_by_age(self, repository, s3_stubber):
         """Test archive_uploads with age threshold only archives old files."""
         _, s3_stub = s3_stubber
-        
+
         locations = [
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/old_file.txt"),
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/new_file.txt"),
@@ -463,40 +440,34 @@ class TestS3UploadLocationRepository:
 
         # Add head_object responses for age checking
         s3_stub.add_response(
-            'head_object',
+            "head_object",
             {
                 "StorageClass": "STANDARD",
                 "LastModified": datetime(2025, 1, 5, 10, 0, 0),  # 10 days old
             },
-            expected_params={
-                'Bucket': 'test-bucket',
-                'Key': 'old_file.txt'
-            }
+            expected_params={"Bucket": "test-bucket", "Key": "old_file.txt"},
         )
 
         s3_stub.add_response(
-            'head_object',
+            "head_object",
             {
                 "StorageClass": "STANDARD",
                 "LastModified": datetime(2025, 1, 14, 10, 0, 0),  # 1 day old
             },
-            expected_params={
-                'Bucket': 'test-bucket',
-                'Key': 'new_file.txt'
-            }
+            expected_params={"Bucket": "test-bucket", "Key": "new_file.txt"},
         )
 
         # Add copy_object response for the old file only (since new file won't be archived)
         s3_stub.add_response(
-            'copy_object',
-            {'CopyObjectResult': {}},
+            "copy_object",
+            {"CopyObjectResult": {}},
             expected_params={
-                'Bucket': 'test-bucket',
-                'CopySource': {'Bucket': 'test-bucket', 'Key': 'old_file.txt'},
-                'Key': 'old_file.txt',
-                'MetadataDirective': 'COPY',
-                'StorageClass': 'GLACIER',
-            }
+                "Bucket": "test-bucket",
+                "CopySource": {"Bucket": "test-bucket", "Key": "old_file.txt"},
+                "Key": "old_file.txt",
+                "MetadataDirective": "COPY",
+                "StorageClass": "GLACIER",
+            },
         )
 
         # Archive files older than 7 days
@@ -513,7 +484,7 @@ class TestS3UploadLocationRepository:
     def test_archive_uploads__handles_copy_errors(self, repository, s3_stubber):
         """Test archive_uploads handles S3 copy errors gracefully."""
         _, s3_stub = s3_stubber
-        
+
         locations = [
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/file1.txt"),
             UploadLocation(url="https://test-bucket.s3.amazonaws.com/file2.txt"),
@@ -521,29 +492,29 @@ class TestS3UploadLocationRepository:
 
         # Add client error for first copy operation
         s3_stub.add_client_error(
-            'copy_object',
-            service_error_code='AccessDenied',
-            service_message='Access Denied',
+            "copy_object",
+            service_error_code="AccessDenied",
+            service_message="Access Denied",
             expected_params={
-                'Bucket': 'test-bucket',
-                'CopySource': {'Bucket': 'test-bucket', 'Key': 'file1.txt'},
-                'Key': 'file1.txt',
-                'MetadataDirective': 'COPY',
-                'StorageClass': 'GLACIER',
-            }
+                "Bucket": "test-bucket",
+                "CopySource": {"Bucket": "test-bucket", "Key": "file1.txt"},
+                "Key": "file1.txt",
+                "MetadataDirective": "COPY",
+                "StorageClass": "GLACIER",
+            },
         )
 
         # Add successful response for second file
         s3_stub.add_response(
-            'copy_object',
-            {'CopyObjectResult': {}},
+            "copy_object",
+            {"CopyObjectResult": {}},
             expected_params={
-                'Bucket': 'test-bucket',
-                'CopySource': {'Bucket': 'test-bucket', 'Key': 'file2.txt'},
-                'Key': 'file2.txt',
-                'MetadataDirective': 'COPY',
-                'StorageClass': 'GLACIER',
-            }
+                "Bucket": "test-bucket",
+                "CopySource": {"Bucket": "test-bucket", "Key": "file2.txt"},
+                "Key": "file2.txt",
+                "MetadataDirective": "COPY",
+                "StorageClass": "GLACIER",
+            },
         )
 
         result = repository.archive_uploads(locations)
