@@ -24,15 +24,19 @@ class TestArchiveUploadsUseCase:
 
     @pytest.fixture
     def sample_upload_locations(self):
-        location1 = Mock(spec=UploadLocation)
-        location1.url = "https://s3.amazonaws.com/bucket/job1/file1.txt"
-        location1.get_sanitized_url.return_value = "https://s3.amazonaws.com/bucket/job1/file1.txt"
+        location1 = UploadLocation("https://s3.amazonaws.com/bucket/job1/file1.txt")
 
-        location2 = Mock(spec=UploadLocation)
-        location2.url = "https://s3.amazonaws.com/bucket/job1/file2.txt"
-        location2.get_sanitized_url.return_value = "https://s3.amazonaws.com/bucket/job1/file2.txt"
+        location2 = UploadLocation("https://s3.amazonaws.com/bucket/job1/file2.txt")
 
-        location3 = Mock(spec=UploadLocation)
+        location3 = UploadLocation("https://s3.amazonaws.com/bucket/job2/file3.txt")
+
+        return [location1, location2, location3]
+
+    def test_returns_empty_list_when_no_upload_locations(self, mock_repository):
+        result = archive_uploads(
+            upload_repository=mock_repository,
+            upload_locations=[],
+        )
         location3.url = "https://s3.amazonaws.com/bucket/job2/file3.txt"
         location3.get_sanitized_url.return_value = "https://s3.amazonaws.com/bucket/job2/file3.txt"
 
