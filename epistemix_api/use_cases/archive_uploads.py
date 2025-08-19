@@ -44,6 +44,11 @@ def archive_uploads(
         logger.info("No upload locations provided for archival")
         return []
 
+    # Dedupe Locations
+    #   Ideally managed by the repository but this prevents unnecessary calls to S3
+    #   and log noise from errors for locations that have already been archived
+    upload_locations = list(set(upload_locations))
+
     # Calculate age threshold if specified
     age_threshold = None
     if hours_since_create is not None:
