@@ -37,16 +37,6 @@ class TestArchiveUploadsUseCase:
             upload_repository=mock_repository,
             upload_locations=[],
         )
-        location3.url = "https://s3.amazonaws.com/bucket/job2/file3.txt"
-        location3.get_sanitized_url.return_value = "https://s3.amazonaws.com/bucket/job2/file3.txt"
-
-        return [location1, location2, location3]
-
-    def test_returns_empty_list_when_no_upload_locations(self, mock_repository):
-        result = archive_uploads(
-            upload_repository=mock_repository,
-            upload_locations=[],
-        )
 
         assert result == []
         mock_repository.archive_uploads.assert_not_called()
