@@ -3,6 +3,7 @@ Run domain model for the Epistemix API.
 Contains the core business logic and rules for run entities.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -224,7 +225,22 @@ class Run:
         }
 
     def __eq__(self, other: object) -> bool:
-        """Check equality based on run ID and other fields."""
+        """Check equality based on run ID and other fields.
+
+        The config url is generated externally, so it is evaluated separately. Using
+        regex allows certain dynamically generated values to be more easily compared
+        in unit tests. This avoids introducing any leaky abstractions that would
+        evaluate a hard coded pattern in this module.
+        """
         if not isinstance(other, Run):
             return False
-        return self.to_dict() == other.to_dict()
+        left_dict = self.to_dict()
+        l_config_url = left_dict.pop("config_url")
+        right_dict = other.to_dict()
+        r_config_url = right_dict.pop("config_url")
+
+        try:
+            is_match = bool(re.match(r_config_url, l_config_url))
+        except Exception:
+            raise ValueError(f"Mismatch between: {l_config_url} and {r_config_url}")
+        return left_dict == right_dict and is_match

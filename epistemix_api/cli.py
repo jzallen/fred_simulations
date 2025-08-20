@@ -464,6 +464,80 @@ def list_job_uploads(job_id: int, json_output: bool):
         sys.exit(1)
 
 
+@job_uploads.command("archive")
+@click.option("--job-id", required=True, type=int, help="Job ID to archive uploads for")
+@click.option("--days-since-create", type=int, help="Archive uploads older than specified days")
+@click.option("--hours-since-create", type=int, help="Archive uploads older than specified hours")
+@click.option("--dry-run", is_flag=True, help="Show what would be archived without making changes")
+def archive_uploads(
+    job_id: int, days_since_create: Optional[int], hours_since_create: Optional[int], dry_run: bool
+):
+    """Archive uploads for a job to reduce storage costs."""
+    try:
+        # Get configuration
+        config = get_default_config()
+        env = config["env"]
+        bucket_name = config["bucket"] or "epistemix-uploads-dev"
+        region_name = config["region"]
+
+        if env == "TESTING":
+            click.echo("Error: Cannot archive uploads in TESTING mode", err=True)
+            sys.exit(1)
+
+        # Get database session
+        session = get_database_session()
+
+        def session_factory():
+            return session
+
+        # Create repositories
+        job_repository = SQLAlchemyJobRepository(session_factory)
+        run_repository = SQLAlchemyRunRepository(session_factory)
+
+        # Create upload location repository
+        upload_location_repository = create_upload_location_repository(
+            env=env, bucket_name=bucket_name, region_name=region_name
+        )
+
+        # Create JobController
+        job_controller = JobController.create_with_repositories(
+            job_repository=job_repository,
+            run_repository=run_repository,
+            upload_location_repository=upload_location_repository,
+        )
+
+        # Archive uploads using the controller
+        result = job_controller.archive_job_uploads(
+            job_id=job_id,
+            days_since_create=days_since_create,
+            hours_since_create=hours_since_create,
+            dry_run=dry_run,
+        )
+
+        if not is_successful(result):
+            click.echo(f"Error: {result.failure()}", err=True)
+            sys.exit(1)
+
+        archived_locations = result.unwrap()
+
+        if not archived_locations:
+            click.echo(f"No uploads found for job {job_id} matching criteria")
+        else:
+            action = "Would archive" if dry_run else "Archived"
+            click.echo(f"\n{action} {len(archived_locations)} uploads for job {job_id}:")
+            for location in archived_locations:
+                click.echo(f"  - {location.get('url', 'N/A')}")
+
+        session.close()
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 @job_uploads.command("download")
 @click.option("--job-id", required=True, type=int, help="Job ID to download uploads for")
 @click.option("--output-dir", help="Directory to download files to (defaults to temp directory)")

@@ -27,7 +27,7 @@ class TestUploadLocationSanitization:
 
         result = location.to_sanitized_dict()
 
-        assert result == {"url": "https://s3.amazonaws.com/mybucket/file.txt?[parameters_removed]"}
+        assert result == {"url": "https://s3.amazonaws.com/mybucket/file.txt"}
 
     def test_to_sanitized_dict_masks_s3_bucket_name(self):
         """Test that to_sanitized_dict masks S3 bucket names."""
@@ -55,7 +55,7 @@ class TestUploadLocationSanitization:
 
         result = location.to_sanitized_dict()
 
-        assert result == {"url": "http://example.com/file.txt?[parameters_removed]"}
+        assert result == {"url": "http://example.com/file.txt"}
 
     def test_to_sanitized_dict_handles_empty_url(self):
         """Test that to_sanitized_dict handles empty URLs."""

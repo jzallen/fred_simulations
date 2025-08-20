@@ -4,6 +4,7 @@ Contains business use cases that implement the core business logic.
 These are the application-specific business rules.
 """
 
+from .archive_uploads import archive_uploads
 from .get_job import get_job
 from .get_job_uploads import get_job_uploads
 from .get_runs import get_runs_by_job_id
@@ -16,6 +17,7 @@ from .submit_runs import RunRequestDict, get_runs_storage, submit_runs
 from .write_to_local import write_to_local
 
 __all__ = [
+    "archive_uploads",
     "register_job",
     "submit_job",
     "submit_job_config",

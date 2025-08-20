@@ -3,6 +3,7 @@ Repository interfaces for the Epistemix API.
 Defines contracts for data persistence using Protocol for type safety.
 """
 
+from datetime import datetime
 from typing import List, Optional, Protocol, runtime_checkable
 
 from epistemix_api.models.job import Job, JobStatus
@@ -246,5 +247,19 @@ class IUploadLocationRepository(Protocol):
 
         Raises:
             ValueError: If the content cannot be read or parsed
+        """
+        ...
+
+    def archive_uploads(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
+    ) -> List[UploadLocation]:
+        """
+
+        Args:
+            upload_locations: List of UploadLocation objects to archive
+            age_threshold: Optional datetime to filter uploads by age
+
+        Returns:
+            List of UploadLocation objects representing the archived uploads
         """
         ...
