@@ -4,7 +4,7 @@ Contains the unified model for handling presigned URLs for various upload scenar
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 
 @dataclass

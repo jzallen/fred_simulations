@@ -78,7 +78,7 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
                 pod_phase=PodPhase.PENDING,
                 request={"jobId": 1, "fredArgs": [], "fredFiles": []},
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0),\
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),
                 config_url="http://example.com/config.json",
             )
         ]

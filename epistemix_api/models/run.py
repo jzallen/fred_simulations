@@ -226,10 +226,10 @@ class Run:
 
     def __eq__(self, other: object) -> bool:
         """Check equality based on run ID and other fields.
-        
+
         The config url is generated externally, so it is evaluated separately. Using
         regex allows certain dynamically generated values to be more easily compared
-        in unit tests. This avoids introducing any leaky abstractions that would 
+        in unit tests. This avoids introducing any leaky abstractions that would
         evaluate a hard coded pattern in this module.
         """
         if not isinstance(other, Run):

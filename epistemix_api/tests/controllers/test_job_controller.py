@@ -2,19 +2,19 @@
 Tests for the refactored Flask app using Clean Architecture.
 """
 
-import os
-import re
-import boto3
-from botocore.stub import Stubber
 import base64
 import json
+import os
+import re
 import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
+import boto3
 import pytest
+from botocore.stub import Stubber
 from freezegun import freeze_time
 from returns.pipeline import is_successful
 
@@ -53,8 +53,8 @@ def service():
     mock_location2 = UploadLocation("http://s3.amazonaws.com/bucket/job1/file2.txt")
 
     mock_upload1 = JobUpload(
-            context="job", upload_type="input", job_id=1, location=mock_location1, run_id=None
-        )
+        context="job", upload_type="input", job_id=1, location=mock_location1, run_id=None
+    )
     mock_upload2 = JobUpload(
         context="job", upload_type="config", job_id=1, location=mock_location2, run_id=None
     )
@@ -404,6 +404,7 @@ def s3_stubber():
         os.environ.pop("AWS_ACCESS_KEY_ID", None)
         os.environ.pop("AWS_SECRET_ACCESS_KEY", None)
 
+
 @pytest.fixture
 def upload_location_repository(s3_stubber):
     s3_client, _ = s3_stubber
@@ -430,16 +431,14 @@ def bearer_token():
 
 @pytest.fixture
 def querystring_pattern():
-    expected_expiration = int(sum((
-        datetime.fromisoformat("2025-01-01 12:00:00").timestamp(),
-        3600
-    )))
-    querystring_pattern = "&".join([
-        "AWSAccessKeyId=test-access-key",
-        "Signature=.*",
-        f"Expires={expected_expiration}"
-    ])
+    expected_expiration = int(
+        sum((datetime.fromisoformat("2025-01-01 12:00:00").timestamp(), 3600))
+    )
+    querystring_pattern = "&".join(
+        ["AWSAccessKeyId=test-access-key", "Signature=.*", f"Expires={expected_expiration}"]
+    )
     return querystring_pattern
+
 
 @pytest.fixture
 def base_url_location():
@@ -449,21 +448,21 @@ def base_url_location():
 @pytest.fixture
 def job_input_url_pattern(base_url_location, querystring_pattern):
     job_input_url = base_url_location + "/job_input.zip"
-    job_input_url_pattern = "\?".join([job_input_url, querystring_pattern])
+    job_input_url_pattern = r"\?".join([job_input_url, querystring_pattern])
     return job_input_url_pattern
 
 
 @pytest.fixture
 def job_config_url_pattern(base_url_location, querystring_pattern):
     job_config_url = base_url_location + "/job_config.json"
-    job_config_url_pattern = "\?".join([job_config_url, querystring_pattern])
+    job_config_url_pattern = r"\?".join([job_config_url, querystring_pattern])
     return job_config_url_pattern
 
 
 @pytest.fixture
 def run_config_url_pattern(base_url_location, querystring_pattern):
     run_config_url = base_url_location + "/run_1_config.json"
-    run_config_url_pattern = "\?".join([run_config_url, querystring_pattern])
+    run_config_url_pattern = r"\?".join([run_config_url, querystring_pattern])
     return run_config_url_pattern
 
 
@@ -518,10 +517,14 @@ class TestJobControllerIntegration:
         url, querystring = response["url"].split("?")
         key, sig, expir = querystring.split("&")
         expected_expiration_seconds = 3600
-        expected_expiration = int(sum((
-            datetime.fromisoformat("2025-01-01 12:00:00").timestamp(), 
-            expected_expiration_seconds
-        )))
+        expected_expiration = int(
+            sum(
+                (
+                    datetime.fromisoformat("2025-01-01 12:00:00").timestamp(),
+                    expected_expiration_seconds,
+                )
+            )
+        )
 
         assert url == "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/job_input.zip"
         assert key.startswith("AWSAccessKeyId=")
@@ -571,17 +574,16 @@ class TestJobControllerIntegration:
         )
         db_session.commit()
 
-        expected_base_url = "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/run_1_config.json"
-        expected_expiration = int(sum((
-            datetime.fromisoformat("2025-01-01 12:00:00").timestamp(),
-            3600
-        )))
-        expected_querystring = "&".join([
-            "AWSAccessKeyId=test-access-key",
-            "Signature=.*",
-            f"Expires={expected_expiration}"
-        ])
-        expected_config_url_pattern = "\?".join([expected_base_url, expected_querystring])
+        expected_base_url = (
+            "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/run_1_config.json"
+        )
+        expected_expiration = int(
+            sum((datetime.fromisoformat("2025-01-01 12:00:00").timestamp(), 3600))
+        )
+        expected_querystring = "&".join(
+            ["AWSAccessKeyId=test-access-key", "Signature=.*", f"Expires={expected_expiration}"]
+        )
+        expected_config_url_pattern = r"\?".join([expected_base_url, expected_querystring])
         expected_run = Run.create_persisted(
             run_id=1,
             user_id=123,
@@ -603,7 +605,6 @@ class TestJobControllerIntegration:
         job_controller.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
         )
-        
 
         runs_result = job_controller.get_runs(job_id=1)
         assert is_successful(runs_result)
@@ -617,7 +618,7 @@ class TestJobControllerIntegration:
             request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            config_url=run_config_url_pattern
+            config_url=run_config_url_pattern,
         ).to_dict()
         expected_run_dict.pop("config_url")
         runs = runs_result.unwrap()
@@ -644,9 +645,7 @@ class TestJobControllerIntegration:
         job_controller.submit_job(job_dict["id"], context="job", job_type="config")
 
         job_controller.submit_runs(
-            user_token_value=bearer_token, 
-            run_requests=run_requests, 
-            epx_version="epx_client_1.2.2"
+            user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
         )
         job_controller.submit_job(job_dict["id"], run_id=1, context="run", job_type="config")
 

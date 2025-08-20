@@ -503,7 +503,7 @@ class S3UploadLocationRepository:
         if not locations_to_archive:
             logger.info("No uploads met the age threshold for archival")
             return []
-        
+
         for location in locations_to_archive:
             s3_key = self._extract_s3_key_from_url(location.url)
             if not s3_key:
@@ -533,7 +533,6 @@ class S3UploadLocationRepository:
                 msg = f"Unexpected error archiving {s3_key}: {e}"
                 logger.error(msg)
                 location.errors.append(msg)
-
 
         return locations_to_archive
 
