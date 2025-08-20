@@ -3,8 +3,8 @@ Upload location domain model for the Epistemix API.
 Contains the unified model for handling presigned URLs for various upload scenarios.
 """
 
-from dataclasses import dataclass
-from typing import Dict, Optional
+from dataclasses import dataclass, field
+from typing import Dict, Optional, List
 
 
 @dataclass
@@ -17,6 +17,7 @@ class UploadLocation:
     """
 
     url: str
+    errors: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary representation."""
@@ -94,7 +95,7 @@ class UploadLocation:
             # Remove query parameters which contain sensitive signatures
             base_url = self.url.split("?")[0]
             # Add indicator that parameters were removed
-            return f"{base_url}?[parameters_removed]"
+            return base_url
 
         # For other URL types, return as-is
         return self.url

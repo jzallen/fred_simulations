@@ -23,7 +23,6 @@ from epistemix_api.repositories.s3_upload_location_repository import (
 
 
 class TestS3UploadLocationRepository:
-    """Test cases for the S3UploadLocationRepository."""
 
     @pytest.fixture
     def s3_stubber(self):
@@ -43,7 +42,6 @@ class TestS3UploadLocationRepository:
 
     @pytest.fixture
     def repository(self, s3_stubber):
-        """Create a repository instance with mocked S3 client."""
         s3_client, _ = s3_stubber
         repo = S3UploadLocationRepository(
             bucket_name="test-bucket", region_name="us-east-1", s3_client=s3_client
@@ -54,7 +52,6 @@ class TestS3UploadLocationRepository:
     def test_get_upload_location__context_job_and_upload_type_input__returns_zip_upload_location(
         self, repository
     ):
-        """Test getting upload location with valid JobUpload."""
         # arrange
         current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
@@ -80,7 +77,6 @@ class TestS3UploadLocationRepository:
     def test_get_upload_location__context_job_and_upload_type_config__returns_json_upload_location(
         self, repository
     ):
-        """Test getting upload location with valid JobUpload."""
         # arrange
         current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
@@ -106,7 +102,6 @@ class TestS3UploadLocationRepository:
     def test_get_upload_location__context_run_and_upload_type_config__returns_json_upload_location(
         self, repository
     ):
-        """Test getting upload location with valid JobUpload."""
         # arrange
         current_time = datetime.fromisoformat("2025-01-01 12:00:00")
         expiration_seconds = 3600  # 1 hour from repository default
@@ -130,7 +125,6 @@ class TestS3UploadLocationRepository:
         assert expr == f"Expires={expected_expires_timestamp}"
 
     def test_get_upload_location__empty_resource_name__raises_value_error(self, repository):
-        """Test that None JobUpload raises ValueError."""
         with pytest.raises(ValueError, match="JobUpload cannot be None"):
             repository.get_upload_location(None)
 
@@ -148,7 +142,6 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__normal_filename__adds_timestamp_prefix(self, repository):
-        """Test that S3 key generation works correctly for files without job_id."""
         result = repository._generate_s3_key("test-file.txt")
 
         # Should have timestamp prefix format for non-job files: YYYY/MM/DD/HHMMSS/test-file.txt
@@ -156,44 +149,30 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__filename_with_spaces__replaces_spaces(self, repository):
-        """Test that spaces in filename are replaced with underscores."""
         result = repository._generate_s3_key("test file name.txt")
         assert result == "2025/01/15/143045/test_file_name.txt"
 
     @freeze_time("2025-02-28 09:15:30")
     def test_generate_s3_key__job_input__creates_proper_structure(self, repository):
-        """Test that job_input resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_123_job_input")
-
-        # Should have new format: jobs/123/YYYY/MM/DD/HHMMSS/job_input.zip
         assert result == "jobs/123/2025/02/28/091530/job_input.zip"
 
     @freeze_time("2025-12-31 23:59:59")
     def test_generate_s3_key__job_config__creates_proper_structure(self, repository):
-        """Test that job_config resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_456_job_config")
-
-        # Should have new format: jobs/456/YYYY/MM/DD/HHMMSS/job_config.json
         assert result == "jobs/456/2025/12/31/235959/job_config.json"
 
     @freeze_time("2025-07-04 16:20:00")
     def test_generate_s3_key__run_config__creates_proper_structure(self, repository):
-        """Test that run_config resources get proper S3 key structure."""
         result = repository._generate_s3_key("job_789_run_config")
-
-        # Should have new format: jobs/789/YYYY/MM/DD/HHMMSS/run_config.json
         assert result == "jobs/789/2025/07/04/162000/run_config.json"
 
     @freeze_time("2025-03-15 08:45:12")
     def test_generate_s3_key__run_with_id_config__creates_proper_structure(self, repository):
-        """Test that run_config with run_id gets proper S3 key structure."""
         result = repository._generate_s3_key("job_111_run_222_run_config")
-
-        # Should have new format: jobs/111/YYYY/MM/DD/HHMMSS/run_config.json
         assert result == "jobs/111/2025/03/15/084512/run_config.json"
 
     def test_read_content__valid_location__returns_upload_content(self, repository, s3_stubber):
-        """Test reading content from a valid location."""
         # Arrange
         _, s3_stub = s3_stubber
         s3_stub.add_response(
@@ -214,7 +193,6 @@ class TestS3UploadLocationRepository:
         assert content.raw_content == "Hello, World!"
 
     def test_read_content__json_file__returns_json_content(self, repository, s3_stubber):
-        """Test reading JSON content."""
         # Arrange
         _, s3_stub = s3_stubber
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/config.json")
@@ -233,7 +211,6 @@ class TestS3UploadLocationRepository:
         assert content.raw_content == json_data
 
     def test_read_content__binary_file__returns_content(self, repository, s3_stubber):
-        """Test reading binary-like content that can be decoded."""
         # Arrange
         _, s3_stub = s3_stubber
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/binary.dat")
@@ -255,7 +232,6 @@ class TestS3UploadLocationRepository:
         assert content.content_type.value == "text"
 
     def test_read_content__s3_client_error__raises_value_error(self, repository, s3_stubber):
-        """Test that S3 errors are properly handled."""
         # Arrange
         _, s3_stub = s3_stubber
         location = UploadLocation(url="https://test-bucket.s3.amazonaws.com/missing.txt")
@@ -280,7 +256,6 @@ class TestS3UploadLocationRepository:
             repository.read_content(location)
 
     def test_read_content__invalid_url__raises_value_error(self, repository):
-        """Test that invalid URLs raise an error."""
         # Arrange
         location = UploadLocation(url="not-a-valid-url")
 
@@ -290,7 +265,6 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-15 12:00:00")
     def test_filter_by_age__with_age_threshold__returns_old_uploads(self, repository, s3_stubber):
-        """Test filter_by_age returns only uploads older than threshold."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
 
@@ -327,7 +301,6 @@ class TestS3UploadLocationRepository:
         assert result[0] == location1
 
     def test_filter_by_age__without_threshold__returns_all(self, repository, s3_stubber):
-        """Test filter_by_age returns all uploads when no threshold."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
 
@@ -348,7 +321,6 @@ class TestS3UploadLocationRepository:
         s3_stub.assert_no_pending_responses()
 
     def test_filter_by_age__handles_s3_errors_gracefully(self, repository, s3_stubber):
-        """Test filter_by_age skips files with S3 errors."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
 
@@ -384,7 +356,6 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-15 12:00:00")
     def test_archive_uploads__transitions_to_glacier(self, repository, s3_stubber):
-        """Test archive_uploads transitions objects to Glacier storage class."""
         # Unpack the stubber
         s3_client, s3_stub = s3_stubber
 
@@ -430,7 +401,6 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-15 12:00:00")
     def test_archive_uploads__with_age_threshold__filters_by_age(self, repository, s3_stubber):
-        """Test archive_uploads with age threshold only archives old files."""
         _, s3_stub = s3_stubber
 
         locations = [
@@ -482,7 +452,6 @@ class TestS3UploadLocationRepository:
         s3_stub.assert_no_pending_responses()
 
     def test_archive_uploads__handles_copy_errors(self, repository, s3_stubber):
-        """Test archive_uploads handles S3 copy errors gracefully."""
         _, s3_stub = s3_stubber
 
         locations = [
@@ -520,14 +489,19 @@ class TestS3UploadLocationRepository:
         result = repository.archive_uploads(locations)
 
         # Should only return the successfully archived file
-        assert len(result) == 1
-        assert result[0] == locations[1]
+        assert result == locations
+        assert result[0].errors == [(
+            "Failed to archive file1.txt: AccessDenied - "
+            "An error occurred (AccessDenied) when calling "
+            "the CopyObject operation: Access Denied"
+        )]
+        assert not bool(result[1].errors)
+
 
         # Verify all expected S3 calls were made
         s3_stub.assert_no_pending_responses()
 
     def test_archive_uploads__empty_list__returns_empty(self, repository):
-        """Test archive_uploads with empty list returns empty result."""
         result = repository.archive_uploads([])
 
         assert result == []

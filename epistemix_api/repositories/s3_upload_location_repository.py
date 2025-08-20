@@ -503,55 +503,39 @@ class S3UploadLocationRepository:
         if not locations_to_archive:
             logger.info("No uploads met the age threshold for archival")
             return []
+        
+        for location in locations_to_archive:
+            s3_key = self._extract_s3_key_from_url(location.url)
+            if not s3_key:
+                msg = f"Could not extract S3 key from URL: {location.url}"
+                logger.error(msg)
+                location.errors.append(msg)
+                continue
 
-        archived = []
-        errors = []
+            try:
+                copy_source = {"Bucket": self.bucket_name, "Key": s3_key}
+                self.s3_client.copy_object(
+                    Bucket=self.bucket_name,
+                    Key=s3_key,
+                    CopySource=copy_source,
+                    StorageClass="GLACIER",
+                    MetadataDirective="COPY",
+                )
 
-        # Process in batches for efficiency
-        batch_size = 100
-        for i in range(0, len(locations_to_archive), batch_size):
-            batch = locations_to_archive[i : i + batch_size]
+                logger.info(f"Archived to Glacier: {s3_key}")
 
-            for location in batch:
-                # Use existing helper to extract S3 key
-                s3_key = self._extract_s3_key_from_url(location.url)
-                if not s3_key:
-                    logger.error(f"Could not extract S3 key from URL: {location.url}")
-                    errors.append(location)
-                    continue
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                msg = f"Failed to archive {s3_key}: {error_code} - {e}"
+                logger.error(msg)
+                location.errors.append(msg)
+            except Exception as e:
+                msg = f"Unexpected error archiving {s3_key}: {e}"
+                logger.error(msg)
+                location.errors.append(msg)
 
-                try:
-                    # Copy object to itself with new storage class (Glacier)
-                    copy_source = {"Bucket": self.bucket_name, "Key": s3_key}
 
-                    self.s3_client.copy_object(
-                        Bucket=self.bucket_name,
-                        Key=s3_key,
-                        CopySource=copy_source,
-                        StorageClass="GLACIER",
-                        MetadataDirective="COPY",
-                    )
-
-                    archived.append(location)
-                    logger.info(f"Archived to Glacier: {s3_key}")
-
-                except ClientError as e:
-                    error_code = e.response.get("Error", {}).get("Code", "Unknown")
-                    logger.error(f"Failed to archive {s3_key}: {error_code} - {e}")
-                    errors.append(location)
-                except Exception as e:
-                    logger.error(f"Unexpected error archiving {s3_key}: {e}")
-                    errors.append(location)
-
-            if (i + batch_size) < len(locations_to_archive):
-                logger.info(f"Processed batch {i // batch_size + 1}, continuing...")
-
-        if errors:
-            logger.warning(f"Failed to archive {len(errors)} uploads")
-
-        logger.info(f"Successfully archived {len(archived)} of {len(locations_to_archive)} uploads")
-
-        return archived
+        return locations_to_archive
 
 
 class DummyS3UploadLocationRepository:

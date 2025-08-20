@@ -65,6 +65,7 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
             pod_phase=PodPhase.PENDING,
             container_status=None,
             status=RunStatus.SUBMITTED,
+            config_url="http://example.com/config.json",
         )
         run_repository.save(run)
 
@@ -77,7 +78,8 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
                 pod_phase=PodPhase.PENDING,
                 request={"jobId": 1, "fredArgs": [], "fredFiles": []},
                 created_at=datetime(2025, 1, 1, 12, 0, 0),
-                updated_at=datetime(2025, 1, 1, 12, 0, 0),
+                updated_at=datetime(2025, 1, 1, 12, 0, 0),\
+                config_url="http://example.com/config.json",
             )
         ]
         runs = get_runs_by_job_id(run_repository, job_id=1)
