@@ -7,7 +7,7 @@ import io
 import logging
 import zipfile
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, List, Optional
 from urllib.parse import urlparse
 
 import boto3
@@ -31,7 +31,11 @@ class S3UploadLocationRepository:
     """
 
     def __init__(
-        self, bucket_name: str, region_name: Optional[str] = None, expiration_seconds: int = 3600
+        self,
+        bucket_name: str,
+        region_name: Optional[str] = None,
+        expiration_seconds: int = 3600,
+        s3_client: Optional[Any] = None,  # Allow injection for testing
     ):
         """
         Initialize the S3 upload location repository.
@@ -48,23 +52,32 @@ class S3UploadLocationRepository:
             bucket_name: The S3 bucket name to upload files to
             region_name: AWS region name (optional, will use default region from config/environment)
             expiration_seconds: How long the pre-signed URL should be valid (default: 1 hour)
+            s3_client: Optional S3 client instance (for testing).
+                If not provided, creates a new one.
         """
         self.bucket_name = bucket_name
         self.expiration_seconds = expiration_seconds
 
-        # Initialize S3 client using default credential chain
-        session_kwargs = {}
-        if region_name:
-            session_kwargs["region_name"] = region_name
+        if s3_client:
+            # Use the provided S3 client (for testing)
+            self.s3_client = s3_client
+            logger.info(f"Using injected S3 client for bucket: {bucket_name}")
+        else:
+            # Initialize S3 client using default credential chain
+            session_kwargs = {}
+            if region_name:
+                session_kwargs["region_name"] = region_name
 
-        try:
-            self.s3_client = boto3.client("s3", **session_kwargs)
-            # Get the actual region being used
-            actual_region = self.s3_client.meta.region_name or "default"
-            logger.info(f"S3 client initialized for bucket: {bucket_name}, region: {actual_region}")
-        except (NoCredentialsError, BotoCoreError) as e:
-            logger.error(f"Failed to initialize S3 client: {e}")
-            raise ValueError(f"S3 client initialization failed: {e}")
+            try:
+                self.s3_client = boto3.client("s3", **session_kwargs)
+                # Get the actual region being used
+                actual_region = self.s3_client.meta.region_name or "default"
+                logger.info(
+                    f"S3 client initialized for bucket: {bucket_name}, region: {actual_region}"
+                )
+            except (NoCredentialsError, BotoCoreError) as e:
+                logger.error(f"Failed to initialize S3 client: {e}")
+                raise ValueError(f"S3 client initialization failed: {e}")
 
     def get_upload_location(self, job_upload: JobUpload) -> UploadLocation:
         """
@@ -95,7 +108,7 @@ class S3UploadLocationRepository:
             )
 
             # Sanitize URL for logging (remove query string with AWS credentials)
-            safe_url = presigned_url.split("?")[0] if "?" in presigned_url else presigned_url
+            safe_url, _ = presigned_url.split("?")
             logger.info(
                 f"Generated pre-signed URL for job {job_upload.job_id} -> {object_key} "
                 f"(URL: {safe_url})"
@@ -414,6 +427,115 @@ class S3UploadLocationRepository:
             trimmed.startswith("[") and trimmed.endswith("]")
         )
 
+    def filter_by_age(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
+    ) -> List[UploadLocation]:
+        """
+        Filter upload locations by age threshold.
+
+        Args:
+            upload_locations: List of UploadLocation objects
+            age_threshold: Optional datetime threshold
+
+        Returns:
+            Filtered list of UploadLocation objects
+        """
+        if not age_threshold:
+            return upload_locations
+
+        filtered = []
+        for location in upload_locations:
+            # Use existing helper to extract S3 key
+            s3_key = self._extract_s3_key_from_url(location.url)
+            if not s3_key:
+                logger.warning(f"Could not extract S3 key from URL: {location.url}")
+                continue
+
+            try:
+                # Get object metadata to check age
+                response = self.s3_client.head_object(Bucket=self.bucket_name, Key=s3_key)
+                last_modified = response.get("LastModified")
+
+                if last_modified:
+                    # Remove timezone info for comparison
+                    last_modified = last_modified.replace(tzinfo=None)
+                    if last_modified < age_threshold:
+                        filtered.append(location)
+                        logger.debug(f"Object {s3_key} is older than threshold")
+                else:
+                    logger.warning(f"No LastModified date for {s3_key}")
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                if error_code == "404":
+                    logger.warning(f"Object not found: {s3_key}")
+                else:
+                    logger.error(f"Error checking object age for {s3_key}: {e}")
+
+        return filtered
+
+    def archive_uploads(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime] = None
+    ) -> List[UploadLocation]:
+        """
+        Archive uploads by transitioning them to Glacier storage class.
+
+        This mimics the lifecycle policy by transitioning objects to Glacier.
+        Batch processing is used when possible for efficiency.
+
+        Args:
+            upload_locations: List of UploadLocation objects to archive
+            age_threshold: Optional - only archive objects older than this
+
+        Returns:
+            List of UploadLocation objects that were successfully archived
+        """
+        if not upload_locations:
+            return []
+
+        # Filter by age if threshold provided
+        locations_to_archive = (
+            self.filter_by_age(upload_locations, age_threshold)
+            if age_threshold
+            else upload_locations
+        )
+
+        if not locations_to_archive:
+            logger.info("No uploads met the age threshold for archival")
+            return []
+
+        for location in locations_to_archive:
+            s3_key = self._extract_s3_key_from_url(location.url)
+            if not s3_key:
+                msg = f"Could not extract S3 key from URL: {location.url}"
+                logger.error(msg)
+                location.errors.append(msg)
+                continue
+
+            try:
+                copy_source = {"Bucket": self.bucket_name, "Key": s3_key}
+                self.s3_client.copy_object(
+                    Bucket=self.bucket_name,
+                    Key=s3_key,
+                    CopySource=copy_source,
+                    StorageClass="GLACIER",
+                    MetadataDirective="COPY",
+                )
+
+                logger.info(f"Archived to Glacier: {s3_key}")
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                msg = f"Failed to archive {s3_key}: {error_code} - {e}"
+                logger.error(msg)
+                location.errors.append(msg)
+            except Exception as e:
+                msg = f"Unexpected error archiving {s3_key}: {e}"
+                logger.error(msg)
+                location.errors.append(msg)
+
+        return locations_to_archive
+
 
 class DummyS3UploadLocationRepository:
     """
@@ -459,6 +581,40 @@ class DummyS3UploadLocationRepository:
         logger.info(f"Dummy read content requested for location: {location.url}")
         dummy_content = "This is dummy content for testing purposes."
         return UploadContent.create_text(dummy_content)
+
+    def filter_by_age(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
+    ) -> List[UploadLocation]:
+        """
+        Dummy implementation - returns all locations for testing.
+
+        Args:
+            upload_locations: List of UploadLocation objects
+            age_threshold: Optional datetime threshold (ignored in dummy)
+
+        Returns:
+            All upload_locations for testing
+        """
+        logger.info(f"Dummy filter_by_age called with {len(upload_locations)} locations")
+        return upload_locations
+
+    def archive_uploads(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime] = None
+    ) -> List[UploadLocation]:
+        """
+        Dummy implementation - simulates archiving for testing.
+
+        Args:
+            upload_locations: List of UploadLocation objects to archive
+            age_threshold: Optional - only archive objects older than this (ignored in dummy)
+
+        Returns:
+            All upload_locations (simulating successful archival)
+        """
+        logger.info(f"Dummy archive_uploads called with {len(upload_locations)} locations")
+        for location in upload_locations:
+            logger.info(f"  Dummy archived: {location.url}")
+        return upload_locations
 
 
 def create_upload_location_repository(

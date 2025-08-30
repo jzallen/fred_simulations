@@ -4,6 +4,7 @@ This service layer orchestrates business logic and coordinates between
 the web layer and domain models.
 """
 
+# TODO: Clean up imports - consolidate multiple imports from same module
 import functools
 import logging
 from pathlib import Path
@@ -18,6 +19,7 @@ from epistemix_api.models.run import Run
 from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_api.use_cases import archive_uploads as archive_uploads_use_case
 from epistemix_api.use_cases import (
     get_job_uploads,
 )
@@ -56,6 +58,7 @@ class JobControllerDependencies:
         get_job_uploads_fn: Callable[[int], List[JobUpload]],
         read_upload_content_fn: Callable[[UploadLocation], UploadContent],
         write_to_local_fn: Callable[[Path, UploadContent, bool], None],
+        archive_uploads_fn: Optional[Callable] = None,
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -66,6 +69,7 @@ class JobControllerDependencies:
         self.get_job_uploads_fn = get_job_uploads_fn
         self.read_upload_content_fn = read_upload_content_fn
         self.write_to_local_fn = write_to_local_fn
+        self.archive_uploads_fn = archive_uploads_fn or archive_uploads_use_case
 
 
 class JobController:
@@ -133,6 +137,9 @@ class JobController:
                 read_upload_content, upload_location_repository
             ),
             write_to_local_fn=write_to_local,
+            archive_uploads_fn=functools.partial(
+                archive_uploads_use_case, upload_location_repository
+            ),
         )
         return service
 
@@ -203,6 +210,7 @@ class JobController:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(upload_location.to_dict())
         except ValueError as e:
+            logger.error(f"Validation error in submit_job: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in submit_job: {e}")
@@ -238,6 +246,7 @@ class JobController:
             run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
         except ValueError as e:
+            logger.error(f"Validation error in submit_runs: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in submit_runs: {e}")
@@ -261,6 +270,7 @@ class JobController:
             runs = self._dependencies.get_runs_by_job_id_fn(job_id=job_id)
             return Success([run.to_dict() for run in runs])
         except ValueError as e:
+            logger.error(f"Validation error in get_runs_by_job_id: {e}")
             return Failure(str(e))
         except Exception as e:
             logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
@@ -395,7 +405,7 @@ class JobController:
                 except Exception as e:
                     error_msg = f"Failed to download {upload.context}_{upload.upload_type}: {e}"
                     errors.append(error_msg)
-                    logger.error(error_msg)
+                    logger.exception(error_msg)
 
             # Report results
             if errors and not downloaded_files:
@@ -427,3 +437,68 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in download_job_uploads")
             return Failure("An unexpected error occurred while downloading uploads")
+
+    def archive_job_uploads(
+        self,
+        job_id: int,
+        days_since_create: Optional[int] = None,
+        hours_since_create: Optional[int] = None,
+        dry_run: bool = False,
+    ) -> Result[List[Dict[str, str]], str]:
+        """
+        Archive uploads for a specific job.
+
+        This method orchestrates archiving uploads for a job, transitioning them
+        to Glacier storage class to reduce costs. If no time threshold is specified,
+        archives all uploads for the job.
+
+        Args:
+            job_id: ID of the job whose uploads should be archived
+            days_since_create: Optional - only archive uploads older than specified days
+            hours_since_create: Optional - only archive uploads older than specified hours
+            dry_run: If True, only report what would be archived without making changes
+
+        Returns:
+            Result containing list of archived upload locations (Success)
+            or an error message (Failure)
+        """
+        try:
+            logger.info(
+                f"{'DRY RUN: ' if dry_run else ''}Archiving uploads for job {job_id} "
+                f"(days={days_since_create}, hours={hours_since_create})"
+            )
+
+            # Get all upload locations for the job
+            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+
+            if not uploads:
+                logger.info(f"No uploads found for job {job_id}")
+                return Success([])
+
+            # Extract UploadLocation objects from JobUpload objects
+            upload_locations = [upload.location for upload in uploads]
+
+            logger.info(f"Found {len(upload_locations)} uploads for job {job_id}")
+
+            # Use the archive_uploads use case
+            archived_locations = self._dependencies.archive_uploads_fn(
+                upload_locations=upload_locations,
+                days_since_create=days_since_create,
+                hours_since_create=hours_since_create,
+                dry_run=dry_run,
+            )
+
+            # Serialize the archived locations using the model's method
+            archived_info = [location.to_sanitized_dict() for location in archived_locations]
+
+            summary = f"{'Would archive' if dry_run else 'Archived'} {len(archived_info)} uploads"
+            logger.info(f"{summary} for job {job_id}")
+
+            return Success(archived_info)
+
+        except ValueError as e:
+            logger.error(f"Validation error in archive_job_uploads: {e}")
+            return Failure(str(e))
+        except Exception:
+            logger.exception("Unexpected error in archive_job_uploads")
+            return Failure("An unexpected error occurred while archiving uploads")

@@ -30,6 +30,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         saved_run = repository.save(run)
 
@@ -42,6 +43,7 @@ class TestSQLAlchemyJobRepository:
             request={},
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            config_url="http://example.com/config.json",
         )
         assert saved_run == expected_run
 
@@ -54,7 +56,8 @@ class TestSQLAlchemyJobRepository:
             user_id=1,
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
-            request={},  # Assuming request is empty for simplicity
+            request={},  # Assuming request is empty for simplicity,
+            config_url="http://example.com/config.json",
         )
         repository.save(run)
         db_session.commit()
@@ -68,6 +71,7 @@ class TestSQLAlchemyJobRepository:
             request={},
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            config_url="http://example.com/config.json",
         )
         run_record = db_session.query(RunRecord).get(1)
         persisted_run = RunMapper.record_to_domain(run_record)
@@ -81,6 +85,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         saved_run = repository.save(run)
 
@@ -97,6 +102,7 @@ class TestSQLAlchemyJobRepository:
             request={},
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            config_url="http://example.com/config.json",
         )
         assert updated_run == expected_run
 
@@ -109,6 +115,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},
+            config_url="http://example.com/config.json",
         )
         saved_run = repository.save(run)
         db_session.commit()
@@ -126,6 +133,7 @@ class TestSQLAlchemyJobRepository:
             request={},
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
+            config_url="http://example.com/config.json",
         )
         run_record = db_session.query(RunRecord).get(1)
         persisted_run = RunMapper.record_to_domain(run_record)
@@ -161,6 +169,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         saved_run = repository.save(run)
         db_session.commit()
@@ -177,6 +186,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         saved_run = repository.save(run)
         db_session.commit()
@@ -196,6 +206,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         run2 = Run.create_unpersisted(
             job_id=1,
@@ -203,6 +214,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         repository.save(run1)
         repository.save(run2)
@@ -226,6 +238,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         run2 = Run.create_unpersisted(
             job_id=2,
@@ -233,6 +246,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         repository.save(run1)
         repository.save(run2)
@@ -256,6 +270,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         run2 = Run.create_unpersisted(
             job_id=2,
@@ -263,6 +278,7 @@ class TestSQLAlchemyJobRepository:
             status=RunStatus.SUBMITTED,
             pod_phase=PodPhase.PENDING,
             request={},  # Assuming request is empty for simplicity
+            config_url="http://example.com/config.json",
         )
         repository.save(run1)
         repository.save(run2)

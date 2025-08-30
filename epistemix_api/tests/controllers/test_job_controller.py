@@ -4,13 +4,17 @@ Tests for the refactored Flask app using Clean Architecture.
 
 import base64
 import json
+import os
+import re
 import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
+import boto3
 import pytest
+from botocore.stub import Stubber
 from freezegun import freeze_time
 from returns.pipeline import is_successful
 
@@ -22,7 +26,7 @@ from epistemix_api.models.run import PodPhase, Run, RunStatus
 from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories import (
-    IUploadLocationRepository,
+    S3UploadLocationRepository,
     SQLAlchemyJobRepository,
     SQLAlchemyRunRepository,
 )
@@ -44,6 +48,17 @@ def service():
         updated_at=datetime(2025, 1, 1, 12, 0, 0),
     )
 
+    # Create mock locations for archive testing
+    mock_location1 = UploadLocation("http://s3.amazonaws.com/bucket/job1/file1.txt")
+    mock_location2 = UploadLocation("http://s3.amazonaws.com/bucket/job1/file2.txt")
+
+    mock_upload1 = JobUpload(
+        context="job", upload_type="input", job_id=1, location=mock_location1, run_id=None
+    )
+    mock_upload2 = JobUpload(
+        context="job", upload_type="config", job_id=1, location=mock_location2, run_id=None
+    )
+
     service = JobController()
     service._dependencies = JobControllerDependencies(
         register_job_fn=Mock(return_value=job),
@@ -56,9 +71,10 @@ def service():
             return_value=UploadLocation(url="http://example.com/pre-signed-url-run-config")
         ),
         get_runs_by_job_id_fn=Mock(return_value=[run]),
-        get_job_uploads_fn=Mock(return_value=[]),
+        get_job_uploads_fn=Mock(return_value=[mock_upload1, mock_upload2]),
         read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
         write_to_local_fn=Mock(return_value=None),
+        archive_uploads_fn=Mock(return_value=[mock_location1, mock_location2]),
     )
     return service
 
@@ -295,6 +311,70 @@ class TestJobController:
         assert uploads[0]["error"] == "S3 error"
         assert "content" not in uploads[0]
 
+    def test_archive_job_uploads__calls_archive_uploads_fn_with_correct_parameters(self, service):
+        # Setup mock uploads with proper UploadLocation
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+
+        service.archive_job_uploads(job_id=1, days_since_create=7, dry_run=True)
+
+        service._dependencies.get_job_uploads_fn.assert_called_once_with(job_id=1)
+        service._dependencies.archive_uploads_fn.assert_called_once_with(
+            upload_locations=[mock_location],
+            days_since_create=7,
+            hours_since_create=None,
+            dry_run=True,
+        )
+
+    def test_archive_job_uploads__returns_success_result_with_archived_locations(self, service):
+        result = service.archive_job_uploads(job_id=1)
+        expected_locations = [
+            UploadLocation("http://s3.amazonaws.com/bucket/job1/file1.txt").to_sanitized_dict(),
+            UploadLocation("http://s3.amazonaws.com/bucket/job1/file2.txt").to_sanitized_dict(),
+        ]
+
+        assert is_successful(result)
+        archived = result.unwrap()
+        assert archived == expected_locations
+
+    def test_archive_job_uploads__when_no_uploads_found__returns_empty_list(self, service):
+        service._dependencies.get_job_uploads_fn.return_value = []
+
+        result = service.archive_job_uploads(job_id=999)
+
+        assert is_successful(result)
+        assert result.unwrap() == []
+        service._dependencies.archive_uploads_fn.assert_not_called()
+
+    def test_archive_job_uploads__when_value_error_raised__returns_failure_result(self, service):
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+        service._dependencies.archive_uploads_fn.side_effect = ValueError("Invalid age threshold")
+
+        result = service.archive_job_uploads(job_id=1, days_since_create=-1)
+
+        assert not is_successful(result)
+        assert result.failure() == "Invalid age threshold"
+
+    def test_archive_job_uploads__when_exception_raised__returns_failure_result(self, service):
+        mock_location = UploadLocation(url="http://example.com/file.txt")
+        mock_upload = JobUpload(
+            context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
+        )
+        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+        service._dependencies.archive_uploads_fn.side_effect = Exception("S3 error")
+
+        result = service.archive_job_uploads(job_id=1)
+
+        assert not is_successful(result)
+        assert result.failure() == "An unexpected error occurred while archiving uploads"
+
 
 @pytest.fixture
 def job_repository(db_session):
@@ -309,12 +389,28 @@ def run_repository(db_session):
 
 
 @pytest.fixture
-def upload_location_repository():
-    repo = Mock(spec=IUploadLocationRepository)
-    repo.get_upload_location.return_value = UploadLocation(
-        url="https://s3.amazonaws.com/test-bucket/presigned-url"
+def s3_stubber():
+    os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"
+
+    s3_client = boto3.client("s3", region_name="us-east-1")
+    s3_stub = Stubber(s3_client)
+
+    try:
+        s3_stub.activate()
+        yield s3_client, s3_stub
+    finally:
+        s3_stub.deactivate()
+        os.environ.pop("AWS_ACCESS_KEY_ID", None)
+        os.environ.pop("AWS_SECRET_ACCESS_KEY", None)
+
+
+@pytest.fixture
+def upload_location_repository(s3_stubber):
+    s3_client, _ = s3_stubber
+    repo = S3UploadLocationRepository(
+        bucket_name="test-bucket", region_name="us-east-1", s3_client=s3_client
     )
-    repo.read_content.return_value = UploadContent.create_text("test content from repository")
     return repo
 
 
@@ -331,6 +427,43 @@ def bearer_token():
     token_json = json.dumps(token_data)
     token_b64 = base64.b64encode(token_json.encode()).decode()
     return f"Bearer {token_b64}"
+
+
+@pytest.fixture
+def querystring_pattern():
+    expected_expiration = int(
+        sum((datetime.fromisoformat("2025-01-01 12:00:00").timestamp(), 3600))
+    )
+    querystring_pattern = "&".join(
+        ["AWSAccessKeyId=test-access-key", "Signature=.*", f"Expires={expected_expiration}"]
+    )
+    return querystring_pattern
+
+
+@pytest.fixture
+def base_url_location():
+    return "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000"
+
+
+@pytest.fixture
+def job_input_url_pattern(base_url_location, querystring_pattern):
+    job_input_url = base_url_location + "/job_input.zip"
+    job_input_url_pattern = r"\?".join([job_input_url, querystring_pattern])
+    return job_input_url_pattern
+
+
+@pytest.fixture
+def job_config_url_pattern(base_url_location, querystring_pattern):
+    job_config_url = base_url_location + "/job_config.json"
+    job_config_url_pattern = r"\?".join([job_config_url, querystring_pattern])
+    return job_config_url_pattern
+
+
+@pytest.fixture
+def run_config_url_pattern(base_url_location, querystring_pattern):
+    run_config_url = base_url_location + "/run_1_config.json"
+    run_config_url_pattern = r"\?".join([run_config_url, querystring_pattern])
+    return run_config_url_pattern
 
 
 @freeze_time("2025-01-01 12:00:00")
@@ -368,7 +501,8 @@ class TestJobControllerIntegration:
         retrieved_job = job_repository.find_by_id(job_dict["id"])
         assert retrieved_job.to_dict() == expected_job_data
 
-    def test_service__returns_success_result_with_job_config_url(
+    @freeze_time("2025-01-01 12:00:00")
+    def test_register_job__returns_success_result_with_job_config_url(
         self, job_controller, bearer_token
     ):
         register_result = job_controller.register_job(
@@ -380,7 +514,22 @@ class TestJobControllerIntegration:
         assert is_successful(submit_result)
         response = submit_result.unwrap()
 
-        assert response["url"] == "https://s3.amazonaws.com/test-bucket/presigned-url"
+        url, querystring = response["url"].split("?")
+        key, sig, expir = querystring.split("&")
+        expected_expiration_seconds = 3600
+        expected_expiration = int(
+            sum(
+                (
+                    datetime.fromisoformat("2025-01-01 12:00:00").timestamp(),
+                    expected_expiration_seconds,
+                )
+            )
+        )
+
+        assert url == "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/job_input.zip"
+        assert key.startswith("AWSAccessKeyId=")
+        assert sig.startswith("Signature=")
+        assert expir == f"Expires={expected_expiration}"
 
     def test_submit_job__updates_job_status(self, job_controller, job_repository, bearer_token):
         register_result = job_controller.register_job(
@@ -425,6 +574,16 @@ class TestJobControllerIntegration:
         )
         db_session.commit()
 
+        expected_base_url = (
+            "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/run_1_config.json"
+        )
+        expected_expiration = int(
+            sum((datetime.fromisoformat("2025-01-01 12:00:00").timestamp(), 3600))
+        )
+        expected_querystring = "&".join(
+            ["AWSAccessKeyId=test-access-key", "Signature=.*", f"Expires={expected_expiration}"]
+        )
+        expected_config_url_pattern = r"\?".join([expected_base_url, expected_querystring])
         expected_run = Run.create_persisted(
             run_id=1,
             user_id=123,
@@ -434,13 +593,14 @@ class TestJobControllerIntegration:
             request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            config_url="https://s3.amazonaws.com/test-bucket/presigned-url",
+            config_url=expected_config_url_pattern,
         )
         saved_run = run_repository.find_by_id(1)
         assert saved_run == expected_run
 
-    def test_get_runs__givent_job_id__returns_success_result_with_run_data(
-        self, job_controller, run_requests, bearer_token
+    @freeze_time("2025-01-01 12:00:00")
+    def test_get_runs__given_job_id__returns_success_result_with_run_data(
+        self, job_controller, run_requests, bearer_token, run_config_url_pattern
     ):
         job_controller.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
@@ -449,7 +609,7 @@ class TestJobControllerIntegration:
         runs_result = job_controller.get_runs(job_id=1)
         assert is_successful(runs_result)
 
-        expected_run = Run.create_persisted(
+        expected_run_dict = Run.create_persisted(
             run_id=1,
             job_id=1,
             user_id=123,
@@ -458,14 +618,51 @@ class TestJobControllerIntegration:
             request=run_requests[0],
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
-            config_url="https://s3.amazonaws.com/test-bucket/presigned-url",
-        )
-        assert runs_result.unwrap() == [expected_run.to_dict()]
+            config_url=run_config_url_pattern,
+        ).to_dict()
+        expected_run_dict.pop("config_url")
+        runs = runs_result.unwrap()
+        assert len(runs) == 1
+
+        config_url = runs[0].pop("config_url")
+        assert runs == [expected_run_dict]
+        assert bool(re.match(run_config_url_pattern, config_url))
 
     def test_get_runs__when_no_runs_for_job__returns_empty_list(self, job_controller):
         runs_result = job_controller.get_runs(job_id=999)
         assert is_successful(runs_result)
         assert runs_result.unwrap() == []
+
+    def test_archive_job_uploads__when_only_job_id__returns_list_of_all_uploads(
+        self, job_controller, bearer_token, base_url_location, run_requests
+    ):
+        # arrange
+        register_result = job_controller.register_job(
+            user_token_value=bearer_token, tags=["status_test"]
+        )
+        job_dict = register_result.unwrap()
+        job_controller.submit_job(job_dict["id"])
+        job_controller.submit_job(job_dict["id"], context="job", job_type="config")
+
+        job_controller.submit_runs(
+            user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
+        )
+        job_controller.submit_job(job_dict["id"], run_id=1, context="run", job_type="config")
+
+        # act
+        archive_result = job_controller.archive_job_uploads(job_id=1)
+        archived_uploads = sorted(archive_result.unwrap(), key=lambda x: x["url"])
+
+        # assert
+        expected_uploads = [
+            # sanitized url
+            {"url": base_url_location + "/job_config.json"},
+            {"url": base_url_location + "/job_input.zip"},
+            {"url": base_url_location + "/run_1_config.json"},
+        ]
+
+        assert is_successful(archive_result)
+        assert archived_uploads == expected_uploads
 
 
 @pytest.fixture
