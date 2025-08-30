@@ -54,18 +54,19 @@ Resources:
             Status: Enabled
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
-          - Id: TransitionToGlacier
+          - Id: CompleteFileLifecycle
             Status: Enabled
+            # Transition to Glacier after 2 days in Standard storage
             Transitions:
               - StorageClass: GLACIER
-                TransitionInDays: 1
+                TransitionInDays: 2
+            # Delete objects after 7 days total (2 days Standard + 5 days Glacier)
+            ExpirationInDays: 7
+            # Handle non-current versions (for versioned objects)
             NoncurrentVersionTransitions:
               - StorageClass: GLACIER
-                TransitionInDays: 1
-          - Id: DeleteFromGlacier
-            Status: Enabled
-            ExpirationInDays: 2
-            NoncurrentVersionExpirationInDays: 2
+                TransitionInDays: 2
+            NoncurrentVersionExpirationInDays: 7
       Tags:
         - Key: Environment
           Value: !Ref Environment
