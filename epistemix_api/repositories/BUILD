@@ -4,9 +4,9 @@ python_sources(
     name="lib",
     sources=[
         "s3_upload_location_repository.py",
-        "!test_*.py",
     ],
     dependencies=[
+        ":lib",
         "//:root#boto3",
         "//:root#botocore",
         "//:root#sqlalchemy",
