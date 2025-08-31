@@ -25,6 +25,11 @@ tasks:
             export PATH="$HOME/.local/bin:$PATH"
             poetry install --no-root
 
+            # Install Pants build system
+            curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash
+            # Verify Pants installation
+            ~/.local/bin/pants --version
+
             # Install Claude CLI
             npm install @anthropic-ai/claude-code
             echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
@@ -57,4 +62,4 @@ tasks:
             sudo apt install gh -y
             echo "GitHub CLI installed successfully"
             gh --version
-        triggeredBy: ['postEnvironmentStart', 'manual']
+        triggeredBy: ['manual']
