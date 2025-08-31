@@ -69,6 +69,10 @@ venv.bak/
 .venv/
 poetry.toml  # Poetry local config (not poetry.lock which should be committed)
 
+# Pants build system
+.pants.d/
+.pids/
+
 # Additional project-specific files
 claude
 epistemix_jobs.db
