@@ -250,16 +250,34 @@ class IUploadLocationRepository(Protocol):
         """
         ...
 
+    def filter_by_age(
+        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
+    ) -> List[UploadLocation]:
+        """
+        Filter upload locations by age threshold, preserving order.
+
+        Args:
+            upload_locations: List of UploadLocation objects to filter
+            age_threshold: Optional datetime to filter uploads by age
+
+        Returns:
+            List of UploadLocation objects that are older than the threshold,
+            maintaining the original order
+        """
+        ...
+
     def archive_uploads(
         self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
     ) -> List[UploadLocation]:
         """
+        Archive uploads by transitioning them to long-term storage.
 
         Args:
             upload_locations: List of UploadLocation objects to archive
             age_threshold: Optional datetime to filter uploads by age
 
         Returns:
-            List of UploadLocation objects representing the archived uploads
+            List of UploadLocation objects representing the archived uploads,
+            maintaining the original order
         """
         ...
