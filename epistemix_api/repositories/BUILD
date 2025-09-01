@@ -6,7 +6,6 @@ python_sources(
         "*.py"
     ],
     dependencies=[
-        "epistemix_api/mappers:lib",
         "epistemix_api/models:lib",
         "//:root#boto3",
         "//:root#botocore",

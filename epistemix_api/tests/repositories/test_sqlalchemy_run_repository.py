@@ -17,7 +17,8 @@ from epistemix_api.repositories.interfaces import IRunRepository
 @pytest.fixture
 def repository(db_session):
     """Create a fresh repository for each test using the shared db_session fixture."""
-    return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
+    run_mapper = RunMapper()
+    return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 
 
 @freeze_time("2025-01-01 12:00:00")

@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 from returns.pipeline import is_successful
 
 from epistemix_api.controllers.job_controller import JobController
+from epistemix_api.mappers.job_mapper import JobMapper
+from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.repositories.database import get_database_manager
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_api.repositories.run_repository import SQLAlchemyRunRepository
@@ -266,8 +268,9 @@ def list_all_jobs(limit: Optional[int], offset: int, user_id: Optional[int], jso
         def session_factory():
             return session
 
-        # Create repository
-        job_repository = SQLAlchemyJobRepository(session_factory)
+        # Create repository with mapper
+        job_mapper = JobMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
 
         # Get jobs using the use case
         jobs = list_jobs(job_repository=job_repository, limit=limit, offset=offset, user_id=user_id)
@@ -319,9 +322,11 @@ def get_job_info(job_id: int, json_output: bool):
         def session_factory():
             return session
 
-        # Create repositories
-        job_repository = SQLAlchemyJobRepository(session_factory)
-        run_repository = SQLAlchemyRunRepository(session_factory)
+        # Create repositories with mappers
+        job_mapper = JobMapper()
+        run_mapper = RunMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
 
         # Get job
         job = get_job(job_repository, job_id)
@@ -398,9 +403,11 @@ def list_job_uploads(job_id: int, json_output: bool):
         def session_factory():
             return session
 
-        # Create repositories
-        job_repository = SQLAlchemyJobRepository(session_factory)
-        run_repository = SQLAlchemyRunRepository(session_factory)
+        # Create repositories with mappers
+        job_mapper = JobMapper()
+        run_mapper = RunMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
 
         # Create upload location repository
         upload_location_repository = create_upload_location_repository(
@@ -490,9 +497,11 @@ def archive_uploads(
         def session_factory():
             return session
 
-        # Create repositories
-        job_repository = SQLAlchemyJobRepository(session_factory)
-        run_repository = SQLAlchemyRunRepository(session_factory)
+        # Create repositories with mappers
+        job_mapper = JobMapper()
+        run_mapper = RunMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
 
         # Create upload location repository
         upload_location_repository = create_upload_location_repository(
@@ -557,9 +566,11 @@ def download_job_uploads(job_id: int, output_dir: Optional[str], force: bool):
         def session_factory():
             return session
 
-        # Create repositories
-        job_repository = SQLAlchemyJobRepository(session_factory)
-        run_repository = SQLAlchemyRunRepository(session_factory)
+        # Create repositories with mappers
+        job_mapper = JobMapper()
+        run_mapper = RunMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
 
         # Create upload location repository
         upload_location_repository = create_upload_location_repository(
