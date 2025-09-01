@@ -77,11 +77,12 @@ class SQLAlchemyJobRepository:
         """
         try:
             with self._get_session() as session:
-                job_record = self._job_mapper.domain_to_record(job)
+                local_job_record = self._job_mapper.domain_to_record(job)
                 save_strategy_fn = session.merge if job.is_persisted() else session.add
-                save_strategy_fn(job_record)
+                # session.merge returns updated record, session.add returns None
+                persisted_job_record = save_strategy_fn(local_job_record) or local_job_record
                 session.flush()
-                persisted_job = self._job_mapper.record_to_domain(job_record)
+                persisted_job = self._job_mapper.record_to_domain(persisted_job_record)
                 logger.info(
                     f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}"
                 )
