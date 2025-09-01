@@ -6,8 +6,10 @@ python_sources(
         "*.py",
     ],
     dependencies=[
-        ":lib",
-        "epistemix_api/use_cases:lib",
+        "epistemix_api/mappers:lib",
+        "epistemix_api/models:lib",
+        "epistemix_api/repositories:lib",
+        "epistemix_api/use_cases:lib",  
         "//:root#boto3",
         "//:root#botocore",
         "//:root#sqlalchemy",

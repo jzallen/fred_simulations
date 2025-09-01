@@ -6,7 +6,6 @@ python_sources(
         "*.py",
     ],
     dependencies=[
-        ":lib",
         "epistemix_api/repositories:lib",
         "epistemix_api/models:lib",
         "epistemix_api/mappers:lib",

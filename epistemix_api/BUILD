@@ -2,7 +2,7 @@
 
 python_sources(
     name="cli",
-    sources=["cli.py", "!tests/**/*.py"],
+    sources=["cli.py"],
     dependencies=[
         "epistemix_api/controllers:lib",
         "epistemix_api/mappers:lib",

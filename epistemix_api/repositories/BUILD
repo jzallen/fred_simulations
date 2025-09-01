@@ -3,13 +3,13 @@
 python_sources(
     name="lib",
     sources=[
-        "s3_upload_location_repository.py",
+        "*.py"
     ],
     dependencies=[
-        ":lib",
+        "epistemix_api/mappers:lib",
+        "epistemix_api/models:lib",
         "//:root#boto3",
         "//:root#botocore",
         "//:root#sqlalchemy",
-        "epistemix_api/models:lib",
     ]
 )
