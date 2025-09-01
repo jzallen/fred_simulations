@@ -1,0 +1,43 @@
+[GLOBAL]
+pants_version = "2.24.0"
+pants_ignore.add = [
+  "!fred-framework/bin/FRED"
+]
+
+# Enable Python backend
+backend_packages = [
+    "pants.backend.python",
+    "pants.backend.python.mixed_interpreter_constraints",
+    "pants.backend.experimental.python",
+    "pants.backend.docker",
+    "pants.backend.shell",
+]
+
+# Source roots
+[source]
+root_patterns = [
+    "/",
+]
+
+# Python configuration
+[python]
+interpreter_constraints = [">=3.11,<3.12"]
+enable_resolves = false
+
+[python-infer]
+imports = true
+string_imports = true
+init_files = "always"
+
+# PEX configuration for building executables
+[pex]
+emit_warnings = false
+
+# Docker configuration
+[docker]
+default_repository = "{name}"
+build_args = ["PYTHON_VERSION=3.11"]
+
+# Anonymous telemetry
+[anonymous-telemetry]
+enabled = false
