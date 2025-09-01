@@ -4,17 +4,13 @@ Defines contracts for data persistence using Protocol for type safety.
 """
 
 from datetime import datetime
-from typing import List, Optional, Protocol, runtime_checkable, TYPE_CHECKING
+from typing import List, Optional, Protocol, runtime_checkable
 
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.run import Run, RunStatus
 from epistemix_api.models.upload_content import UploadContent
 from epistemix_api.models.upload_location import UploadLocation
-
-if TYPE_CHECKING:
-    from epistemix_api.mappers.job_mapper import JobMapper
-    from epistemix_api.mappers.run_mapper import RunMapper
 
 
 @runtime_checkable
