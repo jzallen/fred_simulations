@@ -11,7 +11,7 @@ pex_binary(
     entry_point="epistemix_api.cli:cli",
     dependencies=[
         ":lib",  # Include all epistemix_api source files
-        "epistemix_api/models:lib",
+        "epistemix_api/controllers:lib",
         "//:root#click",
         "//:root#requests",
         "//:root#returns",

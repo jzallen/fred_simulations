@@ -4,17 +4,17 @@ Contains business use cases that implement the core business logic.
 These are the application-specific business rules.
 """
 
-from .archive_uploads import archive_uploads
-from .get_job import get_job
-from .get_job_uploads import get_job_uploads
-from .get_runs import get_runs_by_job_id
-from .read_upload_content import read_upload_content
-from .register_job import register_job, validate_tags
-from .submit_job import submit_job
-from .submit_job_config import submit_job_config
-from .submit_run_config import submit_run_config
-from .submit_runs import RunRequestDict, get_runs_storage, submit_runs
-from .write_to_local import write_to_local
+from .archive_uploads import archive_uploads # pants: no-infer-dep
+from .get_job import get_job # pants: no-infer-dep
+from .get_job_uploads import get_job_uploads # pants: no-infer-dep
+from .get_runs import get_runs_by_job_id # pants: no-infer-dep
+from .read_upload_content import read_upload_content # pants: no-infer-dep
+from .register_job import register_job, validate_tags # pants: no-infer-dep
+from .submit_job import submit_job # pants: no-infer-dep
+from .submit_job_config import submit_job_config # pants: no-infer-dep
+from .submit_run_config import submit_run_config # pants: no-infer-dep
+from .submit_runs import RunRequestDict, get_runs_storage, submit_runs # pants: no-infer-dep
+from .write_to_local import write_to_local # pants: no-infer-dep
 
 __all__ = [
     "archive_uploads",

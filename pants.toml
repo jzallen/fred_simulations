@@ -1,5 +1,8 @@
 [GLOBAL]
 pants_version = "2.24.0"
+pants_ignore.add = [
+  "!fred-framework/bin/FRED"
+]
 
 # Enable Python backend
 backend_packages = [
@@ -7,6 +10,7 @@ backend_packages = [
     "pants.backend.python.mixed_interpreter_constraints",
     "pants.backend.experimental.python",
     "pants.backend.docker",
+    "pants.backend.shell",
 ]
 
 # Source roots
