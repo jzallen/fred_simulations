@@ -6,7 +6,7 @@ Creates a sample job and run in the database.
 
 import datetime
 
-from epistemix_api.repositories.database import JobRecord, RunRecord, get_database_manager
+from epistemix_platform.repositories.database import JobRecord, RunRecord, get_database_manager
 
 # Get database session
 db_manager = get_database_manager("sqlite:///epistemix_jobs.db")

@@ -5,7 +5,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        exclude: '^epistemix_api/infrastructure/.*\.yml$'
+        exclude: '^epistemix_platform/infrastructure/.*\.yml$'
       - id: check-added-large-files
       - id: check-json
         exclude: '^\.devcontainer/.*\.json$'
@@ -76,15 +76,15 @@ repos:
         name: CloudFormation Linter
         entry: poetry run cfn-lint
         language: system
-        files: '^epistemix_api/infrastructure/.*\.yml$'
+        files: '^epistemix_platform/infrastructure/.*\.yml$'
         pass_filenames: true
 
   # Pre-push hook for running tests
   - repo: local
     hooks:
       - id: pytest-epistemix-api
-        name: Run epistemix_api tests in parallel
-        entry: poetry run pytest epistemix_api/ -n auto
+        name: Run epistemix_platform tests in parallel
+        entry: poetry run pytest epistemix_platform/ -n auto
         language: system
         pass_filenames: false
         stages: [pre-push]

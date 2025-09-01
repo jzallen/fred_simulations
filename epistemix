@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 # Convenience script to run the Epistemix CLI
 
-poetry run python -m epistemix_api.cli "$@"
+poetry run python -m epistemix_platform.cli "$@"

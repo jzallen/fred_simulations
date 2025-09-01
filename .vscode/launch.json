@@ -70,7 +70,7 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "epistemix_api/tests/",
+                "epistemix_platform/tests/",
                 "-v",
                 "-s"
             ],
@@ -108,7 +108,7 @@
             "name": "Run Epistemix API Server",
             "type": "node-terminal",
             "request": "launch",
-            "command": "bash ${workspaceFolder}/run_epistemix_api.sh",
+            "command": "bash ${workspaceFolder}/run_epistemix_platform.sh",
             "cwd": "${workspaceFolder}",
             "env": {
                 "FRED_HOME": "/workspaces/fred_simulations/fred-framework",
@@ -120,7 +120,7 @@
             "name": "Python: Run Server (Debug)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/epistemix_api/run_server.py",
+            "program": "${workspaceFolder}/epistemix_platform/run_server.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}",
@@ -154,7 +154,7 @@
             "name": "Debug: CLI jobs uploads list --job-id=2",
             "type": "debugpy",
             "request": "launch",
-            "module": "epistemix_api.cli",
+            "module": "epistemix_platform.cli",
             "args": [
                 "jobs",
                 "uploads",
@@ -176,7 +176,7 @@
             "name": "Debug: CLI jobs uploads list (custom job-id)",
             "type": "debugpy",
             "request": "launch",
-            "module": "epistemix_api.cli",
+            "module": "epistemix_platform.cli",
             "args": [
                 "jobs",
                 "uploads",
@@ -198,7 +198,7 @@
             "name": "Debug: CLI jobs uploads download",
             "type": "debugpy",
             "request": "launch",
-            "module": "epistemix_api.cli",
+            "module": "epistemix_platform.cli",
             "args": [
                 "jobs",
                 "uploads",
@@ -232,8 +232,8 @@
     "inputs": [
         {
             "id": "testPath",
-            "description": "Enter the test path (e.g., epistemix_api/tests/test_clean_architecture.py::TestJobRegistrationRoute::test_job_registration_creates_business_model)",
-            "default": "epistemix_api/tests/test_clean_architecture.py",
+            "description": "Enter the test path (e.g., epistemix_platform/tests/test_clean_architecture.py::TestJobRegistrationRoute::test_job_registration_creates_business_model)",
+            "default": "epistemix_platform/tests/test_clean_architecture.py",
             "type": "promptString"
         },
         {
