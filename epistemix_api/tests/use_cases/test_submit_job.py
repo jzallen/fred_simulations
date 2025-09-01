@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 from freezegun import freeze_time
 
+from epistemix_api.mappers.job_mapper import JobMapper
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.upload_location import UploadLocation
@@ -100,7 +101,8 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
     @pytest.fixture
     def job_repository(self, db_session):
         """Create a job repository using the shared db_session fixture."""
-        return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
+        job_mapper = JobMapper()
+        return SQLAlchemyJobRepository(job_mapper=job_mapper, get_db_session_fn=lambda: db_session)
 
     @pytest.fixture
     def upload_location_repository(self):

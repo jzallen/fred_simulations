@@ -5,15 +5,17 @@ This is a concrete implementation of the IJobRepository interface using SQLite.
 
 import logging
 from contextlib import contextmanager
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, TYPE_CHECKING
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from epistemix_api.mappers.job_mapper import JobMapper
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.repositories.database import JobRecord, JobStatusEnum, get_db_session
 from epistemix_api.repositories.interfaces import IJobRepository
+
+if TYPE_CHECKING:
+    from epistemix_api.mappers.job_mapper import JobMapper
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +28,19 @@ class SQLAlchemyJobRepository:
     It provides the same interface as the in-memory repository but with persistent storage.
     """
 
-    def __init__(self, get_db_session_fn: Callable[[], Session] = get_db_session):
-        """Initialize the repository."""
+    def __init__(
+        self,
+        job_mapper: 'JobMapper',
+        get_db_session_fn: Callable[[], Session] = get_db_session
+    ):
+        """
+        Initialize the repository with mapper dependency injection.
+        
+        Args:
+            job_mapper: The JobMapper instance for converting between domain and database models
+            get_db_session_fn: Factory function for creating database sessions
+        """
+        self._job_mapper = job_mapper
         self._session_factory = get_db_session_fn
 
     @contextmanager
@@ -64,11 +77,11 @@ class SQLAlchemyJobRepository:
         """
         try:
             with self._get_session() as session:
-                job_record = JobMapper.domain_to_record(job)
+                job_record = self._job_mapper.domain_to_record(job)
                 save_strategy_fn = session.merge if job.is_persisted() else session.add
                 save_strategy_fn(job_record)
                 session.flush()
-                persisted_job = JobMapper.record_to_domain(job_record)
+                persisted_job = self._job_mapper.record_to_domain(job_record)
                 logger.info(
                     f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}"
                 )
@@ -84,7 +97,7 @@ class SQLAlchemyJobRepository:
             with self._get_session() as session:
                 job_record = session.get(JobRecord, job_id)
                 if job_record:
-                    return JobMapper.record_to_domain(job_record)
+                    return self._job_mapper.record_to_domain(job_record)
                 return None
         except SQLAlchemyError as e:
             logger.error(f"Database error finding job {job_id}: {e}")
@@ -95,7 +108,7 @@ class SQLAlchemyJobRepository:
         try:
             with self._get_session() as session:
                 job_records = session.query(JobRecord).filter(JobRecord.user_id == user_id).all()
-                return [JobMapper.record_to_domain(record) for record in job_records]
+                return [self._job_mapper.record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding jobs for user {user_id}: {e}")
             raise
@@ -116,7 +129,7 @@ class SQLAlchemyJobRepository:
                 db_status = status_mapping[status]
 
                 job_records = session.query(JobRecord).filter(JobRecord.status == db_status).all()
-                return [JobMapper.record_to_domain(record) for record in job_records]
+                return [self._job_mapper.record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding jobs with status {status}: {e}")
             raise
@@ -134,7 +147,7 @@ class SQLAlchemyJobRepository:
                     query = query.limit(limit)
 
                 job_records = query.all()
-                return [JobMapper.record_to_domain(record) for record in job_records]
+                return [self._job_mapper.record_to_domain(record) for record in job_records]
         except SQLAlchemyError as e:
             logger.error(f"Database error finding all jobs: {e}")
             raise

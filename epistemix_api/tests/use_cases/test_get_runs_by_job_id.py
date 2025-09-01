@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 from freezegun import freeze_time
 
+from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.run import PodPhase, Run, RunStatus
 from epistemix_api.repositories import IRunRepository, SQLAlchemyRunRepository
 from epistemix_api.use_cases.get_runs import get_runs_by_job_id
@@ -54,7 +55,8 @@ class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
     @pytest.fixture
     def run_repository(self, db_session):
         """Create a run repository using the shared db_session fixture."""
-        return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
+        run_mapper = RunMapper()
+        return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_runs_by_job_id__given_job_id__returns_runs(self, run_repository):

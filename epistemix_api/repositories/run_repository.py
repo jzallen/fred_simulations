@@ -2,25 +2,33 @@
 SQLAlchemy implementation of the Run repository.
 """
 
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
-from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.run import Run, RunStatus
 from epistemix_api.repositories.database import RunRecord, get_db_session
+
+if TYPE_CHECKING:
+    from epistemix_api.mappers.run_mapper import RunMapper
 
 
 class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
 
-    def __init__(self, get_db_session_fn: Callable[[], Session] = get_db_session):
+    def __init__(
+        self,
+        run_mapper: 'RunMapper',
+        get_db_session_fn: Callable[[], Session] = get_db_session
+    ):
         """
-        Initialize the repository with a session factory.
+        Initialize the repository with mapper dependency injection.
 
         Args:
-            session_factory: A callable that returns a SQLAlchemy Session
+            run_mapper: The RunMapper instance for converting between domain and database models
+            get_db_session_fn: Factory function for creating database sessions
         """
+        self._run_mapper = run_mapper
         self.session_factory = get_db_session_fn
 
     def save(self, run: Run) -> Run:
@@ -32,10 +40,10 @@ class SQLAlchemyRunRepository:
             if not run_record:
                 raise ValueError(f"Run with ID {run.id} not found")
 
-            RunMapper.update_record_from_domain(run_record, run)
+            self._run_mapper.update_record_from_domain(run_record, run)
         else:
             # Create new run
-            run_record = RunMapper.domain_to_record(run)
+            run_record = self._run_mapper.domain_to_record(run)
             session.add(run_record)
             session.flush()  # Get the ID without committing
 
@@ -50,7 +58,7 @@ class SQLAlchemyRunRepository:
         run_record = session.query(RunRecord).filter_by(id=run_id).first()
 
         if run_record:
-            return RunMapper.record_to_domain(run_record)
+            return self._run_mapper.record_to_domain(run_record)
         return None
 
     def find_by_job_id(self, job_id: int) -> List[Run]:
@@ -58,22 +66,22 @@ class SQLAlchemyRunRepository:
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(job_id=job_id).all()
 
-        return [RunMapper.record_to_domain(record) for record in run_records]
+        return [self._run_mapper.record_to_domain(record) for record in run_records]
 
     def find_by_user_id(self, user_id: int) -> List[Run]:
         """Find all runs for a specific user."""
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(user_id=user_id).all()
 
-        return [RunMapper.record_to_domain(record) for record in run_records]
+        return [self._run_mapper.record_to_domain(record) for record in run_records]
 
     def find_by_status(self, status: RunStatus) -> List[Run]:
         """Find all runs with a specific status."""
         session = self.session_factory()
-        status_enum = RunMapper._run_status_to_enum(status)
+        status_enum = self._run_mapper._run_status_to_enum(status)
         run_records = session.query(RunRecord).filter_by(status=status_enum).all()
 
-        return [RunMapper.record_to_domain(record) for record in run_records]
+        return [self._run_mapper.record_to_domain(record) for record in run_records]
 
     def exists(self, run_id: int) -> bool:
         """Check if a run exists."""

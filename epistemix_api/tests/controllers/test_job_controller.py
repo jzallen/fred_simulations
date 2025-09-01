@@ -19,6 +19,8 @@ from freezegun import freeze_time
 from returns.pipeline import is_successful
 
 from epistemix_api.controllers.job_controller import JobController, JobControllerDependencies
+from epistemix_api.mappers.job_mapper import JobMapper
+from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.job import Job, JobStatus
 from epistemix_api.models.job_upload import JobUpload
 from epistemix_api.models.requests import RunRequest
@@ -379,13 +381,15 @@ class TestJobController:
 @pytest.fixture
 def job_repository(db_session):
     """Create a job repository using the shared db_session fixture."""
-    return SQLAlchemyJobRepository(get_db_session_fn=lambda: db_session)
+    job_mapper = JobMapper()
+    return SQLAlchemyJobRepository(job_mapper=job_mapper, get_db_session_fn=lambda: db_session)
 
 
 @pytest.fixture
 def run_repository(db_session):
     """Create a run repository using the shared db_session fixture."""
-    return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
+    run_mapper = RunMapper()
+    return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 
 
 @pytest.fixture

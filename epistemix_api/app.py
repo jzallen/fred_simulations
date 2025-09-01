@@ -16,6 +16,8 @@ from returns.pipeline import is_successful
 
 # Import our business models and controllers
 from epistemix_api.controllers.job_controller import JobController
+from epistemix_api.mappers.job_mapper import JobMapper
+from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
 from epistemix_api.repositories.database import get_database_manager
 from epistemix_api.repositories.job_repository import SQLAlchemyJobRepository
@@ -112,8 +114,13 @@ def get_job_controller():
     def session_factory():
         return g.db_session
 
-    job_repository = SQLAlchemyJobRepository(session_factory)
-    run_repository = SQLAlchemyRunRepository(session_factory)
+    # Create mapper instances
+    job_mapper = JobMapper()
+    run_mapper = RunMapper()
+    
+    # Create repository instances with injected mappers
+    job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+    run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
     upload_location_repository = get_upload_location_repository()
 
     return JobController.create_with_repositories(

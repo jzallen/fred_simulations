@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import pytest
 from freezegun import freeze_time
 
+from epistemix_api.mappers.run_mapper import RunMapper
 from epistemix_api.models.run import PodPhase, Run, RunStatus
 from epistemix_api.models.upload_location import UploadLocation
 from epistemix_api.repositories import (
@@ -109,7 +110,8 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
     @pytest.fixture
     def run_repository(self, db_session):
         """Create a run repository using the shared db_session fixture."""
-        return SQLAlchemyRunRepository(get_db_session_fn=lambda: db_session)
+        run_mapper = RunMapper()
+        return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 
     @pytest.fixture
     def upload_location_repository(self):
