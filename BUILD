@@ -34,3 +34,15 @@ docker_image(
         "epistemix_api:epistemix-cli",
     ],
 )
+
+python_sources(
+    name="0",
+)
+
+shell_sources(
+    name="1",
+)
+
+python_tests(
+    name="tests0",
+)

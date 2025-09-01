@@ -22,3 +22,7 @@ pex_binary(
         "//:root#sqlalchemy",
     ],
 )
+
+python_requirements(
+    name="reqs",
+)
