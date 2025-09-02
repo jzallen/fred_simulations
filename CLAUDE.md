@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a FRED (Framework for Reconstructing Epidemiological Dynamics) simulation project with three main components:
 1. **fred-framework/**: Core FRED simulation engine (C++ source)
-2. **epistemix_api/**: Flask-based mock API server for Epistemix API
+2. **epistemix_platform/**: Flask-based mock API server for Epistemix API
 3. **simulations/**: Agent-based simulation configurations and scripts
 
 ## Common Development Commands
@@ -40,13 +40,13 @@ make clean
 # Install dependencies
 poetry install --no-root
 
-# Run tests for epistemix_api (in parallel)
+# Run tests for epistemix_platform (in parallel)
 make test
 # or
-poetry run pytest epistemix_api/ -n auto
+poetry run pytest epistemix_platform/ -n auto
 
 # Run specific test file
-poetry run pytest epistemix_api/tests/test_pact_compliance.py -v
+poetry run pytest epistemix_platform/tests/test_pact_compliance.py -v
 
 # Code Quality Commands
 make format       # Format code with black and isort
@@ -55,19 +55,19 @@ make lint-fix     # Auto-fix formatting and show remaining issues
 make pre-commit   # Run pre-commit hooks on all files
 
 # Or use Poetry directly:
-poetry run black epistemix_api/ simulations/ *.py
-poetry run flake8 epistemix_api/ simulations/ *.py
-poetry run pylint epistemix_api/ simulations/ *.py
+poetry run black epistemix_platform/ simulations/ *.py
+poetry run flake8 epistemix_platform/ simulations/ *.py
+poetry run pylint epistemix_platform/ simulations/ *.py
 ```
 
 ### Epistemix API Server
 ```bash
 # Run the mock API server
-cd epistemix_api
+cd epistemix_platform
 python run_server.py
 
 # Or using Poetry from project root
-poetry run python epistemix_api/run_server.py
+poetry run python epistemix_platform/run_server.py
 ```
 
 ## High-Level Architecture
@@ -80,7 +80,7 @@ The FRED framework (`fred-framework/`) is a compiled C++ epidemiological simulat
 - **models/**: Pre-built simulation models (influenza, vaccine scenarios, school closure)
 
 ### Epistemix API Mock Server
-The `epistemix_api/` directory implements a Flask-based mock server following Pact contract specifications:
+The `epistemix_platform/` directory implements a Flask-based mock server following Pact contract specifications:
 - **Clean Architecture Pattern**: Separates controllers, use cases, repositories, and models
 - **Repository Pattern**: Database abstraction through interfaces (SQLAlchemy and in-memory implementations)
 - **Pact Contract Testing**: All endpoints validated against `pacts/epx-epistemix.json`
@@ -95,15 +95,15 @@ The `epistemix_api/` directory implements a Flask-based mock server following Pa
 ## Key Configuration Files
 - **simulation_config.fred**: Generated FRED simulation configuration
 - **pyproject.toml**: Poetry dependencies and project metadata
-- **epistemix_api/pacts/**: Pact contracts defining API specifications
+- **epistemix_platform/pacts/**: Pact contracts defining API specifications
 
 ## Testing Strategy
-- **Unit tests**: Located in `epistemix_api/tests/` using pytest with parallel execution (`-n auto`)
+- **Unit tests**: Located in `epistemix_platform/tests/` using pytest with parallel execution (`-n auto`)
 - **Pact compliance**: `test_pact_compliance.py` validates API contract
 - **Integration tests**: Test database repositories and API endpoints
 - **Code Quality Enforcement**:
   - **Pre-commit hooks**: Automatically run black, isort, flake8, and pylint on commit
-  - **Pre-push hooks**: Run all epistemix_api tests in parallel before push
+  - **Pre-push hooks**: Run all epistemix_platform tests in parallel before push
   - **Linting**: PEP8 compliance via black (formatting) and flake8 (style checks)
   - **Static analysis**: pylint configured with project-specific rules in `.pylintrc`
 

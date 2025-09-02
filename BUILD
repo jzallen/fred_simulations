@@ -24,14 +24,14 @@ docker_image(
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
-        "COPY epistemix_api/epistemix-cli.pex /usr/local/bin/epistemix-cli",
+        "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
     ],
     dependencies=[
         ":fred-binary",
-        "epistemix_api:epistemix-cli",
+        "epistemix_platform:epistemix-cli",
     ],
 )
 

@@ -34,17 +34,17 @@ def setup_environment(use_mocks=False):
     """
     if use_mocks:
         # Configure for mock servers (different ports to avoid conflicts)
-        os.environ["EPISTEMIX_API_URL"] = "http://localhost:5002"
+        os.environ["EPISTEMIX_PLATFORM_URL"] = "http://localhost:5002"
         os.environ["S3_ENDPOINT_URL"] = "http://localhost:5003"
         print("Configured for mock servers:")
-        print(f"  EPISTEMIX_API_URL: {os.environ.get('EPISTEMIX_API_URL')}")
+        print(f"  EPISTEMIX_PLATFORM_URL: {os.environ.get('EPISTEMIX_PLATFORM_URL')}")
         print(f"  S3_ENDPOINT_URL: {os.environ.get('S3_ENDPOINT_URL')}")
     else:
         # Use default or real servers
-        epistemix_url = os.environ.get("EPISTEMIX_API_URL", "http://localhost:5000")
+        epistemix_url = os.environ.get("EPISTEMIX_PLATFORM_URL", "http://localhost:5000")
         s3_url = os.environ.get("S3_ENDPOINT_URL", "https://s3.amazonaws.com")
         print("Using server configuration:")
-        print(f"  EPISTEMIX_API_URL: {epistemix_url}")
+        print(f"  EPISTEMIX_PLATFORM_URL: {epistemix_url}")
         print(f"  S3_ENDPOINT_URL: {s3_url}")
 
 

@@ -7,7 +7,7 @@
         "PYTHONPATH": "/workspaces/fred_simulations"
     },
     "python.testing.pytestArgs": [
-        "epistemix_api"
+        "epistemix_platform"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true
