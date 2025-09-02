@@ -32,3 +32,4 @@ def db_session(tmp_path_factory):
 
     session.close()
     Session.remove()
+    engine.dispose()

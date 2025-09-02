@@ -18,7 +18,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "epistemix=epistemix_api.cli:cli",
+            "epistemix=epistemix_platform.cli:cli",
         ],
     },
     python_requires=">=3.10",

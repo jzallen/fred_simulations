@@ -59,15 +59,11 @@ def submit_job(
 
     job_repository.save(job)
 
-    # Sanitize URL for logging (remove query string with AWS credentials)
-    safe_url = (
-        job_input_location.url.split("?")[0]
-        if "?" in job_input_location.url
-        else job_input_location.url
-    )
+    # Log with sanitized URL to prevent credential leaks
+    sanitized_url = job_input_location.get_sanitized_url()
     logger.info(
         f"Job {job_upload.job_id} submitted with context {job_upload.context} and type "
-        f"{job_upload.upload_type}, URL: {safe_url}"
+        f"{job_upload.upload_type}, URL: {sanitized_url}"
     )
 
     return job_input_location

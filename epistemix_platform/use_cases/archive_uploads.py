@@ -35,10 +35,9 @@ def archive_uploads(
         dry_run: If True, only report what would be archived without making changes
 
     Returns:
-        List of UploadLocation objects that were (or would be) archived
-
-    Raises:
-        ValueError: If upload_locations is empty
+        List of UploadLocation objects that were (or would be) archived.
+        Returns empty list if no upload_locations are provided or if no uploads
+        meet the age criteria for archival.
     """
     if not upload_locations:
         logger.info("No upload locations provided for archival")

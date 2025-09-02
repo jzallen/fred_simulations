@@ -33,5 +33,6 @@ def read_upload_content(
     """
     # Delegate to the repository to read the content
     content = upload_location_repository.read_content(location)
-    logger.info(f"Successfully read content from location: {location.url}")
+    sanitized_url = location.get_sanitized_url()
+    logger.info(f"Successfully read content from location: {sanitized_url}")
     return content

@@ -30,7 +30,7 @@ Tests for the Epistemix API Flask app to validate Pact contract compliance.
 #     env['FLASK_HOST'] = 'localhost'
 #     env['FLASK_DEBUG'] = 'False'
 
-#     # Add the workspace root to PYTHONPATH so epistemix_api can be imported
+#     # Add the workspace root to PYTHONPATH so epistemix_platform can be imported
 #     workspace_root = Path(__file__).parent.parent.parent
 #     if 'PYTHONPATH' in env:
 #         env['PYTHONPATH'] = f"{workspace_root}:{env['PYTHONPATH']}"

@@ -10,14 +10,14 @@ from simulations.agent_info_demo.agent_info_job import info_job
 os.environ["PACT_VERIFIER_LOG_LEVEL"] = "DEBUG"
 
 EPISTEMIX_MOCK_HOST = "localhost"
-EPISTEMIX_MOCK_PORT = 5000
+EPISTEMIX_MOCK_PORT = 5555
 
 S3_MOCK_HOST = "localhost"  # Changed to localhost since it's a mock
-S3_MOCK_PORT = 5001
+S3_MOCK_PORT = 5556
 
-EPISTEMIX_API_FOLDER = Path(__file__).parent.parent
-EPISTEMIX_PACTS_DIR = EPISTEMIX_API_FOLDER / "pacts"
-EPISTEMIX_LOGS_DIR = EPISTEMIX_API_FOLDER / "logs"
+EPISTEMIX_PLATFORM_FOLDER = Path(__file__).parent.parent
+EPISTEMIX_PACTS_DIR = EPISTEMIX_PLATFORM_FOLDER / "pacts"
+EPISTEMIX_LOGS_DIR = EPISTEMIX_PLATFORM_FOLDER / "logs"
 
 
 # Define mock server for epistemix api
@@ -117,7 +117,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 headers={
                     "Content-Length": Like("475"),
                     "Content-Type": "application/json",
-                    "Host": Like("localhost:5000"),
+                    "Host": Like(f"localhost:{EPISTEMIX_MOCK_PORT}"),
                     "User-Agent": Like("epx_client_1.2.2"),
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
@@ -244,7 +244,7 @@ class TestAgentInfoJob(unittest.TestCase):
                 query="job_id=123",
                 headers={
                     "Content-Type": "application/json",
-                    "Host": Like("localhost:5000"),
+                    "Host": Like(f"localhost:{EPISTEMIX_MOCK_PORT}"),
                     "User-Agent": Like("epx_client_1.2.2"),
                     "Accept-Encoding": Like("gzip, deflate"),
                     "Accept": "*/*",
@@ -287,7 +287,7 @@ class TestAgentInfoJob(unittest.TestCase):
                             "status": "DONE",
                             "userDeleted": False,
                             "epxClientVersion": "1.2.2",
-                            "url": "http://localhost:5001/pre-signed-url-run",
+                            "url": f"http://localhost:{S3_MOCK_PORT}/pre-signed-url-run",
                         }
                     ]
                 },

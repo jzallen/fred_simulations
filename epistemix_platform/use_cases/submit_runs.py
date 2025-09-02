@@ -4,6 +4,7 @@ This module implements the core business logic for run submission operations.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, TypedDict
 
 from epistemix_platform.models.job_upload import JobUpload
@@ -41,6 +42,45 @@ class RunRequestDict(TypedDict):
 logger = logging.getLogger(__name__)
 
 
+def _parse_client_version(epx_version: str) -> str:
+    """
+    Parse and validate client version from user agent string.
+    
+    Extracts version number from strings like 'epx_client_1.2.2' or similar formats.
+    Returns a valid semantic version or defaults to '1.2.2' if parsing fails.
+    
+    Args:
+        epx_version: The client version string to parse
+        
+    Returns:
+        Validated semantic version string (e.g., '1.2.2')
+    """
+    if not epx_version:
+        logger.warning("Empty epx_version provided, using default 1.2.2")
+        return "1.2.2"
+    
+    # Match semantic version pattern (major.minor.patch with optional additional parts)
+    version_pattern = r'(\d+\.\d+\.\d+(?:\.\d+)*)'
+    match = re.search(version_pattern, epx_version)
+    
+    if match:
+        version = match.group(1)
+        logger.debug(f"Extracted client version '{version}' from '{epx_version}'")
+        return version
+    
+    # Fallback: try to extract version from common patterns like 'epx_client_1.2.2'
+    parts = epx_version.split("_")
+    if len(parts) >= 2:
+        potential_version = parts[-1]
+        # Validate it looks like a version number
+        if re.match(r'^\d+\.\d+\.\d+', potential_version):
+            logger.debug(f"Extracted fallback version '{potential_version}' from '{epx_version}'")
+            return potential_version
+    
+    logger.warning(f"Could not parse version from '{epx_version}', using default 1.2.2")
+    return "1.2.2"
+
+
 def submit_runs(
     run_repository: IRunRepository,
     upload_location_repository: IUploadLocationRepository,
@@ -68,8 +108,8 @@ def submit_runs(
     run_responses = []
 
     for run_request in run_requests:
-        # Extract client version from user agent
-        epx_client_version = epx_version.split("_")[-1] if "_" in epx_version else "1.2.2"
+        # Extract and validate client version from user agent
+        epx_client_version = _parse_client_version(epx_version)
 
         # Create a new Run domain object (without URL initially)
         run = Run.create_unpersisted(

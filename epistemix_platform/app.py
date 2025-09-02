@@ -129,9 +129,14 @@ def get_job_controller():
 
 
 def validate_headers(required_headers: List[str]) -> bool:
-    """Validate that required headers are present in the request."""
+    """Validate that required headers are present in the request.
+    Performs case-insensitive header name matching.
+    """
+    # Create a set of lowercase header names from the request
+    request_headers_lower = {key.lower() for key in request.headers.keys()}
+    
     for header in required_headers:
-        if header not in request.headers:
+        if header.lower() not in request_headers_lower:
             return False
     return True
 
@@ -154,8 +159,16 @@ def require_json(content_type="application/json"):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Validate content type
-            if request.headers.get("content-type") != content_type:
+            # Validate content type with case-insensitive matching and parameter handling
+            request_content_type = request.headers.get("content-type") or request.headers.get("Content-Type")
+            if not request_content_type:
+                return jsonify({"error": f"Content-Type must be {content_type}"}), 400
+            
+            # Extract the main content type (ignore parameters like charset)
+            main_content_type = request_content_type.split(';')[0].strip().lower()
+            expected_content_type = content_type.lower()
+            
+            if main_content_type != expected_content_type:
                 return jsonify({"error": f"Content-Type must be {content_type}"}), 400
 
             # Get and validate JSON data
@@ -175,8 +188,8 @@ def inject_user_token():
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract the Offline-Token header
-            user_token_value = request.headers.get("Offline-Token")
+            # Extract the Offline-Token header with case-insensitive matching
+            user_token_value = request.headers.get("Offline-Token") or request.headers.get("offline-token")
             if not user_token_value:
                 return jsonify({"error": "Missing Offline-Token header"}), 400
 
@@ -188,7 +201,7 @@ def inject_user_token():
 
 
 @app.route("/jobs/register", methods=["POST"])
-@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
+@require_headers("Offline-Token", "content-type", "Fredcli-Version", "user-agent")
 @require_json("application/json")
 @inject_user_token()
 def register_job(user_token_value, json_data):
@@ -216,7 +229,7 @@ def register_job(user_token_value, json_data):
 
 
 @app.route("/jobs", methods=["POST"])
-@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
+@require_headers("Offline-Token", "content-type", "Fredcli-Version", "user-agent")
 @require_json("application/json")
 def submit_job(json_data):
     """Submit registered job for processing to Epistemix platform."""
@@ -239,7 +252,7 @@ def submit_job(json_data):
 
 
 @app.route("/runs", methods=["POST"])
-@require_headers("Offline-Token", "content-type", "fredcli-version", "user-agent")
+@require_headers("Offline-Token", "content-type", "Fredcli-Version", "user-agent")
 @require_json()
 @inject_user_token()
 def submit_runs(user_token_value, json_data):

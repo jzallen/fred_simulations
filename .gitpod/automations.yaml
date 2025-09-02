@@ -42,7 +42,7 @@ tasks:
             mkdir -p ~/.epx
             cat > ~/.epx/config.json << 'EOF'
             {
-             "api-url": "http://localhost:5000",
+             "api-url": "http://localhost:5555",
              "bearer-token": "eyJ1c2VyX2lkIjogMTIzLCAic2NvcGVzX2hhc2giOiAiYWJjMTIzIn0="
             }
             EOF

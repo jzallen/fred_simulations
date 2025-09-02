@@ -20,7 +20,7 @@ class TestJobResultsEndpoint:
         """Create a test client for the Flask app."""
         app.config["TESTING"] = True
         # Use a file-based database for persistence during the test
-        app.config["DATABASE_URL"] = "sqlite:///test_epistemix_api.db"
+        app.config["DATABASE_URL"] = "sqlite:///test_epistemix_platform.db"
         with app.test_client() as client:
             with app.app_context():
                 # Initialize database

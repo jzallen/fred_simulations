@@ -107,7 +107,6 @@ class Job:
         valid_transitions = {
             JobStatus.CREATED: [JobStatus.SUBMITTED, JobStatus.CANCELLED],
             JobStatus.SUBMITTED: [JobStatus.PROCESSING, JobStatus.CANCELLED],
-            JobStatus.SUBMITTED: [JobStatus.PROCESSING, JobStatus.CANCELLED],
             JobStatus.PROCESSING: [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED],
             JobStatus.COMPLETED: [],  # Terminal state
             JobStatus.FAILED: [JobStatus.SUBMITTED],  # Can retry

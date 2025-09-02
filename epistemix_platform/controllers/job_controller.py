@@ -49,7 +49,7 @@ class JobControllerDependencies:
 
     def __init__(
         self,
-        register_job_fn: Callable[[int, List[str]], Job],
+        register_job_fn: Callable[[str, List[str]], Job],
         submit_job_fn: Callable[[int, str, str], UploadLocation],
         submit_job_config_fn: Callable[[int, str, str], UploadLocation],
         submit_runs_fn: Callable[[List[Dict[str, Any]], str, str], List[Run]],
@@ -81,16 +81,23 @@ class JobController:
         are intended to be private so there is not public method to set them directly.
 
         Example:
-        from mock import Mock
+        from unittest.mock import Mock
+        from epistemix_platform.models.upload_location import UploadLocation
 
         mock_job = Job.create_persisted(job_id=1, user_id=123, tags=["test"])
+        mock_location = UploadLocation(url="http://example.com/pre-signed-url", key="test.zip")
         job_controller = JobController()
         job_controller._dependencies = JobControllerDependencies(
             register_job_fn=Mock(return_value=mock_job),
-            submit_job_fn=Mock(return_value={"url": "http://example.com/pre-signed-url"}),
-            submit_runs_fn=Mock(return_value={"runResponses": []}),
-            get_job_fn=Mock(return_value=mock_job),
-            run_repository=Mock()
+            submit_job_fn=Mock(return_value=mock_location),
+            submit_job_config_fn=Mock(return_value=mock_location),
+            submit_runs_fn=Mock(return_value=[]),
+            submit_run_config_fn=Mock(return_value=mock_location),
+            get_runs_by_job_id_fn=Mock(return_value=[]),
+            get_job_uploads_fn=Mock(return_value=[]),
+            read_upload_content_fn=Mock(),
+            write_to_local_fn=Mock(),
+            archive_uploads_fn=Mock(return_value=[])
         )
 
         Use `create_with_repositories` to instantiate with a repository for production use.
