@@ -17,6 +17,42 @@
             }
         },
         {
+            "name": "Python: Test Suite (Infrastructure)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/epistemix_platform/infrastructure",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/epistemix-platform-infrastructure-9grdFlyA-py3.11/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/epistemix_platform/infrastructure:${workspaceFolder}",
+                "PATH": "/home/vscode/.cache/pypoetry/virtualenvs/epistemix-platform-infrastructure-9grdFlyA-py3.11/bin:${env:PATH}"
+            }
+        },
+        {
+            "name": "Python: Test Current File (Infrastructure)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}",
+                "-v",
+                "-s"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/epistemix_platform/infrastructure",
+            "python": "/home/vscode/.cache/pypoetry/virtualenvs/epistemix-platform-infrastructure-9grdFlyA-py3.11/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/epistemix_platform/infrastructure:${workspaceFolder}",
+                "PATH": "/home/vscode/.cache/pypoetry/virtualenvs/epistemix-platform-infrastructure-9grdFlyA-py3.11/bin:${env:PATH}"
+            }
+        },
+        {
             "name": "Python: agent_info_job.py",
             "type": "debugpy",
             "request": "launch",

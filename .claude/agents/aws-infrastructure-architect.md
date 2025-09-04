@@ -101,10 +101,14 @@ When uncertain about specific requirements, you will proactively ask for clarifi
 ## Project-Specific Context
 
 In this codebase:
-- AWS CLI is available via `poetry run aws` (not directly as `aws`)
-- Python must be executed via `poetry run python` (not directly as `python` or `python3`)
-- CloudFormation template validation via `poetry run cfn-lint <path/to/template>` (not `cfn-lint` directly)
-- The project uses Poetry for Python dependency management
-- Infrastructure files should be placed in `epistemix_platform/infrastructure/aws/` directory with subdirectories for services (e.g., `aws/ecr/`, `aws/s3/`)
+- **IMPORTANT**: Infrastructure work should be done from the `epistemix_platform/infrastructure/` directory
+- The infrastructure directory has its own `pyproject.toml` with deployment-specific dependencies
+- When working in `epistemix_platform/infrastructure/`:
+  - Always `cd epistemix_platform/infrastructure/` first
+  - AWS CLI is available via `poetry run aws`
+  - Sceptre is available via `poetry run sceptre`
+  - CloudFormation validation via `poetry run cfn-lint <path/to/template>`
+  - Python via `poetry run python`
+- Infrastructure files are organized in `aws/` subdirectory with service-specific folders (e.g., `aws/ecr/`, `aws/s3/`)
 - ECR-related files should use `simulation-runner-` prefix (not `ecr-`)
 - Follow existing patterns from other infrastructure templates in the project

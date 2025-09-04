@@ -1,0 +1,12 @@
+project_code: fred-simulations
+region: us-east-1
+
+# Global template bucket for large templates and remote state (optional)
+# template_bucket_name: fred-simulations-sceptre-templates
+
+# Default tags applied to all stacks
+template_defaults:
+  tags:
+    Project: FREDSimulations
+    ManagedBy: Sceptre
+    CreatedWith: InfrastructureAsCode

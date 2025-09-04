@@ -1,0 +1,16 @@
+template:
+  type: file
+  path: s3/s3-upload-bucket.json
+
+# Stack parameters for development environment
+parameters:
+  BucketName: fred-simulations-uploads-dev
+  Environment: dev
+  AllowedOrigins: "http://localhost:3000,https://localhost:3000,http://localhost:5000,https://localhost:5000"
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Development
+  Component: S3
+  Service: FileUploads
