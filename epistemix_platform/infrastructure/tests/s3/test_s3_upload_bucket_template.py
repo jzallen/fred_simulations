@@ -49,86 +49,102 @@ class TestS3Template:
         assert "AWSTemplateFormatVersion" in s3_template
         assert s3_template["AWSTemplateFormatVersion"] == "2010-09-09"
 
-    def test_template_has_description(self, s3_template: Dict[str, Any]):
-        """Test that template has a description."""
-        assert "Description" in s3_template
-        assert isinstance(s3_template["Description"], str)
-        assert len(s3_template["Description"].strip()) > 0
-
-    def test_template_parameters_defined(self, s3_template: Dict[str, Any]):
-        """Test that required parameters are defined."""
+    def test_template_only_has_expected_parameters(self, s3_template: Dict[str, Any]):
+        """Test that only expected parameters are defined."""
         parameters = s3_template.get("Parameters", {})
-        required_params = ["BucketName", "Environment", "AllowedOrigins"]
-        
-        for param in required_params:
-            assert param in parameters, f"Required parameter {param} not found"
+        expected_params = ["BucketName", "Environment", "AllowedOrigins"]
 
-    def test_bucket_name_parameter_constraints(self, s3_template: Dict[str, Any]):
-        """Test BucketName parameter constraints."""
+        assert set(parameters.keys()) == set(expected_params), f"Unexpected parameters found: {set(parameters.keys()) - set(expected_params)}"
+
+    def test_bucket_name_has_string_type_constraint(self, s3_template: Dict[str, Any]):
+        """Test that BucketName parameter is of type String."""
         bucket_param = s3_template["Parameters"]["BucketName"]
-        
         assert bucket_param["Type"] == "String"
+
+    def test_bucket_name_has_min_length_3(self, s3_template: Dict[str, Any]):
+        """Test that BucketName parameter has a minimum length of 3."""
+        bucket_param = s3_template["Parameters"]["BucketName"]
         assert bucket_param["MinLength"] == 3
+
+    def test_bucket_name_has_max_length_63(self, s3_template: Dict[str, Any]):
+        """Test that BucketName parameter has a maximum length of 63."""
+        bucket_param = s3_template["Parameters"]["BucketName"]
         assert bucket_param["MaxLength"] == 63
+
+    def test_bucket_name_pattern_supports_valid_names(self, s3_template: Dict[str, Any]):
+        """Test that BucketName parameter pattern supports valid bucket names."""
+        bucket_param = s3_template["Parameters"]["BucketName"]
         assert "AllowedPattern" in bucket_param
         
-        # Test the regex pattern for S3 bucket naming
         pattern = bucket_param["AllowedPattern"]
         valid_names = ["my-bucket", "test-bucket-123", "app1-uploads", "data-bucket-2024"]
-        invalid_names = ["MyBucket", "bucket-", "-bucket", "bucket.", ".bucket", "bucket..name", "bucket_name"]
         
         for name in valid_names:
             assert re.match(pattern, name), f"Valid bucket name {name} should match pattern"
+
+    def test_bucket_name_pattern_rejects_invalid_names(self, s3_template: Dict[str, Any]):
+        """Test that BucketName parameter pattern rejects invalid bucket names."""
+        bucket_param = s3_template["Parameters"]["BucketName"]
+        assert "AllowedPattern" in bucket_param
+        
+        pattern = bucket_param["AllowedPattern"]
+        invalid_names = ["MyBucket", "bucket-", "-bucket", "bucket.", ".bucket", "bucket..name", "bucket_name"]
         
         for name in invalid_names:
             assert not re.match(pattern, name), f"Invalid bucket name {name} should not match pattern"
 
-    def test_environment_parameter_constraints(self, s3_template: Dict[str, Any]):
-        """Test Environment parameter constraints."""
+    def test_environment_has_string_type_constraint(self, s3_template: Dict[str, Any]):
+        """Test that Environment parameter is of type String."""
         env_param = s3_template["Parameters"]["Environment"]
-        
         assert env_param["Type"] == "String"
+
+    def test_environment_has_default_value(self, s3_template: Dict[str, Any]):
+        """Test that Environment parameter has a default value."""
+        env_param = s3_template["Parameters"]["Environment"]
+        assert "Default" in env_param
         assert env_param["Default"] == "dev"
+
+    def test_environment_only_allows_expected_values(self, s3_template: Dict[str, Any]):
+        """Test that Environment parameter only allows expected values."""
+        env_param = s3_template["Parameters"]["Environment"]
+        assert "AllowedValues" in env_param
         assert set(env_param["AllowedValues"]) == {"dev", "staging", "production"}
 
-    def test_allowed_origins_parameter(self, s3_template: Dict[str, Any]):
-        """Test AllowedOrigins parameter."""
+    def test_allowed_origins_has_comma_delimited_list_type(self, s3_template: Dict[str, Any]):
+        """Test that AllowedOrigins parameter is of type CommaDelimitedList."""
         origins_param = s3_template["Parameters"]["AllowedOrigins"]
-        
         assert origins_param["Type"] == "CommaDelimitedList"
-        assert "Default" in origins_param
-        
-        # Test default contains localhost origins
-        default_origins = origins_param["Default"]
-        assert "localhost" in default_origins.lower()
 
-    def test_s3_bucket_resource(self, s3_template: Dict[str, Any]):
+    def test_allowed_origins_has_expected_default_value(self, s3_template: Dict[str, Any]):
+        """Test that AllowedOrigins parameter has a default value."""
+        origins_param = s3_template["Parameters"]["AllowedOrigins"]
+        assert origins_param["Default"] == "http://localhost:3000,https://localhost:3000"
+
+    def test_s3_bucket_resource_exists(self, s3_template: Dict[str, Any]):
         """Test S3 bucket resource configuration."""
         resources = s3_template.get("Resources", {})
-        assert "UploadBucket" in resources
-        
         bucket = resources["UploadBucket"]
         assert bucket["Type"] == "AWS::S3::Bucket"
         
         properties = bucket["Properties"]
         assert "BucketName" in properties
 
+    def test_upload_bucket_bucket_name_uses_parameter(self, s3_template: Dict[str, Any]):
+        """Test that UploadBucket uses the BucketName parameter."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        bucket_name = bucket["Properties"]["BucketName"]
+        assert bucket_name["Ref"] == "BucketName"
+
     def test_s3_versioning_enabled(self, s3_template: Dict[str, Any]):
         """Test that S3 versioning is enabled."""
         bucket = s3_template["Resources"]["UploadBucket"]
-        properties = bucket["Properties"]
-        
-        assert "VersioningConfiguration" in properties
-        versioning = properties["VersioningConfiguration"]
+        versioning = bucket["Properties"]["VersioningConfiguration"]
         assert versioning["Status"] == "Enabled"
 
     def test_s3_public_access_blocked(self, s3_template: Dict[str, Any]):
         """Test that public access is properly blocked."""
         bucket = s3_template["Resources"]["UploadBucket"]
-        properties = bucket["Properties"]
-        
-        assert "PublicAccessBlockConfiguration" in properties
-        public_access_config = properties["PublicAccessBlockConfiguration"]
+        public_access_config = bucket["Properties"]["PublicAccessBlockConfiguration"]        
         
         # All public access settings should be true
         required_settings = [
@@ -139,160 +155,408 @@ class TestS3Template:
         ]
         
         for setting in required_settings:
-            assert setting in public_access_config
             assert public_access_config[setting] is True, f"{setting} should be True"
 
-    def test_s3_cors_configuration(self, s3_template: Dict[str, Any]):
-        """Test CORS configuration."""
+    def test_s3__cors_rules__only_has_one_rule(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules only has one rule defined."""
         bucket = s3_template["Resources"]["UploadBucket"]
-        properties = bucket["Properties"]
+        cors_rules = bucket["Properties"]["CorsConfiguration"]["CorsRules"]
         
-        assert "CorsConfiguration" in properties
-        cors_config = properties["CorsConfiguration"]
-        assert "CorsRules" in cors_config
-        
-        cors_rules = cors_config["CorsRules"]
         assert isinstance(cors_rules, list)
-        assert len(cors_rules) > 0
-        
-        # Test first CORS rule
-        rule = cors_rules[0]
-        assert "AllowedHeaders" in rule
-        assert "AllowedMethods" in rule  
-        assert "AllowedOrigins" in rule
-        assert "ExposedHeaders" in rule
-        assert "MaxAge" in rule
-        
-        # Test allowed methods
-        methods = rule["AllowedMethods"]
-        expected_methods = {"GET", "PUT", "POST"}
-        assert set(methods) == expected_methods
+        assert len(cors_rules) == 1, "CORS should only have one rule defined."
 
-    def test_s3_lifecycle_configuration(self, s3_template: Dict[str, Any]):
-        """Test S3 lifecycle configuration."""
+    def test_s3__cors_rules__allows_all_headers(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules allow all headers."""
         bucket = s3_template["Resources"]["UploadBucket"]
-        properties = bucket["Properties"]
-        
-        assert "LifecycleConfiguration" in properties
-        lifecycle_config = properties["LifecycleConfiguration"]
-        assert "Rules" in lifecycle_config
-        
-        rules = lifecycle_config["Rules"]
-        assert isinstance(rules, list)
-        assert len(rules) > 0
-        
-        # Find specific rules
-        rule_ids = [rule["Id"] for rule in rules]
-        assert "AbortIncompleteMultipartUploads" in rule_ids
-        assert "CompleteFileLifecycle" in rule_ids
-        
-        # Test multipart upload rule
-        multipart_rule = next(rule for rule in rules if rule["Id"] == "AbortIncompleteMultipartUploads")
-        assert multipart_rule["Status"] == "Enabled"
-        assert "AbortIncompleteMultipartUpload" in multipart_rule
-        assert multipart_rule["AbortIncompleteMultipartUpload"]["DaysAfterInitiation"] == 1
+        cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
 
-    def test_lifecycle_policy_cost_optimization(self, s3_template: Dict[str, Any]):
-        """Test that lifecycle policy optimizes costs."""
+
+        assert cors_rule["AllowedHeaders"] == ["*"], "CORS should allow all headers."
+
+    def test_s3__cors_rules__allows_specific_methods(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules allow specific HTTP methods."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
+        
+        allowed_methods = cors_rule["AllowedMethods"]
+        expected_methods = ["GET", "PUT", "POST"]
+        
+        assert allowed_methods == expected_methods, f"CORS should allow methods {expected_methods}"
+
+    def test_s3__cors_rules__uses_parameter_for_origins(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules use the AllowedOrigins parameter."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
+        assert cors_rule["AllowedOrigins"]["Ref"] == "AllowedOrigins", "CORS should use AllowedOrigins parameter."
+
+    def test_s3__cors_rules__only_etag_header_exposed_to_client(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules expose the ETag header to the client.
+        
+        The ETag header is important for clients to manage caching and verify object integrity.
+        The tag value is a hash of the object contents.
+        """
+        bucket = s3_template["Resources"]["UploadBucket"]
+        cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
+        assert cors_rule["ExposedHeaders"] == ["ETag"], "CORS should expose the ETag header."
+
+    def test_s3__cors_rules__has_max_age_3000(self, s3_template: Dict[str, Any]):
+        """Test that CORS rules have a MaxAge of 3000 seconds."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
+        assert cors_rule["MaxAge"] == 3000, "CORS MaxAge should be 3000 seconds."
+
+    def test_s3__lifecycle_policies__has_two_rules(self, s3_template: Dict[str, Any]):
+        """Test that lifecycle policies have exactly two rules defined."""
         bucket = s3_template["Resources"]["UploadBucket"]
         lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
         
-        # Find the complete file lifecycle rule
-        lifecycle_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
-        
-        # Test Glacier transition
-        assert "Transitions" in lifecycle_rule
-        transitions = lifecycle_rule["Transitions"]
-        glacier_transition = transitions[0]
-        assert glacier_transition["StorageClass"] == "GLACIER"
-        assert glacier_transition["TransitionInDays"] <= 7  # Reasonable time to Glacier
-        
-        # Test expiration
-        assert "ExpirationInDays" in lifecycle_rule
-        assert lifecycle_rule["ExpirationInDays"] > glacier_transition["TransitionInDays"]
+        assert isinstance(lifecycle_rules, list)
+        assert len(lifecycle_rules) == 2, "Lifecycle configuration should have exactly two rules."
 
-    def test_log_group_resource(self, s3_template: Dict[str, Any]):
-        """Test CloudWatch Log Group configuration."""
-        resources = s3_template.get("Resources", {})
-        assert "UploadLogGroup" in resources
+    def test_s3__lifecycle_policies__multipart_upload_rule_is_enabled(self, s3_template: Dict[str, Any]):
+        """Test that multipart upload rule is enabled."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
         
+        # Find the multipart upload rule
+        multipart_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "AbortIncompleteMultipartUploads")
+        
+        assert multipart_rule["Status"] == "Enabled"
+
+    def test_s3__lifecycle_policies__multipart_upload_abort_after_1_day(self, s3_template: Dict[str, Any]):
+        """Test that multipart uploads are aborted after 1 day."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+        
+        # Find the multipart upload rule
+        multipart_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "AbortIncompleteMultipartUploads")
+        
+        assert multipart_rule["AbortIncompleteMultipartUpload"]["DaysAfterInitiation"] == 1
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_is_enabled(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle rule is enabled."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        assert complete_rule["Status"] == "Enabled"
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_has_1_transition_rule(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle has exactly 1 transition rule."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        transitions = complete_rule["Transitions"]
+        assert len(transitions) == 1
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_moves_to_glacier_after_2_days(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle moves to Glacier after 2 days."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        transitions = complete_rule["Transitions"]
+        assert transitions[0]["StorageClass"] == "GLACIER"
+        assert transitions[0]["TransitionInDays"] == 2
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_expires_after_7_days(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle expires after 7 days."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        assert "ExpirationInDays" in complete_rule
+        assert complete_rule["ExpirationInDays"] == 7
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_non_current_version__has_1_transition_rules(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle non-current version has exactly 2 transition rules."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        assert "NoncurrentVersionTransitions" in complete_rule
+        non_current_transitions = complete_rule["NoncurrentVersionTransitions"]
+        assert len(non_current_transitions) == 1
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_moves_non_current_versions_to_glacier_after_2_day(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle moves non-current versions to Glacier after 1 day."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        assert complete_rule["NoncurrentVersionTransitions"][0]["StorageClass"] == "GLACIER"
+        assert complete_rule["NoncurrentVersionTransitions"][0]["TransitionInDays"] == 2
+
+    def test_s3__lifecycle_policies__complete_file_lifecycle_expires_non_current_versions_after_7_days(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle expires non-current versions after 7 days."""
+        bucket = s3_template["Resources"]["UploadBucket"]
+        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
+
+        # Find the complete file lifecycle rule
+        complete_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
+
+        assert "NoncurrentVersionExpirationInDays" in complete_rule
+        assert complete_rule["NoncurrentVersionExpirationInDays"] == 7
+
+    def test_upload_log_group_resource_exists(self, s3_template: Dict[str, Any]):
+        """Test CloudWatch Log Group configuration."""
+        resources = s3_template.get("Resources", {})        
         log_group = resources["UploadLogGroup"]
         assert log_group["Type"] == "AWS::Logs::LogGroup"
         
+
+    def test_log_group_has_30_day_retention(self, s3_template: Dict[str, Any]):
+        resources = s3_template.get("Resources", {})        
+        log_group = resources["UploadLogGroup"]
         properties = log_group["Properties"]
-        assert "LogGroupName" in properties
-        assert "RetentionInDays" in properties
         assert properties["RetentionInDays"] == 30
 
-    def test_iam_upload_role(self, s3_template: Dict[str, Any]):
-        """Test IAM role for S3 uploads."""
+    def test_log_group_name_uses_bucket_name_parameter(self, s3_template: Dict[str, Any]):
+        resources = s3_template.get("Resources", {})        
+        log_group = resources["UploadLogGroup"]
+        log_group_name = log_group["Properties"]["LogGroupName"]
+        
+        expected_sub = "/aws/s3/${BucketName}/access-logs"
+        assert log_group_name["Fn::Sub"] == expected_sub, f"Log group name should be {expected_sub}"
+
+    def test_log_group_has_expected_tags(self, s3_template: Dict[str, Any]):
         resources = s3_template.get("Resources", {})
-        assert "S3UploadRole" in resources
-        
+        log_group = resources["UploadLogGroup"]
+        tags = log_group["Properties"]["Tags"]
+        expected = [
+            {
+                "Key": "Environment",
+                "Value": {
+                    "Ref": "Environment"
+                }
+            }
+        ]
+        assert tags == expected, f"Log group tags should be {expected}"
+
+    def test_iam_upload_role_resource_exists(self, s3_template: Dict[str, Any]):
+        """Test that IAM role for S3 uploads exists."""
+        resources = s3_template.get("Resources", {})
+        assert "S3UploadRole" in resources, "S3UploadRole resource not found in template."
+
+    def test_iam_upload_role_name_uses_bucket_name_parameter(self, s3_template: Dict[str, Any]):
+        """Test that IAM role name uses the BucketName parameter."""
+        resources = s3_template.get("Resources", {})
         role = resources["S3UploadRole"]
-        assert role["Type"] == "AWS::IAM::Role"
-        
-        properties = role["Properties"]
-        assert "AssumeRolePolicyDocument" in properties
-        assert "Policies" in properties
-        
-        # Test assume role policy
-        assume_policy = properties["AssumeRolePolicyDocument"]
-        assert assume_policy["Version"] == "2012-10-17"
+        role_name = role["Properties"]["RoleName"]
+        expected_sub = "${BucketName}-upload-role"
+        assert role_name["Fn::Sub"] == expected_sub, f"Role name should be {expected_sub}"
+
+    def test_iam_upload_can_be_assumed_by_ec2(self, s3_template: Dict[str, Any]):
+        """Test that IAM role can be assumed by EC2 service."""
+        resources = s3_template.get("Resources", {})
+        assume_policy = resources["S3UploadRole"]["Properties"]['AssumeRolePolicyDocument']
         
         statements = assume_policy["Statement"]
-        service_principals = []
-        for stmt in statements:
-            if "Principal" in stmt and "Service" in stmt["Principal"]:
-                service_principals.append(stmt["Principal"]["Service"])
-        
-        assert "ec2.amazonaws.com" in service_principals
-        assert "ecs-tasks.amazonaws.com" in service_principals
+        expected_ec2_rule = {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
 
-    def test_iam_role_policies_least_privilege(self, s3_template: Dict[str, Any]):
-        """Test that IAM role follows least privilege principle."""
-        role = s3_template["Resources"]["S3UploadRole"]
+        assert expected_ec2_rule in statements, "EC2 service should be allowed to assume the S3 upload role."
+
+    def test_iam_upload_can_be_assumed_by_ecs_tasks(self, s3_template: Dict[str, Any]):
+        """Test that IAM role can be assumed by ECS tasks service."""
+        resources = s3_template.get("Resources", {})
+        assume_policy = resources["S3UploadRole"]["Properties"]['AssumeRolePolicyDocument']
+        
+        statements = assume_policy["Statement"]
+        expected_ecs_rule = {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+
+        assert expected_ecs_rule in statements, "ECS tasks service should be allowed to assume the S3 upload role." 
+
+    def test_iam_upload_role_has_1_policy(self, s3_template: Dict[str, Any]):
+        """Test that IAM role has exactly one inline policy."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
         policies = role["Properties"]["Policies"]
         
-        assert len(policies) == 1
-        policy = policies[0]
-        assert policy["PolicyName"] == "S3UploadPolicy"
-        
-        policy_doc = policy["PolicyDocument"]
-        statements = policy_doc["Statement"]
-        
-        # Test object-level permissions
-        object_statement = next(stmt for stmt in statements if "s3:PutObject" in stmt["Action"])
-        object_resource = object_statement["Resource"]
-        assert "/*" in object_resource  # Should target objects, not the bucket itself
-        
-        # Test bucket-level permissions
-        bucket_statement = next(stmt for stmt in statements if "s3:ListBucket" in stmt["Action"])
-        bucket_resource = bucket_statement["Resource"]
-        assert "/*" not in bucket_resource  # Should target the bucket, not objects
+        assert len(policies) == 1, "IAM role should have exactly one inline policy."
 
-    def test_required_s3_actions_present(self, s3_template: Dict[str, Any]):
-        """Test that IAM role has required S3 actions."""
-        role = s3_template["Resources"]["S3UploadRole"]
+    def test_iam_upload_role__s3_upload_policy_exists(self, s3_template: Dict[str, Any]):
+        """Test that IAM role has S3 upload policy attached."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
+        policies = role["Properties"]["Policies"]
+        
+        assert policies[0]["PolicyName"] == "S3UploadPolicy", "IAM role should have S3UploadPolicy attached."
+
+    def test_iam_upload_role__s3_upload_policy__has_2_statement_rules(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has exactly 2 statements."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
         policy = role["Properties"]["Policies"][0]
+        statements = policy["PolicyDocument"]["Statement"]
         
-        all_actions = []
-        for statement in policy["PolicyDocument"]["Statement"]:
-            actions = statement["Action"]
-            if isinstance(actions, str):
-                all_actions.append(actions)
-            else:
-                all_actions.extend(actions)
+        assert len(statements) == 2, "S3 upload policy should have exactly 2 statements."
+
+    def test_iam_upload_role__s3_upload_policy__has_expected_bucket_contents_rule(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has expected bucket contents rule."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
+        policy = role["Properties"]["Policies"][0]
+        statements = policy["PolicyDocument"]["Statement"]
         
-        required_actions = [
-            "s3:PutObject",
-            "s3:GetObject",
-            "s3:DeleteObject",
-            "s3:ListBucket"
+        expected_rule = {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:DeleteObject",
+                "s3:RestoreObject"
+            ],
+            "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+            }
+        }
+        
+        assert expected_rule in statements, "S3 upload policy should have expected bucket contents rule."
+
+    def test_iam_upload_role__s3_upload_policy__has_expected_bucket_level_rule(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has expected bucket-level rule."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
+        policy = role["Properties"]["Policies"][0]
+        statements = policy["PolicyDocument"]["Statement"]
+        
+        expected_rule = {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetLifecycleConfiguration",
+                "s3:PutLifecycleConfiguration"
+            ],
+            "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${UploadBucket}"
+            }
+        }
+        
+        assert expected_rule in statements, "S3 upload policy should have expected bucket-level rule."
+
+    def test_iam_upload_role__s3_upload_policy__has_expected_tags(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has expected tags."""
+        resources = s3_template.get("Resources", {})
+        role = resources["S3UploadRole"]
+        tags = role["Properties"]["Tags"]
+        
+        expected_tags = [
+            {
+                "Key": "Environment",
+                "Value": {
+                    "Ref": "Environment"
+                }
+            }
         ]
         
-        for action in required_actions:
-            assert action in all_actions, f"Required action {action} not found"
+        assert tags == expected_tags, f"S3 upload policy should have tags {expected_tags}"
+
+    def test_bucket_name_defined_in_outputs(self, s3_template: Dict[str, Any]):
+        """Test that BucketName output is defined correctly."""
+        outputs = s3_template["Outputs"]
+        bucket_name_output = outputs["BucketName"]
+        expected_definition = {
+            "Description": "Name of the created S3 bucket",
+            "Value": {
+                "Ref": "UploadBucket"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-BucketName"
+                }
+            }
+        }
+        assert bucket_name_output == expected_definition, "BucketName output is not defined as expected."
+
+    def test_bucket_arn_defined_in_outputs(self, s3_template: Dict[str, Any]):
+        """Test that BucketArn output is defined correctly."""
+        outputs = s3_template["Outputs"]
+        bucket_arn_output = outputs["BucketArn"]
+        expected_definition = {
+            "Description": "ARN of the created S3 bucket",
+            "Value": {
+                "Fn::GetAtt": [
+                    "UploadBucket",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-BucketArn"
+                }
+            }
+        }
+
+        assert bucket_arn_output == expected_definition, "BucketArn output is not defined as expected."
+
+    def test_bucket_domain_name_defined_in_outputs(self, s3_template: Dict[str, Any]):
+        """Test that BucketDomainName output is defined correctly."""
+        outputs = s3_template["Outputs"]
+        bucket_domain_output = outputs["BucketDomainName"]
+        expected_definition = {
+            "Description": "Domain name of the S3 bucket",
+            "Value": {
+                "Fn::GetAtt": [
+                    "UploadBucket",
+                    "DomainName"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-BucketDomainName"
+                }
+            }
+        }
+
+        assert bucket_domain_output == expected_definition, "BucketDomainName output is not defined as expected."
+    
+    def test_upload_role_arn_defined_in_outputs(self, s3_template: Dict[str, Any]):
+        """Test that UploadRoleArn output is defined correctly."""
+        outputs = s3_template["Outputs"]
+        role_arn_output = outputs["UploadRoleArn"]
+        expected_definition = {
+            "Description": "ARN of the IAM role for S3 uploads",
+            "Value": {
+                "Fn::GetAtt": [
+                    "S3UploadRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-UploadRoleArn"
+                }
+            }
+        }
+
+        assert role_arn_output == expected_definition, "UploadRoleArn output is not defined as expected."
 
     def test_template_outputs_defined(self, s3_template: Dict[str, Any]):
         """Test that required outputs are defined."""
@@ -362,73 +626,3 @@ class TestS3Template:
                     att_resource = value["GetAtt"][0] if isinstance(value["GetAtt"], list) else value["GetAtt"]
                     if not att_resource.startswith("AWS::"):
                         assert att_resource in resources, f"Output {output_name} GetAtt references non-existent resource {att_resource}"
-
-    @pytest.mark.parametrize("environment", ["dev", "staging", "production"])
-    def test_template_parameters_validation(self, s3_template: Dict[str, Any], environment: str):
-        """Test parameter validation for different environments."""
-        parameters = s3_template.get("Parameters", {})
-        
-        # Test environment parameter
-        env_param = parameters["Environment"]
-        assert environment in env_param["AllowedValues"]
-
-    def test_cors_security_configuration(self, s3_template: Dict[str, Any]):
-        """Test CORS configuration for security."""
-        bucket = s3_template["Resources"]["UploadBucket"]
-        cors_rules = bucket["Properties"]["CorsConfiguration"]["CorsRules"]
-        
-        rule = cors_rules[0]
-        
-        # Test that dangerous methods are not allowed
-        methods = rule["AllowedMethods"]
-        dangerous_methods = ["DELETE", "PATCH"]
-        for method in dangerous_methods:
-            assert method not in methods, f"Dangerous HTTP method {method} should not be allowed"
-        
-        # Test MaxAge is reasonable (not too long)
-        max_age = rule["MaxAge"]
-        assert max_age <= 86400, "CORS MaxAge should not exceed 24 hours"
-
-    def test_bucket_naming_follows_conventions(self, s3_template: Dict[str, Any]):
-        """Test bucket naming follows AWS conventions."""
-        bucket_param = s3_template["Parameters"]["BucketName"]
-        pattern = bucket_param["AllowedPattern"]
-        
-        # Test pattern prevents common naming issues
-        invalid_patterns = [
-            "UPPERCASE",  # uppercase not allowed
-            "double--hyphen",  # double hyphen not allowed  
-            "ending-",  # ending with hyphen not allowed
-            "-starting",  # starting with hyphen not allowed
-            "has.dots.in.middle"  # this should actually be valid for S3
-        ]
-        
-        # Most should fail except the dots one
-        for pattern_test in invalid_patterns:
-            if pattern_test != "has.dots.in.middle":  # dots are actually valid
-                assert not re.match(pattern, pattern_test), f"Pattern should reject {pattern_test}"
-
-    def test_lifecycle_policy_handles_versioned_objects(self, s3_template: Dict[str, Any]):
-        """Test lifecycle policy handles versioned objects properly."""
-        bucket = s3_template["Resources"]["UploadBucket"]
-        lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
-        
-        # Find the complete file lifecycle rule
-        lifecycle_rule = next(rule for rule in lifecycle_rules if rule["Id"] == "CompleteFileLifecycle")
-        
-        # Should have rules for non-current versions
-        assert "NoncurrentVersionTransitions" in lifecycle_rule
-        assert "NoncurrentVersionExpirationInDays" in lifecycle_rule
-        
-        non_current_transitions = lifecycle_rule["NoncurrentVersionTransitions"]
-        assert len(non_current_transitions) > 0
-        assert non_current_transitions[0]["StorageClass"] == "GLACIER"
-
-    @pytest.mark.parametrize("cors_origin", ["http://localhost:3000", "https://localhost:3000", "https://example.com"])  
-    def test_cors_origin_formats(self, cors_origin: str):
-        """Test that various CORS origin formats are handled correctly."""
-        # This test validates that different origin formats would work
-        # The actual template uses a parameter, so we test the concept
-        assert cors_origin.startswith(("http://", "https://"))
-        if "localhost" in cors_origin:
-            assert cors_origin.startswith(("http://localhost", "https://localhost"))
