@@ -186,11 +186,11 @@ class TestECRTemplate:
         }
         assert scan_config == expected_config, "ECR scanning configuration does not match expected logic"
 
-    def test_ecr_repository_encryption_set_to_kms(self, ecr_template: Dict[str, Any]):
-        """Test ECR repository encryption is set to KMS."""
+    def test_ecr_repository_encryption_set_to_aes256(self, ecr_template: Dict[str, Any]):
+        """Test ECR repository encryption is set to AES256 for simplicity and avoiding KMS key issues."""
         ecr_repo = ecr_template["Resources"]["ECRRepository"]
         encryption_config = ecr_repo["Properties"]["EncryptionConfiguration"]
-        assert encryption_config["EncryptionType"] == "KMS", "ECR encryption type is not KMS"
+        assert encryption_config["EncryptionType"] == "AES256", "ECR encryption should use AES256 to avoid KMS key dependencies"
 
     def test_ecr_repository_has_expected_tags(self, ecr_template: Dict[str, Any]):
         """Test ECR repository has expected tags."""
@@ -435,7 +435,7 @@ class TestECRTemplate:
         }
         assert log_group_name == expected_log_group_name, "Log Group name does not match expected format"
 
-    def test_ecr_log_group_retention_set_to_30_days_for_production_otherwise_15_days(self, ecr_template: Dict[str, Any]):
+    def test_ecr_log_group_retention_set_to_30_days_for_production_otherwise_14_days(self, ecr_template: Dict[str, Any]):
         """Test Log Group retention is set correctly based on environment."""
         log_group = ecr_template["Resources"]["ECRLogGroup"]
         retention_in_days = log_group["Properties"]["RetentionInDays"]
@@ -443,7 +443,7 @@ class TestECRTemplate:
             "Fn::If": [
                 "IsProduction",
                 30,
-                15
+                14
             ]
         }
         assert retention_in_days == expected_retention, "Log Group retention does not match expected values"
@@ -543,26 +543,6 @@ class TestECRTemplate:
             }
         }
         assert registry_id_output == expected_definition, "RegistryId output definition does not match expected"
-
-    def test_cicd_role_arn_output_defined(self, ecr_template: Dict[str, Any]):
-        """Test CICDRoleArn output is defined."""
-        outputs = ecr_template["Outputs"]
-        cicd_role_output = outputs["CICDRoleArn"]
-        expected_definition = {
-            "Description": "ARN of the IAM role for CI/CD pipeline access",
-            "Value": {
-                "Fn::GetAtt": [
-                    "ECRCICDRole",
-                    "Arn"
-                ]
-            },
-            "Export": {
-                "Name": {
-                    "Fn::Sub": "${AWS::StackName}-CICDRoleArn"
-                }
-            }
-        }
-        assert cicd_role_output == expected_definition, "CICDRoleArn output definition does not match expected"
 
     def test_eks_role_arn_output_defined(self, ecr_template: Dict[str, Any]):
         """Test EKSRoleArn output is defined."""

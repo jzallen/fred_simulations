@@ -2,9 +2,12 @@ template:
   type: file
   path: s3/s3-upload-bucket.json
 
+# Stack name override
+stack_name: epistemix-uploads-production-stack
+
 # Stack parameters for production environment
 parameters:
-  BucketName: fred-simulations-uploads-production
+  BucketName: epistemix-uploads-production
   Environment: production
   AllowedOrigins: "https://fred-simulations.com,https://api.fred-simulations.com"
 
