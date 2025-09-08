@@ -112,105 +112,6 @@
                 ]
             }
         },
-        "ECRCICDRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "RoleName": {
-                    "Fn::Sub": "${RepositoryName}-cicd-role-${Environment}"
-                },
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": [
-                                    "codebuild.amazonaws.com",
-                                    "codepipeline.amazonaws.com"
-                                ]
-                            },
-                            "Action": "sts:AssumeRole"
-                        },
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "AWS": {
-                                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
-                                }
-                            },
-                            "Action": "sts:AssumeRole",
-                            "Condition": {
-                                "StringEquals": {
-                                    "aws:RequestedRegion": {
-                                        "Ref": "AWS::Region"
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                },
-                "Policies": [
-                    {
-                        "PolicyName": "ECRFullAccess",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "ecr:GetAuthorizationToken"
-                                    ],
-                                    "Resource": "*"
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "ecr:BatchCheckLayerAvailability",
-                                        "ecr:GetDownloadUrlForLayer",
-                                        "ecr:GetRepositoryPolicy",
-                                        "ecr:DescribeRepositories",
-                                        "ecr:ListImages",
-                                        "ecr:DescribeImages",
-                                        "ecr:BatchGetImage",
-                                        "ecr:GetLifecyclePolicy",
-                                        "ecr:GetLifecyclePolicyPreview",
-                                        "ecr:ListTagsForResource",
-                                        "ecr:DescribeImageScanFindings",
-                                        "ecr:InitiateLayerUpload",
-                                        "ecr:UploadLayerPart",
-                                        "ecr:CompleteLayerUpload",
-                                        "ecr:PutImage",
-                                        "ecr:BatchDeleteImage"
-                                    ],
-                                    "Resource": {
-                                        "Fn::GetAtt": [
-                                            "ECRRepository",
-                                            "Arn"
-                                        ]
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ],
-                "Tags": [
-                    {
-                        "Key": "Environment",
-                        "Value": {
-                            "Ref": "Environment"
-                        }
-                    },
-                    {
-                        "Key": "Purpose",
-                        "Value": "ECRCICDAccess"
-                    },
-                    {
-                        "Key": "ManagedBy",
-                        "Value": "CloudFormation"
-                    }
-                ]
-            }
-        },
         "ECREKSRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -294,7 +195,7 @@
                 ]
             }
         },
-        "ECEC2InstanceProfile": {
+        "ECREC2InstanceProfile": {
             "Type": "AWS::IAM::InstanceProfile",
             "Properties": {
                 "InstanceProfileName": {
@@ -302,12 +203,12 @@
                 },
                 "Roles": [
                     {
-                        "Ref": "ECEC2Role"
+                        "Ref": "ECREC2Role"
                     }
                 ]
             }
         },
-        "ECEC2Role": {
+        "ECREC2Role": {
             "Type": "AWS::IAM::Role",
             "Properties": {
                 "RoleName": {
@@ -395,8 +296,8 @@
                 "RetentionInDays": {
                     "Fn::If": [
                         "IsProduction",
-                        90,
-                        30
+                        30,
+                        15
                     ]
                 },
                 "Tags": [
@@ -549,7 +450,7 @@
             "Description": "ARN of the IAM role for EC2 instances",
             "Value": {
                 "Fn::GetAtt": [
-                    "ECEC2Role",
+                    "ECREC2Role",
                     "Arn"
                 ]
             },
@@ -563,7 +464,7 @@
             "Description": "ARN of the IAM instance profile for EC2 instances",
             "Value": {
                 "Fn::GetAtt": [
-                    "ECEC2InstanceProfile",
+                    "ECREC2InstanceProfile",
                     "Arn"
                 ]
             },
