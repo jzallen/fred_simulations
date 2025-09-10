@@ -13,6 +13,8 @@ import yaml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+# TODO: The ignore_paths should ideally support .gitignore syntax for better usability.
+# TODO: Implement .gitignore parsing and matching
 
 @dataclass
 class TCRConfig:
