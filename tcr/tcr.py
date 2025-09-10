@@ -5,40 +5,53 @@ import argparse
 import subprocess
 import sys
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-import git
 import yaml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
+@dataclass
 class TCRConfig:
     """Configuration for TCR behavior."""
     
-    def __init__(self, config_path: Optional[Path] = None):
-        self.config = self._load_config(config_path)
+    enabled: bool = True
+    watch_paths: List[str] = field(default_factory=lambda: ['epistemix_platform/', 'simulations/'])
+    ignore_paths: List[str] = field(default_factory=lambda: ['*.pyc', '__pycache__', '.git', '*.egg-info', '*.pex'])
+    test_command: str = 'poetry run pytest -xvs'
+    test_timeout: int = 30
+    commit_prefix: str = 'TCR'
+    revert_on_failure: bool = True
+    debounce_seconds: float = 2.0
+    
+    @classmethod
+    def from_yaml(cls, config_path: Optional[Path] = None) -> 'TCRConfig':
+        """Load configuration from YAML file or use defaults.
         
-    def _load_config(self, config_path: Optional[Path]) -> dict:
-        """Load configuration from file or use defaults."""
-        defaults = {
-            'enabled': True,
-            'watch_paths': ['epistemix_platform/', 'simulations/'],
-            'ignore_paths': ['*.pyc', '__pycache__', '.git', '*.egg-info'],
-            'test_command': 'poetry run pytest -xvs',
-            'test_timeout': 30,
-            'commit_prefix': 'TCR',
-            'revert_on_failure': True,
-            'debounce_seconds': 2,
-        }
-        
-        if config_path and config_path.exists():
+        Args:
+            config_path: Path to YAML config file. Defaults to ~/tcr.yaml
+            
+        Returns:
+            TCRConfig instance with loaded or default values
+        """
+        if config_path is None:
+            config_path = Path.home() / 'tcr.yaml'
+            
+        if config_path.exists():
             with open(config_path, 'r') as f:
-                user_config = yaml.safe_load(f).get('tcr', {})
-                defaults.update(user_config)
-                
-        return defaults
+                data = yaml.safe_load(f)
+                if data and 'tcr' in data:
+                    config_dict = data['tcr']
+                elif data:
+                    config_dict = data
+                else:
+                    config_dict = {}
+                return cls(**config_dict)
+        
+        return cls()
 
 
 class TCRHandler(FileSystemEventHandler):
@@ -55,13 +68,13 @@ class TCRHandler(FileSystemEventHandler):
             
         # Check if file should be ignored
         path = Path(event.src_path)
-        for pattern in self.config.config['ignore_paths']:
+        for pattern in self.config.ignore_paths:
             if path.match(pattern):
                 return
                 
         # Debounce rapid changes
         current_time = time.time()
-        if current_time - self.last_run < self.config.config['debounce_seconds']:
+        if current_time - self.last_run < self.config.debounce_seconds:
             return
             
         self.last_run = current_time
@@ -85,11 +98,11 @@ class TCRHandler(FileSystemEventHandler):
         
         try:
             result = subprocess.run(
-                self.config.config['test_command'],
+                self.config.test_command,
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=self.config.config['test_timeout']
+                timeout=self.config.test_timeout
             )
             
             if result.returncode == 0:
@@ -100,7 +113,7 @@ class TCRHandler(FileSystemEventHandler):
                 return False
                 
         except subprocess.TimeoutExpired:
-            print(f"⏱️ Tests timed out after {self.config.config['test_timeout']} seconds")
+            print(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
             return False
         except Exception as e:
             print(f"🚨 Error running tests: {e}")
@@ -114,7 +127,7 @@ class TCRHandler(FileSystemEventHandler):
             
             # Create commit message
             timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-            message = f"{self.config.config['commit_prefix']}: {timestamp} - Modified {changed_file.name}"
+            message = f"{self.config.commit_prefix}: {timestamp} - Modified {changed_file.name}"
             
             # Commit
             subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True)
@@ -125,7 +138,7 @@ class TCRHandler(FileSystemEventHandler):
             
     def _revert_changes(self):
         """Revert uncommitted changes."""
-        if not self.config.config['revert_on_failure']:
+        if not self.config.revert_on_failure:
             print("⚠️ Tests failed but revert is disabled")
             return
             
@@ -142,19 +155,19 @@ class TCRRunner:
     """Main TCR runner that manages the file watching."""
     
     def __init__(self, config_path: Optional[Path] = None):
-        self.config = TCRConfig(config_path)
+        self.config = TCRConfig.from_yaml(config_path)
         self.observer = Observer()
         self.handler = TCRHandler(self.config)
         
     def start(self):
         """Start watching for file changes."""
-        if not self.config.config['enabled']:
+        if not self.config.enabled:
             print("TCR is disabled in configuration")
             return
             
         print("🚀 Starting TCR mode...")
-        print(f"Watching: {self.config.config['watch_paths']}")
-        print(f"Test command: {self.config.config['test_command']}")
+        print(f"Watching: {self.config.watch_paths}")
+        print(f"Test command: {self.config.test_command}")
         
         # Check for uncommitted changes
         result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
@@ -162,7 +175,7 @@ class TCRRunner:
             print("⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first.")
             
         # Set up watchers for each path
-        for path in self.config.config['watch_paths']:
+        for path in self.config.watch_paths:
             if Path(path).exists():
                 self.observer.schedule(self.handler, path, recursive=True)
                 
@@ -186,11 +199,13 @@ def main():
     """Main entry point for TCR command."""
     parser = argparse.ArgumentParser(description='TCR (Test && Commit || Revert) runner')
     parser.add_argument('command', choices=['start', 'stop'], help='Command to execute')
-    parser.add_argument('--config', type=Path, help='Path to configuration file')
+    parser.add_argument('--config', type=Path, default=None,
+                        help='Path to configuration file (defaults to ~/tcr.yaml)')
     
     args = parser.parse_args()
     
     if args.command == 'start':
+        # If no config specified, TCRRunner will use ~/tcr.yaml by default
         runner = TCRRunner(args.config)
         runner.start()
     elif args.command == 'stop':

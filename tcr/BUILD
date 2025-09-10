@@ -12,7 +12,6 @@ pex_binary(
     dependencies=[
         ":tcr",
         ":tcr-reqs#watchdog",
-        ":tcr-reqs#pyyaml", 
-        ":tcr-reqs#gitpython",
+        ":tcr-reqs#pyyaml",
     ],
 )
