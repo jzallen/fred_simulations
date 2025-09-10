@@ -8,8 +8,6 @@ tcr:
   # Paths to watch for changes (relative to current directory)
   watch_paths:
     - epistemix_platform/
-    - simulations/
-    - tcr/
   
   # Patterns to ignore (uses Path.match)
   ignore_paths:
@@ -20,9 +18,10 @@ tcr:
     - "*.pex"
     - "dist/"
     - "*.log"
+    - "*/tests/"
   
   # Command to run tests
-  test_command: "poetry run pytest -xvs"
+  test_command: "poetry run pytest -xs -n auto"
   
   # Maximum time (seconds) to wait for tests
   test_timeout: 30

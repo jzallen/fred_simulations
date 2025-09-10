@@ -19,7 +19,7 @@ class TCRConfig:
     """Configuration for TCR behavior."""
     
     enabled: bool = True
-    watch_paths: List[str] = field(default_factory=lambda: ['epistemix_platform/', 'simulations/'])
+    watch_paths: List[str] = field(default_factory=list)
     ignore_paths: List[str] = field(default_factory=lambda: ['*.pyc', '__pycache__', '.git', '*.egg-info', '*.pex'])
     test_command: str = 'poetry run pytest -xvs'
     test_timeout: int = 30
