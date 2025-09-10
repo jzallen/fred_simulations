@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "tcr"
+version = "0.1.0"
+description = "TCR (Test && Commit || Revert) - AI-constrained development pattern"
+authors = ["Zach Allen <j.zachary.allen@gmail.com>"]
+readme = "README.md"
+packages = [{include = "tcr"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+watchdog = "^3.0.0"
+pyyaml = "^6.0.0"
+click = "^8.1.0"
+gitpython = "^3.1.0"
+
+[tool.poetry.scripts]
+tcr = "tcr.tcr:main"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
+mypy = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
