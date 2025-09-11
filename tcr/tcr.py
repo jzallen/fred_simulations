@@ -13,16 +13,12 @@ import yaml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-# TODO: The ignore_paths should ideally support .gitignore syntax for better usability.
-# TODO: Implement .gitignore parsing and matching
-
 @dataclass
 class TCRConfig:
     """Configuration for TCR behavior."""
     
     enabled: bool = True
     watch_paths: List[str] = field(default_factory=list)
-    ignore_paths: List[str] = field(default_factory=lambda: ['*.pyc', '__pycache__', '.git', '*.egg-info', '*.pex'])
     test_command: str = 'poetry run pytest -xvs'
     test_timeout: int = 30
     commit_prefix: str = 'TCR'
@@ -68,18 +64,24 @@ class TCRHandler(FileSystemEventHandler):
         if event.is_directory:
             return
             
-        # Check if file should be ignored
-        path = Path(event.src_path)
-        for pattern in self.config.ignore_paths:
-            if path.match(pattern):
-                return
-                
         # Debounce rapid changes
         current_time = time.time()
         if current_time - self.last_run < self.config.debounce_seconds:
             return
             
+        # Check if there are any changes using git status (respects .gitignore)
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'], 
+            capture_output=True, 
+            text=True
+        )
+        
+        # If no changes detected (all ignored by .gitignore), skip TCR cycle
+        if not result.stdout.strip():
+            return
+            
         self.last_run = current_time
+        path = Path(event.src_path)
         self._run_tcr_cycle(path)
         
     def _run_tcr_cycle(self, changed_file: Path):
