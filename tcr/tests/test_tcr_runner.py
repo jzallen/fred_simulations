@@ -96,12 +96,14 @@ tcr:
             runner = TCRRunner()
             
             with patch.object(runner, 'observer') as mock_observer:
-                runner.start()
-                
-                mock_observer.start.assert_not_called()
+                with patch('tcr.tcr.logger') as mock_logger:
+                    runner.start()
+                    
+                    mock_observer.start.assert_not_called()
+                    mock_logger.info.assert_called_with("TCR is disabled in configuration")
     
     @patch('subprocess.run')
-    def test_start__when_uncommitted_changes__prints_warning_and_starts_observer(self, mock_run, temp_dir, capsys):
+    def test_start__when_uncommitted_changes__logs_warning_and_starts_observer(self, mock_run, temp_dir):
         with patch('tcr.tcr.TCRConfig.from_yaml') as mock_from_yaml:
             mock_from_yaml.return_value = TCRConfig(
                 enabled=True,
@@ -119,12 +121,14 @@ tcr:
                 
                 # Use KeyboardInterrupt to exit the loop after setup
                 with patch('time.sleep', side_effect=KeyboardInterrupt):
-                    runner.start()
+                    with patch('tcr.tcr.logger') as mock_logger:
+                        runner.start()
+                        
+                        # Check that warning was logged
+                        mock_logger.warning.assert_called_with(
+                            "⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first."
+                        )
                 
-                captured = capsys.readouterr()
-                
-                assert "⚠️ Warning: You have uncommitted changes" in captured.out
-                assert "Consider committing or stashing them first" in captured.out                
                 mock_observer.start.assert_called()
     
     @patch('subprocess.run')
@@ -227,9 +231,13 @@ tcr:
         mock_observer = Mock()
         runner.observer = mock_observer
         
-        runner.stop()
-        
-        mock_observer.stop.assert_called_once()
+        with patch('tcr.tcr.logger') as mock_logger:
+            runner.stop()
+            
+            mock_observer.stop.assert_called_once()
+            # Verify logging calls
+            assert any("🛑 Stopping TCR mode..." in str(call) for call in mock_logger.info.call_args_list)
+            assert any("TCR mode stopped" in str(call) for call in mock_logger.info.call_args_list)
     
     @patch('subprocess.run')
     def test_run__when_keyboard_interrupt__file_observer_stopped(self, mock_run, temp_dir):

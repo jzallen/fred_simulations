@@ -223,8 +223,10 @@ class TestTCRHandler:
     def test_revert_changes__when_changes_revert_on_failure_false__not_git_calls_made(self, mock_run, handler):
         """Test reverting changes when disabled."""
         handler.config.revert_on_failure = False
-        handler._revert_changes()
-        mock_run.assert_not_called()
+        with patch('tcr.tcr.logger') as mock_logger:
+            handler._revert_changes()
+            mock_run.assert_not_called()
+            mock_logger.warning.assert_called_with("⚠️ Tests failed but revert is disabled")
     
     @patch('subprocess.run')
     def test_revert__when_git_error__no_exception_raised(self, mock_run, handler):
