@@ -1,0 +1,11 @@
+python_tests(
+    name="tests",
+    dependencies=[
+        "tcr:tcr",
+        "tcr:tcr-reqs#pytest",
+        "tcr:tcr-reqs#pytest-xdist",
+        "tcr:tcr-reqs#freezegun",
+        "tcr:tcr-reqs#watchdog",
+        "tcr:tcr-reqs#pyyaml",
+    ],
+)
