@@ -2,6 +2,7 @@
 """TCR (Test && Commit || Revert) implementation for AI-constrained development."""
 
 import argparse
+import fnmatch
 import logging
 import logging.handlers
 import subprocess
@@ -74,6 +75,11 @@ class TCRConfig:
     revert_on_failure: bool = True
     debounce_seconds: float = 2.0
     log_file: Optional[str] = None  # Path to log file, defaults to XDG location
+    ignore_patterns: List[str] = field(default_factory=lambda: [
+        'test_*.py', '**/test_*.py',  # Test files with test_ prefix
+        '*_test.py', '**/*_test.py',  # Test files with _test suffix
+        'tests/**', '**/tests/**',    # All files in tests directories
+    ])
     
     @classmethod
     def from_yaml(cls, config_path: Optional[Path] = None) -> 'TCRConfig':
@@ -114,25 +120,47 @@ class TCRHandler(FileSystemEventHandler):
         if event.is_directory:
             return
             
+        path = Path(event.src_path)
+        if self._should_ignore_file(path):
+            logger.debug(f"Ignoring change to {path} (matches ignore pattern)")
+            return
+            
         # Debounce rapid changes
         current_time = time.time()
         if current_time - self.last_run < self.config.debounce_seconds:
             return
             
-        # Check if there are any changes using git status (respects .gitignore)
+        # Check if there are any non-ignored changes using git status
         result = subprocess.run(
             ['git', 'status', '--porcelain'], 
             capture_output=True, 
             text=True
         )
         
-        # If no changes detected (all ignored by .gitignore), skip TCR cycle
         if not result.stdout.strip():
+            logger.debug("No changes detected in git status")
             return
             
         self.last_run = current_time
-        path = Path(event.src_path)
         self._run_tcr_cycle(path)
+        
+    def _should_ignore_file(self, file_path: Path) -> bool:
+        """Check if a file should be ignored based on configured patterns.
+        
+        Args:
+            file_path: Path to check
+            
+        Returns:
+            True if file should be ignored, False otherwise
+        """
+        # Convert to string for pattern matching
+        path_str = str(file_path)
+        
+        for pattern in self.config.ignore_patterns:
+            if fnmatch.fnmatch(path_str, pattern):
+                return True
+                
+        return False
         
     def _run_tcr_cycle(self, changed_file: Path):
         """Run the TCR cycle: test && commit || revert."""

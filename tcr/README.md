@@ -50,35 +50,40 @@ tcr:
   watch_paths:
     - epistemix_platform/
     - simulations/
-  ignore_paths:
-    - "*.pyc"
-    - "__pycache__"
-    - ".git"
-    - "*.egg-info"
   test_command: "poetry run pytest -xvs"
   test_timeout: 30
   commit_prefix: "TCR"
   revert_on_failure: true
   debounce_seconds: 2
+  ignore_patterns:
+    - "test_*.py"       # Test files with test_ prefix
+    - "*_test.py"       # Test files with _test suffix
+    - "**/tests/**"     # All files in tests directories
+    - "*.pyc"           # Compiled Python files
+    - "**/__pycache__/**"  # Python cache directories
 ```
 
 ### Configuration Options
 
 - `enabled`: Enable/disable TCR (default: true)
 - `watch_paths`: List of paths to watch for changes
-- `ignore_paths`: List of patterns to ignore
-- `test_command`: Command to run tests
-- `test_timeout`: Maximum time in seconds for tests to run
-- `commit_prefix`: Prefix for auto-generated commit messages
-- `revert_on_failure`: Whether to revert changes on test failure
-- `debounce_seconds`: Wait time between change detection and test execution
+- `test_command`: Command to run tests (default: `poetry run pytest -xvs`)
+- `test_timeout`: Maximum time in seconds for tests to run (default: 30)
+- `commit_prefix`: Prefix for auto-generated commit messages (default: `TCR`)
+- `revert_on_failure`: Whether to revert changes on test failure (default: true)
+- `debounce_seconds`: Wait time between change detection and test execution (default: 2.0)
+- `ignore_patterns`: List of glob patterns for files to ignore (in addition to `.gitignore`)
+  - Default patterns include test files (`test_*.py`, `*_test.py`), test directories (`**/tests/**`)
+  - These patterns prevent test file modifications from triggering the TCR cycle
+  - Supports standard glob patterns with `*` (any characters) and `**` (any directories)
 
 ## How It Works
 
 1. **File Watching**: Uses the `watchdog` library to monitor specified directories for changes
-2. **Test Execution**: Runs the configured test command when changes are detected
-3. **Git Integration**: Automatically commits on success or reverts on failure
-4. **Debouncing**: Waits a configurable time before running tests to batch rapid changes
+2. **Ignore Filtering**: Respects `.gitignore` and additional `ignore_patterns` to skip test files and other unwanted changes
+3. **Test Execution**: Runs the configured test command when changes are detected
+4. **Git Integration**: Automatically commits on success or reverts on failure
+5. **Debouncing**: Waits a configurable time before running tests to batch rapid changes
 
 ## Benefits
 

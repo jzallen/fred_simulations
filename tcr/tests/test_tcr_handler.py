@@ -31,7 +31,8 @@ class TestTCRHandler:
             test_timeout=10,
             commit_prefix='TEST',
             revert_on_failure=True,
-            debounce_seconds=1.0
+            debounce_seconds=1.0,
+            ignore_patterns=[]  # Empty list to ensure tests aren't affected by default patterns
         )
     
     @pytest.fixture
