@@ -38,7 +38,7 @@ When creating Infrastructure as Code, you will:
 ### 3. IaC Execution Guidance
 You will provide clear deployment instructions including:
 - Pre-deployment validation steps
-- AWS CLI or Console deployment commands
+- AWS CLI or Console deployment commands (Note: In this codebase, AWS CLI is available via `poetry run aws`)
 - Parameter value recommendations
 - Stack update strategies and rollback procedures
 - Post-deployment verification steps
@@ -97,3 +97,18 @@ You will:
 - Account for data residency and sovereignty requirements
 
 When uncertain about specific requirements, you will proactively ask for clarification rather than making assumptions. You stay current with AWS service updates and incorporate new features when they provide clear benefits.
+
+## Project-Specific Context
+
+In this codebase:
+- **IMPORTANT**: Infrastructure work should be done from the `epistemix_platform/infrastructure/` directory
+- The infrastructure directory has its own `pyproject.toml` with deployment-specific dependencies
+- When working in `epistemix_platform/infrastructure/`:
+  - Always `cd epistemix_platform/infrastructure/` first
+  - AWS CLI is available via `poetry run aws`
+  - Sceptre is available via `poetry run sceptre`
+  - CloudFormation validation via `poetry run cfn-lint <path/to/template>`
+  - Python via `poetry run python`
+- Infrastructure files are organized in `aws/` subdirectory with service-specific folders (e.g., `aws/ecr/`, `aws/s3/`)
+- ECR-related files should use `simulation-runner-` prefix (not `ecr-`)
+- Follow existing patterns from other infrastructure templates in the project

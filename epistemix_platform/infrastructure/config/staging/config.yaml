@@ -1,0 +1,11 @@
+project_code: fred-simulations
+region: us-east-1
+
+# Staging environment configuration
+template_defaults:
+  tags:
+    Environment: staging
+    Project: FREDSimulations
+    ManagedBy: Sceptre
+    CreatedWith: InfrastructureAsCode
+    CostCenter: Staging

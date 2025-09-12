@@ -1,0 +1,475 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "ECR repository for FRED simulation runner with lifecycle policies, security scanning, and IAM access controls",
+    "Parameters": {
+        "RepositoryName": {
+            "Type": "String",
+            "Description": "Name of the ECR repository",
+            "Default": "fred-simulation-runner",
+            "MinLength": 2,
+            "MaxLength": 256,
+            "AllowedPattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+            "ConstraintDescription": "Repository name must be lowercase letters, numbers, hyphens, underscores, and periods only"
+        },
+        "Environment": {
+            "Type": "String",
+            "Description": "Environment name for tagging and configuration",
+            "Default": "dev",
+            "AllowedValues": [
+                "dev",
+                "staging",
+                "production"
+            ]
+        },
+        "EnableVulnerabilityScanning": {
+            "Type": "String",
+            "Description": "Enable automatic vulnerability scanning on image push",
+            "Default": "true",
+            "AllowedValues": [
+                "true",
+                "false"
+            ]
+        },
+        "EnableCloudWatchLogs": {
+            "Type": "String",
+            "Description": "Enable CloudWatch logs for ECR repository",
+            "Default": "true",
+            "AllowedValues": [
+                "true",
+                "false"
+            ]
+        },
+        "NotificationTopicArn": {
+            "Type": "String",
+            "Description": "SNS topic ARN for notifications (optional)",
+            "Default": ""
+        }
+    },
+    "Conditions": {
+        "HasNotificationTopic": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NotificationTopicArn"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        },
+        "EnableCloudWatchLogsCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EnableCloudWatchLogs"
+                },
+                "true"
+            ]
+        },
+        "IsProduction": {
+            "Fn::Equals": [
+                {
+                    "Ref": "Environment"
+                },
+                "production"
+            ]
+        }
+    },
+    "Resources": {
+        "ECRRepository": {
+            "Type": "AWS::ECR::Repository",
+            "Properties": {
+                "RepositoryName": {
+                    "Ref": "RepositoryName"
+                },
+                "ImageTagMutability": "MUTABLE",
+                "ImageScanningConfiguration": {
+                    "ScanOnPush": {
+                        "Ref": "EnableVulnerabilityScanning"
+                    }
+                },
+                "EncryptionConfiguration": {
+                    "EncryptionType": "AES256"
+                },
+                "LifecyclePolicy": {
+                    "LifecyclePolicyText": "{\n  \"rules\": [\n    {\n      \"rulePriority\": 1,\n      \"description\": \"Keep last 10 images tagged as 'latest' or 'main'\",\n      \"selection\": {\n        \"tagStatus\": \"tagged\",\n        \"tagPrefixList\": [\"latest\", \"main\"],\n        \"countType\": \"imageCountMoreThan\",\n        \"countNumber\": 10\n      },\n      \"action\": {\n        \"type\": \"expire\"\n      }\n    },\n    {\n      \"rulePriority\": 2,\n      \"description\": \"Keep last 20 images with semantic version tags\",\n      \"selection\": {\n        \"tagStatus\": \"tagged\",\n        \"tagPrefixList\": [\"v\"],\n        \"countType\": \"imageCountMoreThan\",\n        \"countNumber\": 20\n      },\n      \"action\": {\n        \"type\": \"expire\"\n      }\n    },\n    {\n      \"rulePriority\": 3,\n      \"description\": \"Keep last 5 images tagged with branch names or dev tags\",\n      \"selection\": {\n        \"tagStatus\": \"tagged\",\n        \"tagPrefixList\": [\"dev-\", \"feature-\", \"bugfix-\", \"hotfix-\"],\n        \"countType\": \"imageCountMoreThan\",\n        \"countNumber\": 5\n      },\n      \"action\": {\n        \"type\": \"expire\"\n      }\n    },\n    {\n      \"rulePriority\": 4,\n      \"description\": \"Delete untagged images after 1 day\",\n      \"selection\": {\n        \"tagStatus\": \"untagged\",\n        \"countType\": \"sinceImagePushed\",\n        \"countUnit\": \"days\",\n        \"countNumber\": 1\n      },\n      \"action\": {\n        \"type\": \"expire\"\n      }\n    },\n    {\n      \"rulePriority\": 5,\n      \"description\": \"Delete images older than 90 days unless they match retention rules\",\n      \"selection\": {\n        \"tagStatus\": \"any\",\n        \"countType\": \"sinceImagePushed\",\n        \"countUnit\": \"days\",\n        \"countNumber\": 90\n      },\n      \"action\": {\n        \"type\": \"expire\"\n      }\n    }\n  ]\n}\n"
+                },
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {
+                            "Ref": "Environment"
+                        }
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "FREDSimulationRunner"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "ECREKSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "${RepositoryName}-eks-role-${Environment}"
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": {
+                                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com"
+                                }
+                            },
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+                            "Condition": {
+                                "StringEquals": {
+                                    "oidc.eks.${AWS::Region}.amazonaws.com:sub": "system:serviceaccount:default:fred-simulation-runner",
+                                    "oidc.eks.${AWS::Region}.amazonaws.com:aud": "sts.amazonaws.com"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "ECRReadOnlyAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:GetRepositoryPolicy",
+                                        "ecr:DescribeRepositories",
+                                        "ecr:ListImages",
+                                        "ecr:DescribeImages",
+                                        "ecr:BatchGetImage",
+                                        "ecr:GetLifecyclePolicy",
+                                        "ecr:GetLifecyclePolicyPreview",
+                                        "ecr:ListTagsForResource",
+                                        "ecr:DescribeImageScanFindings"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "ECRRepository",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {
+                            "Ref": "Environment"
+                        }
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "ECREKSAccess"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "ECREC2InstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "InstanceProfileName": {
+                    "Fn::Sub": "${RepositoryName}-ec2-profile-${Environment}"
+                },
+                "Roles": [
+                    {
+                        "Ref": "ECREC2Role"
+                    }
+                ]
+            }
+        },
+        "ECREC2Role": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "${RepositoryName}-ec2-role-${Environment}"
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "ECRReadOnlyAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:GetAuthorizationToken"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:GetRepositoryPolicy",
+                                        "ecr:DescribeRepositories",
+                                        "ecr:ListImages",
+                                        "ecr:DescribeImages",
+                                        "ecr:BatchGetImage",
+                                        "ecr:GetLifecyclePolicy",
+                                        "ecr:GetLifecyclePolicyPreview",
+                                        "ecr:ListTagsForResource",
+                                        "ecr:DescribeImageScanFindings"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "ECRRepository",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {
+                            "Ref": "Environment"
+                        }
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "ECREC2Access"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "ECRLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Condition": "EnableCloudWatchLogsCondition",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/ecr/${RepositoryName}"
+                },
+                "RetentionInDays": {
+                    "Fn::If": [
+                        "IsProduction",
+                        30,
+                        14
+                    ]
+                },
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {
+                            "Ref": "Environment"
+                        }
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "ECRLogs"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "ECRScanEventRule": {
+            "Type": "AWS::Events::Rule",
+            "Condition": "HasNotificationTopic",
+            "Properties": {
+                "Description": {
+                    "Fn::Sub": "ECR image scan completion events for ${RepositoryName}"
+                },
+                "EventPattern": {
+                    "source": [
+                        "aws.ecr"
+                    ],
+                    "detail-type": [
+                        "ECR Image Scan"
+                    ],
+                    "detail": {
+                        "repository-name": [
+                            {
+                                "Ref": "RepositoryName"
+                            }
+                        ],
+                        "scan-status": [
+                            "COMPLETE",
+                            "FAILED"
+                        ]
+                    }
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Ref": "NotificationTopicArn"
+                        },
+                        "Id": "ECRScanNotification"
+                    }
+                ]
+            }
+        },
+        "ECRDashboard": {
+            "Type": "AWS::CloudWatch::Dashboard",
+            "Properties": {
+                "DashboardName": {
+                    "Fn::Sub": "ECR-${RepositoryName}-${Environment}"
+                },
+                "DashboardBody": {
+                    "Fn::Sub": "{\n  \"widgets\": [\n    {\n      \"type\": \"metric\",\n      \"x\": 0,\n      \"y\": 0,\n      \"width\": 12,\n      \"height\": 6,\n      \"properties\": {\n        \"metrics\": [\n          [ \"AWS/ECR\", \"RepositoryPullCount\", \"RepositoryName\", \"${RepositoryName}\" ],\n          [ \".\", \"RepositoryPushCount\", \".\", \".\" ]\n        ],\n        \"view\": \"timeSeries\",\n        \"stacked\": false,\n        \"region\": \"${AWS::Region}\",\n        \"title\": \"ECR Repository Activity\",\n        \"period\": 300\n      }\n    },\n    {\n      \"type\": \"metric\",\n      \"x\": 12,\n      \"y\": 0,\n      \"width\": 12,\n      \"height\": 6,\n      \"properties\": {\n        \"metrics\": [\n          [ \"AWS/ECR\", \"ImageCount\", \"RepositoryName\", \"${RepositoryName}\" ],\n          [ \".\", \"ImageSizeBytes\", \".\", \".\" ]\n        ],\n        \"view\": \"timeSeries\",\n        \"stacked\": false,\n        \"region\": \"${AWS::Region}\",\n        \"title\": \"Repository Storage Metrics\",\n        \"period\": 300\n      }\n    }\n  ]\n}\n"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "RepositoryName": {
+            "Description": "Name of the ECR repository",
+            "Value": {
+                "Ref": "ECRRepository"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-RepositoryName"
+                }
+            }
+        },
+        "RepositoryArn": {
+            "Description": "ARN of the ECR repository",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECRRepository",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-RepositoryArn"
+                }
+            }
+        },
+        "RepositoryUri": {
+            "Description": "URI of the ECR repository",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECRRepository",
+                    "RepositoryUri"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-RepositoryUri"
+                }
+            }
+        },
+        "RegistryId": {
+            "Description": "Registry ID (AWS Account ID) of the ECR repository",
+            "Value": {
+                "Ref": "AWS::AccountId"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-RegistryId"
+                }
+            }
+        },
+        "EKSRoleArn": {
+            "Description": "ARN of the IAM role for EKS pods (IRSA)",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECREKSRole",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-EKSRoleArn"
+                }
+            }
+        },
+        "EC2RoleArn": {
+            "Description": "ARN of the IAM role for EC2 instances",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECREC2Role",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-EC2RoleArn"
+                }
+            }
+        },
+        "EC2InstanceProfileArn": {
+            "Description": "ARN of the IAM instance profile for EC2 instances",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECREC2InstanceProfile",
+                    "Arn"
+                ]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-EC2InstanceProfileArn"
+                }
+            }
+        },
+        "DashboardUrl": {
+            "Description": "CloudWatch Dashboard URL for ECR metrics",
+            "Value": {
+                "Fn::Sub": "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ECRDashboard}"
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-DashboardUrl"
+                }
+            }
+        }
+    }
+}
