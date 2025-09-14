@@ -23,6 +23,11 @@ class TestTCRConfig:
         assert config.commit_prefix == 'TCR'
         assert config.revert_on_failure is True
         assert config.debounce_seconds == 2.0
+        assert set(config.ignore_patterns) == {
+            'test_*.py', '**/test_*.py',
+            '*_test.py', '**/*_test.py',
+            'tests/**', '**/tests/**',
+        }
 
     def test_init__when_custom_values_provided__values_set_correctly(self):
         """Test creating config with custom values."""
@@ -107,13 +112,18 @@ class TestTCRConfig:
         assert config.commit_prefix == 'TCR'
         assert config.revert_on_failure is True
         assert config.debounce_seconds == 2.0
+        assert set(config.ignore_patterns) == {
+            'test_*.py', '**/test_*.py',
+            '*_test.py', '**/*_test.py',
+            'tests/**', '**/tests/**',
+        }
 
     def test_from_yaml__when_empty_file__returns_defaults(self):
         """Test loading config from empty YAML file."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write('')
             temp_path = Path(f.name)
-        
+
         try:
             config = TCRConfig.from_yaml(temp_path)
             assert config.enabled is True
@@ -123,5 +133,10 @@ class TestTCRConfig:
             assert config.commit_prefix == 'TCR'
             assert config.revert_on_failure is True
             assert config.debounce_seconds == 2.0
+            assert set(config.ignore_patterns) == {
+                'test_*.py', '**/test_*.py',
+                '*_test.py', '**/*_test.py',
+                'tests/**', '**/tests/**',
+            }
         finally:
             temp_path.unlink()
