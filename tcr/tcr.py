@@ -5,6 +5,7 @@ import argparse
 import fnmatch
 import logging
 import logging.handlers
+import shlex
 import subprocess
 import sys
 import time
@@ -178,33 +179,32 @@ class TCRHandler(FileSystemEventHandler):
     def _run_tests(self) -> bool:
         """Run tests and return success status."""
         logger.info("🧪 Running tests...")
-        logger.debug(f"Executing command: {self.config.test_command}")
-        
+        logger.debug("Executing command: %s", self.config.test_command)
+
         try:
+            cmd = shlex.split(self.config.test_command)
             result = subprocess.run(
-                self.config.test_command,
-                shell=True,
+                cmd,
+                shell=False,
                 capture_output=True,
                 text=True,
-                timeout=self.config.test_timeout
+                timeout=self.config.test_timeout,
             )
-            
+
             if result.returncode == 0:
                 logger.info("✅ Tests passed!")
-                logger.debug(f"Test output:\n{result.stdout}")
+                logger.debug("Test output:\n%s", result.stdout)
                 return True
-            else:
-                logger.error(f"❌ Tests failed!")
-                logger.error(f"stdout:\n{result.stdout}")
-                logger.error(f"stderr:\n{result.stderr}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            logger.error(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
+            logger.error("❌ Tests failed!")
+            logger.error("stdout:\n%s", result.stdout)
+            logger.error("stderr:\n%s", result.stderr)
             return False
-        except Exception as e:
-            logger.error(f"🚨 Error running tests: {e}")
-            logger.debug(f"Exception details:", exc_info=True)
+
+        except subprocess.TimeoutExpired:
+            logger.error("⏱️ Tests timed out after %s seconds", self.config.test_timeout)
+            return False
+        except Exception:
+            logger.exception("🚨 Error running tests")
             return False
             
     def _commit_changes(self, changed_file: Path):
