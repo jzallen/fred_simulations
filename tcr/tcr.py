@@ -147,20 +147,20 @@ class TCRHandler(FileSystemEventHandler):
         
     def _should_ignore_file(self, file_path: Path) -> bool:
         """Check if a file should be ignored based on configured patterns.
-        
+
         Args:
             file_path: Path to check
-            
+
         Returns:
             True if file should be ignored, False otherwise
         """
-        # Convert to string for pattern matching
-        path_str = str(file_path)
-        
+        # Normalize to POSIX separators for cross-platform pattern matching
+        path_str = file_path.as_posix()
+
         for pattern in self.config.ignore_patterns:
             if fnmatch.fnmatch(path_str, pattern):
                 return True
-                
+
         return False
         
     def _run_tcr_cycle(self, changed_file: Path):

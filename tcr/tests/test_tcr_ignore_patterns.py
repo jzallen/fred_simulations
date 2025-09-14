@@ -25,7 +25,16 @@ class TestIgnorePatterns:
             enabled=True,
             watch_paths=[str(temp_dir)],
             test_command='pytest',
-            ignore_patterns=['test_*.py', '**/test_*.py', '*_test.py', '**/*_test.py', 'tests/**', '**/tests/**', '*.pyc', '**/*.pyc']
+            ignore_patterns=[
+                'test_*.py', 
+                '**/test_*.py', 
+                '*_test.py', 
+                '**/*_test.py', 
+                'tests/**', 
+                '**/tests/**', 
+                '*.pyc', 
+                '**/*.pyc'
+            ]
         )
     
     @pytest.fixture
