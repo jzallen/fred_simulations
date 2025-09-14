@@ -1,0 +1,36 @@
+# TCR (Test && Commit || Revert) Configuration
+# Copy this file to ~/tcr.yaml and customize for your project
+
+tcr:
+  # Enable/disable TCR mode
+  enabled: true
+  
+  # Paths to watch for changes (relative to current directory)
+  watch_paths:
+    - epistemix_platform/
+  
+  # Patterns to ignore for test files (extends .gitignore behavior)
+  # Uses fnmatch patterns to filter out test files from triggering TCR
+  ignore_patterns:
+    - "test_*.py"       # Test files with test_ prefix
+    - "**/test_*.py"    # Test files with test_ prefix in any directory
+    - "*_test.py"       # Test files with _test suffix
+    - "**/*_test.py"    # Test files with _test suffix in any directory
+    - "tests/**"        # All files in tests directories
+    - "**/tests/**"     # All files in tests directories at any level
+  
+  # Command to run tests
+  test_command: "poetry run pytest -xs -n auto"
+  
+  # Maximum time (seconds) to wait for tests
+  test_timeout: 30
+  
+  # Prefix for auto-generated commit messages
+  commit_prefix: "TCR"
+  
+  # Whether to revert changes when tests fail
+  revert_on_failure: true
+  
+  # Time to wait (seconds) before running tests after file change
+  # Helps batch rapid successive changes
+  debounce_seconds: 2.0
