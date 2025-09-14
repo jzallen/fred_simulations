@@ -2,9 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 import yaml
 
 from tcr.tcr import TCRConfig
@@ -59,12 +57,13 @@ class TestTCRConfig:
                     'test_timeout': 45,
                     'commit_prefix': 'AUTOCOMMIT',
                     'revert_on_failure': False,
-                    'debounce_seconds': 3.5
+                    'debounce_seconds': 3.5,
+                    'ignore_patterns': ['**/tests/**', '*.pyc']
                 }
             }
             yaml.dump(yaml_content, f)
             temp_path = Path(f.name)
-        
+
         try:
             config = TCRConfig.from_yaml(temp_path)
             assert config.enabled is False
@@ -74,6 +73,7 @@ class TestTCRConfig:
             assert config.commit_prefix == 'AUTOCOMMIT'
             assert config.revert_on_failure is False
             assert config.debounce_seconds == 3.5
+            assert config.ignore_patterns == ['**/tests/**', '*.pyc']
         finally:
             temp_path.unlink()
 
