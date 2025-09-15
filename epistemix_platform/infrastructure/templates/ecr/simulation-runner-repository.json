@@ -85,7 +85,10 @@
                 "ImageTagMutability": "MUTABLE",
                 "ImageScanningConfiguration": {
                     "ScanOnPush": {
-                        "Ref": "EnableVulnerabilityScanning"
+                        "Fn::Equals": [
+                            {"Ref": "EnableVulnerabilityScanning"},
+                            "true"
+                        ]
                     }
                 },
                 "EncryptionConfiguration": {

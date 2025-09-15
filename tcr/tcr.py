@@ -248,7 +248,10 @@ class TCRRunner:
         # Set up watchers for each path
         for path in self.config.watch_paths:
             if Path(path).exists():
+                logger.debug(f"Setting up watcher for path: {path}")
                 self.observer.schedule(self.handler, path, recursive=True)
+            else:
+                logger.warning(f"⚠️ Watch path does not exist: {path}")
                 
         self.observer.start()
         
