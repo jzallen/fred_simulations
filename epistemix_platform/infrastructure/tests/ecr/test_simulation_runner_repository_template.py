@@ -182,7 +182,7 @@ class TestECRTemplate:
         ecr_repo = ecr_template["Resources"]["ECRRepository"]
         scan_config = ecr_repo["Properties"]["ImageScanningConfiguration"]
         expected_config = {
-            "ScanOnPush": {"Ref": "EnableVulnerabilityScanning"}
+            "ScanOnPush": {"Ref": "EnableVulnerabilityScanningCondition"}
         }
         assert scan_config == expected_config, "ECR scanning configuration does not match expected logic"
 

@@ -73,6 +73,12 @@
                 },
                 "production"
             ]
+        },
+        "EnableVulnerabilityScanningCondition": {
+            "Fn::Equals": [
+                {"Ref": "EnableVulnerabilityScanning"},
+                "true"
+            ]
         }
     },
     "Resources": {
@@ -85,7 +91,7 @@
                 "ImageTagMutability": "MUTABLE",
                 "ImageScanningConfiguration": {
                     "ScanOnPush": {
-                        "Ref": "EnableVulnerabilityScanning"
+                        "Ref": "EnableVulnerabilityScanningCondition"
                     }
                 },
                 "EncryptionConfiguration": {
