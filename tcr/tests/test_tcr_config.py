@@ -2,7 +2,9 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
+import pytest
 import yaml
 
 from tcr.tcr import TCRConfig
@@ -21,11 +23,6 @@ class TestTCRConfig:
         assert config.commit_prefix == 'TCR'
         assert config.revert_on_failure is True
         assert config.debounce_seconds == 2.0
-        assert set(config.ignore_patterns) == {
-            'test_*.py', '**/test_*.py',
-            '*_test.py', '**/*_test.py',
-            'tests/**', '**/tests/**',
-        }
 
     def test_init__when_custom_values_provided__values_set_correctly(self):
         """Test creating config with custom values."""
@@ -57,13 +54,12 @@ class TestTCRConfig:
                     'test_timeout': 45,
                     'commit_prefix': 'AUTOCOMMIT',
                     'revert_on_failure': False,
-                    'debounce_seconds': 3.5,
-                    'ignore_patterns': ['**/tests/**', '*.pyc']
+                    'debounce_seconds': 3.5
                 }
             }
             yaml.dump(yaml_content, f)
             temp_path = Path(f.name)
-
+        
         try:
             config = TCRConfig.from_yaml(temp_path)
             assert config.enabled is False
@@ -73,7 +69,6 @@ class TestTCRConfig:
             assert config.commit_prefix == 'AUTOCOMMIT'
             assert config.revert_on_failure is False
             assert config.debounce_seconds == 3.5
-            assert config.ignore_patterns == ['**/tests/**', '*.pyc']
         finally:
             temp_path.unlink()
 
@@ -112,18 +107,13 @@ class TestTCRConfig:
         assert config.commit_prefix == 'TCR'
         assert config.revert_on_failure is True
         assert config.debounce_seconds == 2.0
-        assert set(config.ignore_patterns) == {
-            'test_*.py', '**/test_*.py',
-            '*_test.py', '**/*_test.py',
-            'tests/**', '**/tests/**',
-        }
 
     def test_from_yaml__when_empty_file__returns_defaults(self):
         """Test loading config from empty YAML file."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write('')
             temp_path = Path(f.name)
-
+        
         try:
             config = TCRConfig.from_yaml(temp_path)
             assert config.enabled is True
@@ -133,10 +123,5 @@ class TestTCRConfig:
             assert config.commit_prefix == 'TCR'
             assert config.revert_on_failure is True
             assert config.debounce_seconds == 2.0
-            assert set(config.ignore_patterns) == {
-                'test_*.py', '**/test_*.py',
-                '*_test.py', '**/*_test.py',
-                'tests/**', '**/tests/**',
-            }
         finally:
             temp_path.unlink()

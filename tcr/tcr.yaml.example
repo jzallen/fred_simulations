@@ -7,17 +7,14 @@ tcr:
   
   # Paths to watch for changes (relative to current directory)
   watch_paths:
-    - epistemix_platform/
-  
-  # Patterns to ignore for test files (extends .gitignore behavior)
-  # Uses fnmatch patterns to filter out test files from triggering TCR
-  ignore_patterns:
-    - "test_*.py"       # Test files with test_ prefix
-    - "**/test_*.py"    # Test files with test_ prefix in any directory
-    - "*_test.py"       # Test files with _test suffix
-    - "**/*_test.py"    # Test files with _test suffix in any directory
-    - "tests/**"        # All files in tests directories
-    - "**/tests/**"     # All files in tests directories at any level
+    - epistemix_platform/controllers/
+    - epistemix_platform/infrastructure/
+    - epistemix_platform/mappers/
+    - epistemix_platform/models/
+    - epistemix_platform/repositories/
+    - epistemix_platform/use_cases/
+    - epistemix_platform/cli.py
+    - epistemix_platform/app.py
   
   # Command to run tests
   test_command: "poetry run pytest -xs -n auto"
