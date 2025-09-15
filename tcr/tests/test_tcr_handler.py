@@ -1,6 +1,5 @@
 """Tests for TCRHandler class."""
 
-import shlex
 import subprocess
 import tempfile
 import time
@@ -32,8 +31,7 @@ class TestTCRHandler:
             test_timeout=10,
             commit_prefix='TEST',
             revert_on_failure=True,
-            debounce_seconds=1.0,
-            ignore_patterns=[]  # Empty list to ensure tests aren't affected by default patterns
+            debounce_seconds=1.0
         )
     
     @pytest.fixture
@@ -132,13 +130,13 @@ class TestTCRHandler:
             stdout='All tests passed',
             stderr=''
         )
-
+        
         handler._run_tcr_cycle(temp_file)
-
+        
         expected_calls = [
             call(
-                shlex.split(handler.config.test_command),
-                shell=False,
+                handler.config.test_command,
+                shell=True,
                 capture_output=True,
                 text=True,
                 timeout=handler.config.test_timeout
@@ -157,19 +155,19 @@ class TestTCRHandler:
     def test_run_tcr_cycle__when_tests_fail__changes_reverted(self, mock_run, handler, temp_file):
 
         def side_effect(*args, **kwargs):
-            if args[0] == shlex.split(handler.config.test_command):
+            if args[0] == handler.config.test_command:
                 return Mock(returncode=1, stdout='Test failed', stderr='Error details')
             else:
                 return Mock(returncode=0, stdout='', stderr='')
-
+        
         mock_run.side_effect = side_effect
         
         handler._run_tcr_cycle(temp_file)
         
         expected_calls = [
             call(
-                shlex.split(handler.config.test_command),
-                shell=False,
+                handler.config.test_command,
+                shell=True,
                 capture_output=True,
                 text=True,
                 timeout=handler.config.test_timeout
