@@ -6,11 +6,17 @@ python_sources(
     name="tcr",
 )
 
+python_test_utils(
+    name="test-utils",
+    sources=["tests/conftest.py"],
+)
+
 python_tests(
     name="tests",
     sources=["tests/test_*.py"],
     dependencies=[
         ":tcr",
+        ":test-utils",
         ":tcr-reqs#pytest",
         ":tcr-reqs#pytest-xdist",
         ":tcr-reqs#freezegun",

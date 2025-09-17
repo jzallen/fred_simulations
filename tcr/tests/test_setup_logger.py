@@ -196,4 +196,5 @@ class TestSetupLogger:
 
         # Session directory should not be created
         session_dir = temp_home_dir / '.local' / 'share' / 'tcr' / session_id
+        
         assert not session_dir.exists()

@@ -4,6 +4,7 @@
 import argparse
 import logging
 import logging.handlers
+import os
 import re
 import secrets
 import subprocess
@@ -81,8 +82,15 @@ def setup_logger(log_file: Optional[Path] = None, session_id: Optional[str] = No
     return logger
 
 
-# Initialize logger
-logger = setup_logger()
+# Initialize logger only if enabled via environment variable
+# Default to enabled if not set
+IS_TCR_LOGGER_ENABLED = os.environ.get('IS_TCR_LOGGER_ENABLED', 'true').lower() != 'false'
+if IS_TCR_LOGGER_ENABLED:
+    logger = setup_logger()
+else:
+    # Create a null logger when disabled
+    logger = logging.getLogger('tcr')
+    logger.addHandler(logging.NullHandler())
 
 @dataclass
 class TCRConfig:
