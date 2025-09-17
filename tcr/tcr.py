@@ -342,14 +342,66 @@ def list_sessions():
         logger.error(f"Error listing sessions: {e}")
 
 
+def stop_session(session_id: str):
+    """Stop a TCR session by sending SIGINT to the process with matching session_id."""
+    try:
+        # Use pgrep to find processes matching tcr:<session_id>
+        result = subprocess.run(
+            ['pgrep', '-a', f'tcr:{session_id}'],
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            lines = result.stdout.strip().split('\n')
+            pids = []
+            for line in lines:
+                # Extract PID from pgrep output
+                parts = line.split(None, 1)
+                if parts:
+                    pids.append(parts[0])
+
+            if len(pids) > 1:
+                logger.warning(f"Multiple sessions found matching '{session_id}': PIDs {', '.join(pids)}")
+                logger.info("Stopping all matching sessions...")
+
+            # Send SIGINT to each matching process
+            for pid in pids:
+                try:
+                    subprocess.run(['kill', '-INT', pid], check=True)
+                    logger.info(f"Sent SIGINT to process {pid} (session: {session_id})")
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Failed to stop process {pid}: {e}")
+        else:
+            logger.error(f"No TCR session found with session_id: {session_id}")
+
+    except FileNotFoundError:
+        logger.error("pgrep or kill command not found. Please ensure procps is installed.")
+    except Exception as e:
+        logger.error(f"Error stopping session: {e}")
+
+
 def main():
     """Main entry point for TCR command."""
     parser = argparse.ArgumentParser(description='TCR (Test && Commit || Revert) runner')
-    parser.add_argument('command', choices=['start', 'stop', 'ls'], help='Command to execute')
-    parser.add_argument('--config', type=Path, default=None,
-                        help='Path to configuration file (defaults to ~/tcr.yaml)')
-    parser.add_argument('--session-id', type=str, default=None,
-                        help='Session identifier for namespacing logs (generates random if not provided)')
+
+    # Create subparsers for different commands
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Start command
+    start_parser = subparsers.add_parser('start', help='Start TCR mode')
+    start_parser.add_argument('--config', type=Path, default=None,
+                             help='Path to configuration file (defaults to ~/tcr.yaml)')
+    start_parser.add_argument('--session-id', type=str, default=None,
+                             help='Session identifier for namespacing logs (generates random if not provided)')
+
+    # Stop command - requires session-id
+    stop_parser = subparsers.add_parser('stop', help='Stop a TCR session')
+    stop_parser.add_argument('--session-id', type=str, required=True,
+                            help='Session identifier of the TCR session to stop')
+
+    # List command
+    ls_parser = subparsers.add_parser('ls', help='List running TCR sessions')
 
     args = parser.parse_args()
 
@@ -358,10 +410,12 @@ def main():
         runner = TCRRunner(config_path=args.config, session_id=args.session_id)
         runner.start()
     elif args.command == 'stop':
-        # Stop is handled by KeyboardInterrupt in start()
-        logger.info("Use Ctrl+C to stop TCR mode")
+        # Stop the specified session
+        stop_session(args.session_id)
     elif args.command == 'ls':
         list_sessions()
+    else:
+        parser.print_help()
         
 
 if __name__ == '__main__':

@@ -72,3 +72,16 @@ class TestCLI:
 
         # list_sessions should be called once
         mock_list_sessions.assert_called_once()
+
+    @patch('tcr.tcr.stop_session')
+    def test_stop_command_with_session_id(self, mock_stop_session):
+        """Test that stop command requires and uses session-id."""
+        mock_stop_session.return_value = None
+
+        # Simulate command line arguments
+        test_args = ['tcr', 'stop', '--session-id', 'test-session']
+        with patch('sys.argv', test_args):
+            main()
+
+        # stop_session should be called with the session_id
+        mock_stop_session.assert_called_once_with('test-session')
