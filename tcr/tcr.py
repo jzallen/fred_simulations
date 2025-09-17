@@ -323,9 +323,10 @@ class TCRRunner:
 def list_sessions():
     """List all running TCR sessions by checking process names."""
     try:
-        # Use pgrep to find all processes matching tcr:.*
+        # Use pgrep to find all processes matching tcr:*
+        # Using tcr:* instead of tcr:.* to avoid 15 char limit
         result = subprocess.run(
-            ['pgrep', '-a', 'tcr:.*'],
+            ['pgrep', '-a', 'tcr:'],
             capture_output=True,
             text=True
         )
@@ -345,9 +346,11 @@ def list_sessions():
 def stop_session(session_id: str):
     """Stop a TCR session by sending SIGINT to the process with matching session_id."""
     try:
-        # Use pgrep to find processes matching tcr:<session_id>
+        # Use pgrep with grep to avoid the 15 character limit
+        # pgrep -a "tcr:*" gets all tcr processes, then grep filters for the specific session
         result = subprocess.run(
-            ['pgrep', '-a', f'tcr:{session_id}'],
+            f'pgrep -a "tcr:*" | grep "tcr:{session_id}"',
+            shell=True,
             capture_output=True,
             text=True
         )

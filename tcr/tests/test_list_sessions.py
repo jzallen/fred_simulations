@@ -21,7 +21,7 @@ class TestListSessions:
         list_sessions()
 
         mock_run.assert_called_once_with(
-            ['pgrep', '-a', 'tcr:.*'],
+            ['pgrep', '-a', 'tcr:'],
             capture_output=True,
             text=True
         )
@@ -40,7 +40,7 @@ class TestListSessions:
         list_sessions()
 
         mock_run.assert_called_once_with(
-            ['pgrep', '-a', 'tcr:.*'],
+            ['pgrep', '-a', 'tcr:'],
             capture_output=True,
             text=True
         )

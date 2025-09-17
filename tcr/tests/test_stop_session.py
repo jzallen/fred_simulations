@@ -15,17 +15,18 @@ class TestStopSession:
     @patch('tcr.tcr.logger')
     def test_stop_session__when_single_session_found__sends_sigint(self, mock_logger, mock_run):
         """Test that stop_session sends SIGINT to matching process."""
-        # First call is pgrep, second is kill
+        # First call is pgrep | grep, second is kill
         mock_run.side_effect = [
-            Mock(returncode=0, stdout='12345 tcr:my-feature\n'),  # pgrep result
+            Mock(returncode=0, stdout='12345 tcr:my-feature\n'),  # pgrep | grep result
             Mock(returncode=0)  # kill result
         ]
 
         stop_session('my-feature')
 
-        # Check pgrep was called correctly
+        # Check pgrep | grep was called correctly
         assert mock_run.call_args_list[0] == call(
-            ['pgrep', '-a', 'tcr:my-feature'],
+            'pgrep -a "tcr:*" | grep "tcr:my-feature"',
+            shell=True,
             capture_output=True,
             text=True
         )
@@ -43,13 +44,14 @@ class TestStopSession:
     @patch('tcr.tcr.logger')
     def test_stop_session__when_no_session_found__logs_error(self, mock_logger, mock_run):
         """Test that stop_session logs error when no matching session."""
-        # pgrep returns 1 when no processes found
+        # grep returns 1 when no lines match
         mock_run.return_value = Mock(returncode=1, stdout='')
 
         stop_session('nonexistent')
 
         mock_run.assert_called_once_with(
-            ['pgrep', '-a', 'tcr:nonexistent'],
+            'pgrep -a "tcr:*" | grep "tcr:nonexistent"',
+            shell=True,
             capture_output=True,
             text=True
         )
@@ -60,9 +62,9 @@ class TestStopSession:
     @patch('tcr.tcr.logger')
     def test_stop_session__when_multiple_sessions_found__stops_all(self, mock_logger, mock_run):
         """Test that stop_session handles multiple matching sessions."""
-        # First call is pgrep, then kill for each PID
+        # First call is pgrep | grep, then kill for each PID
         mock_run.side_effect = [
-            Mock(returncode=0, stdout='12345 tcr:test\n67890 tcr:test\n'),  # pgrep result
+            Mock(returncode=0, stdout='12345 tcr:test\n67890 tcr:test\n'),  # pgrep | grep result
             Mock(returncode=0),  # first kill
             Mock(returncode=0)   # second kill
         ]
@@ -81,9 +83,9 @@ class TestStopSession:
     @patch('tcr.tcr.logger')
     def test_stop_session__when_kill_fails__logs_error(self, mock_logger, mock_run):
         """Test that stop_session logs error when kill command fails."""
-        # First call is pgrep, second is kill that fails
+        # First call is pgrep | grep, second is kill that fails
         mock_run.side_effect = [
-            Mock(returncode=0, stdout='12345 tcr:my-session\n'),  # pgrep result
+            Mock(returncode=0, stdout='12345 tcr:my-session\n'),  # pgrep | grep result
             subprocess.CalledProcessError(1, ['kill', '-INT', '12345'])  # kill fails
         ]
 
@@ -119,15 +121,39 @@ class TestStopSession:
         """Test that stop_session handles session IDs with special characters."""
         mock_run.return_value = Mock(returncode=0, stdout='12345 tcr:feature-123_test\n')
         mock_run.side_effect = [
-            Mock(returncode=0, stdout='12345 tcr:feature-123_test\n'),  # pgrep result
+            Mock(returncode=0, stdout='12345 tcr:feature-123_test\n'),  # pgrep | grep result
             Mock(returncode=0)  # kill result
         ]
 
         stop_session('feature-123_test')
 
-        # Check pgrep was called with the exact session_id
+        # Check that we're using shell=True with pipe to grep
         assert mock_run.call_args_list[0] == call(
-            ['pgrep', '-a', 'tcr:feature-123_test'],
+            'pgrep -a "tcr:*" | grep "tcr:feature-123_test"',
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Check kill was called
+        assert mock_run.call_args_list[1] == call(['kill', '-INT', '12345'], check=True)
+
+    @patch('subprocess.run')
+    @patch('tcr.tcr.logger')
+    def test_stop_session__with_long_session_id(self, mock_logger, mock_run):
+        """Test that stop_session handles long session IDs exceeding pgrep's 15 char limit."""
+        long_session_id = 'this-is-a-very-long-session-id-that-exceeds-limit'
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout=f'12345 tcr:{long_session_id}\n'),  # pgrep | grep result
+            Mock(returncode=0)  # kill result
+        ]
+
+        stop_session(long_session_id)
+
+        # Check that we're using shell=True with pipe to grep for long IDs
+        assert mock_run.call_args_list[0] == call(
+            f'pgrep -a "tcr:*" | grep "tcr:{long_session_id}"',
+            shell=True,
             capture_output=True,
             text=True
         )
