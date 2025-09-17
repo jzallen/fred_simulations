@@ -26,5 +26,6 @@ pex_binary(
         ":tcr",
         ":tcr-reqs#watchdog",
         ":tcr-reqs#pyyaml",
+        ":tcr-reqs#setproctitle",
     ],
 )

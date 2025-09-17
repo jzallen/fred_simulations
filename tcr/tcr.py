@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
+import setproctitle
 import yaml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -261,9 +262,16 @@ class TCRRunner:
         if self.config.log_file:
             # If log_file is explicitly specified in config, use it (ignores session_id)
             logger = setup_logger(log_file=Path(self.config.log_file))
+            # Even with log_file, set process name if session_id provided
+            if session_id:
+                setproctitle.setproctitle(f'tcr:{session_id}')
         else:
             # Otherwise use session_id (or generate random if None)
-            logger = setup_logger(session_id=session_id)
+            # If no session_id provided, generate one for both logger and process name
+            effective_session_id = _get_or_generate_session_id(session_id)
+            logger = setup_logger(session_id=effective_session_id)
+            # Always set process name with the effective session_id
+            setproctitle.setproctitle(f'tcr:{effective_session_id}')
 
         self.observer = Observer()
         self.handler = TCRHandler(self.config)

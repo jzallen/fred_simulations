@@ -65,14 +65,17 @@ tcr:
             assert runner.session_id == 'test-session-456'
 
     @patch('tcr.tcr.setup_logger')
-    def test_init__without_session_id__passes_none_to_logger(self, mock_setup_logger):
-        """Test that None is passed to setup_logger when no session_id."""
+    @patch('tcr.tcr.secrets.token_urlsafe')
+    def test_init__without_session_id__generates_random_session_id(self, mock_token_urlsafe, mock_setup_logger):
+        """Test that a random session_id is generated when none is provided."""
+        mock_token_urlsafe.return_value = 'generated-id-123'
+
         with patch.object(Path, 'exists', return_value=False):
             runner = TCRRunner()
 
-            # setup_logger should be called with session_id=None
-            mock_setup_logger.assert_called_with(session_id=None)
-            assert runner.session_id is None
+            # setup_logger should be called with the generated session_id
+            mock_setup_logger.assert_called_with(session_id='generated-id-123')
+            assert runner.session_id is None  # Original value preserved
 
     @patch('tcr.tcr.setup_logger')
     def test_init__with_log_file_in_config__ignores_session_id(self, mock_setup_logger):
@@ -85,6 +88,35 @@ tcr:
             # setup_logger should be called with log_file, not session_id
             mock_setup_logger.assert_called_with(log_file=Path('/var/log/tcr.log'))
             assert runner.session_id == 'test-session'  # Still stored but not used
+
+    @patch('tcr.tcr.setproctitle.setproctitle')
+    @patch('tcr.tcr.setup_logger')
+    def test_init__with_session_id__sets_process_name(self, mock_setup_logger, mock_setproctitle):
+        """Test that process name is set to tcr:<session_id>."""
+        with patch.object(Path, 'exists', return_value=False):
+            runner = TCRRunner(session_id='my-feature')
+
+            # Process title should be set with session_id
+            mock_setproctitle.assert_called_once_with('tcr:my-feature')
+            assert runner.session_id == 'my-feature'
+
+    @patch('tcr.tcr.setproctitle.setproctitle')
+    @patch('tcr.tcr.setup_logger')
+    @patch('tcr.tcr.secrets.token_urlsafe')
+    def test_init__without_session_id__sets_process_name_with_generated_id(self, mock_token_urlsafe, mock_setup_logger, mock_setproctitle):
+        """Test that process name is set with generated session_id when not provided."""
+        mock_token_urlsafe.return_value = 'random123'
+
+        with patch.object(Path, 'exists', return_value=False):
+            runner = TCRRunner()
+
+            # Since session_id is None, it should be set from the logger's generated session_id
+            # We need to capture what session_id was actually used
+            mock_setproctitle.assert_called_once()
+            call_args = mock_setproctitle.call_args[0][0]
+            assert call_args.startswith('tcr:')
+            # Store the generated session_id for consistency
+            assert runner.session_id is None  # Original value preserved
     
     def test_init__uses_tcr_yaml_in_home_directory_as_default_config(self):
         """Test TCRRunner uses ~/tcr.yaml by default."""
