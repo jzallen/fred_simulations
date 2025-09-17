@@ -53,6 +53,38 @@ tcr:
             assert runner.config.enabled is True
             assert runner.config.watch_paths == ['.']
             assert runner.config.test_command == 'poetry run pytest -xvs'
+
+    @patch('tcr.tcr.setup_logger')
+    def test_init__with_session_id__passes_to_logger(self, mock_setup_logger):
+        """Test that session_id is passed to setup_logger."""
+        with patch.object(Path, 'exists', return_value=False):
+            runner = TCRRunner(session_id='test-session-456')
+
+            # setup_logger should be called with the session_id
+            mock_setup_logger.assert_called_with(session_id='test-session-456')
+            assert runner.session_id == 'test-session-456'
+
+    @patch('tcr.tcr.setup_logger')
+    def test_init__without_session_id__passes_none_to_logger(self, mock_setup_logger):
+        """Test that None is passed to setup_logger when no session_id."""
+        with patch.object(Path, 'exists', return_value=False):
+            runner = TCRRunner()
+
+            # setup_logger should be called with session_id=None
+            mock_setup_logger.assert_called_with(session_id=None)
+            assert runner.session_id is None
+
+    @patch('tcr.tcr.setup_logger')
+    def test_init__with_log_file_in_config__ignores_session_id(self, mock_setup_logger):
+        """Test that log_file in config takes precedence over session_id."""
+        with patch('tcr.tcr.TCRConfig.from_yaml') as mock_from_yaml:
+            mock_from_yaml.return_value = TCRConfig(log_file='/var/log/tcr.log')
+
+            runner = TCRRunner(session_id='test-session')
+
+            # setup_logger should be called with log_file, not session_id
+            mock_setup_logger.assert_called_with(log_file=Path('/var/log/tcr.log'))
+            assert runner.session_id == 'test-session'  # Still stored but not used
     
     def test_init__uses_tcr_yaml_in_home_directory_as_default_config(self):
         """Test TCRRunner uses ~/tcr.yaml by default."""

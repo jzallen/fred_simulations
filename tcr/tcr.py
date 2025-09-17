@@ -251,15 +251,20 @@ class TCRHandler(FileSystemEventHandler):
 
 class TCRRunner:
     """Main TCR runner that manages the file watching."""
-    
-    def __init__(self, config_path: Optional[Path] = None):
-        self.config = TCRConfig.from_yaml(config_path)
 
-        # Re-initialize logger with config-specified log file if provided
+    def __init__(self, config_path: Optional[Path] = None, session_id: Optional[str] = None):
+        self.config = TCRConfig.from_yaml(config_path)
+        self.session_id = session_id
+
+        # Re-initialize logger with config-specified log file or session_id
+        global logger
         if self.config.log_file:
-            global logger
-            logger = setup_logger(Path(self.config.log_file))
-            
+            # If log_file is explicitly specified in config, use it (ignores session_id)
+            logger = setup_logger(log_file=Path(self.config.log_file))
+        else:
+            # Otherwise use session_id (or generate random if None)
+            logger = setup_logger(session_id=session_id)
+
         self.observer = Observer()
         self.handler = TCRHandler(self.config)
         
@@ -313,12 +318,14 @@ def main():
     parser.add_argument('command', choices=['start', 'stop'], help='Command to execute')
     parser.add_argument('--config', type=Path, default=None,
                         help='Path to configuration file (defaults to ~/tcr.yaml)')
-    
+    parser.add_argument('--session-id', type=str, default=None,
+                        help='Session identifier for namespacing logs (generates random if not provided)')
+
     args = parser.parse_args()
-    
+
     if args.command == 'start':
-        # If no config specified, TCRRunner will use ~/tcr.yaml by default
-        runner = TCRRunner(args.config)
+        # Pass both config_path and session_id to TCRRunner
+        runner = TCRRunner(config_path=args.config, session_id=args.session_id)
         runner.start()
     elif args.command == 'stop':
         # Stop is handled by KeyboardInterrupt in start()
