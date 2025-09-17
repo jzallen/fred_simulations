@@ -320,10 +320,32 @@ class TCRRunner:
         logger.info("TCR mode stopped")
 
 
+def list_sessions():
+    """List all running TCR sessions by checking process names."""
+    try:
+        # Use pgrep to find all processes matching tcr:.*
+        result = subprocess.run(
+            ['pgrep', '-a', 'tcr:.*'],
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            # Output raw pgrep results
+            print(result.stdout.strip())
+        else:
+            logger.info("No TCR sessions currently running")
+
+    except FileNotFoundError:
+        logger.error("pgrep command not found. Please ensure procps is installed.")
+    except Exception as e:
+        logger.error(f"Error listing sessions: {e}")
+
+
 def main():
     """Main entry point for TCR command."""
     parser = argparse.ArgumentParser(description='TCR (Test && Commit || Revert) runner')
-    parser.add_argument('command', choices=['start', 'stop'], help='Command to execute')
+    parser.add_argument('command', choices=['start', 'stop', 'ls'], help='Command to execute')
     parser.add_argument('--config', type=Path, default=None,
                         help='Path to configuration file (defaults to ~/tcr.yaml)')
     parser.add_argument('--session-id', type=str, default=None,
@@ -338,6 +360,8 @@ def main():
     elif args.command == 'stop':
         # Stop is handled by KeyboardInterrupt in start()
         logger.info("Use Ctrl+C to stop TCR mode")
+    elif args.command == 'ls':
+        list_sessions()
         
 
 if __name__ == '__main__':

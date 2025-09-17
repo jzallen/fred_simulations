@@ -59,3 +59,16 @@ class TestCLI:
             session_id='my-session'
         )
         mock_runner.start.assert_called_once()
+
+    @patch('tcr.tcr.list_sessions')
+    def test_ls_command_calls_list_sessions(self, mock_list_sessions):
+        """Test that ls command calls list_sessions function."""
+        mock_list_sessions.return_value = None
+
+        # Simulate command line arguments
+        test_args = ['tcr', 'ls']
+        with patch('sys.argv', test_args):
+            main()
+
+        # list_sessions should be called once
+        mock_list_sessions.assert_called_once()
