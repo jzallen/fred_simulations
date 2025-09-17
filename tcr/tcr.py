@@ -4,8 +4,9 @@
 import argparse
 import logging
 import logging.handlers
+import re
+import secrets
 import subprocess
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,18 +17,38 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
-def setup_logger(log_file: Optional[Path] = None) -> logging.Logger:
-    """Set up logger to write to both console and file.
-    
+def _get_or_generate_session_id(session_id: Optional[str]) -> str:
+    """Get session_id or generate a random one if not provided.
+
     Args:
-        log_file: Path to log file. Defaults to ~/.local/share/tcr/tcr.log
-        
+        session_id: Optional session identifier.
+
+    Returns:
+        Valid filesystem-safe session_id.
+    """
+    if not session_id or session_id == "":
+        return secrets.token_urlsafe(8)
+    else:
+        # Sanitize session_id to be filesystem-safe (alphanumeric, underscores, and hyphens only)
+        return re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+
+
+def setup_logger(log_file: Optional[Path] = None, session_id: Optional[str] = None) -> logging.Logger:
+    """Set up logger to write to both console and file.
+
+    Args:
+        log_file: Path to log file. If provided, session_id is ignored.
+        session_id: Optional session identifier for namespacing logs.
+                   If not provided, generates a random alphanumeric string.
+
     Returns:
         Configured logger instance
     """
     if log_file is None:
-        # Use XDG Base Directory specification
-        log_dir = Path.home() / '.local' / 'share' / 'tcr'
+        session_id = _get_or_generate_session_id(session_id)
+
+        # Use XDG Base Directory specification with session_id
+        log_dir = Path.home() / '.local' / 'share' / 'tcr' / session_id
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / 'tcr.log'
     
@@ -65,15 +86,20 @@ logger = setup_logger()
 @dataclass
 class TCRConfig:
     """Configuration for TCR behavior."""
-    
+
     enabled: bool = True
-    watch_paths: List[str] = field(default_factory=list)
+    watch_paths: List[str] = field(default_factory=lambda: ['.'])
     test_command: str = 'poetry run pytest -xvs'
     test_timeout: int = 30
     commit_prefix: str = 'TCR'
     revert_on_failure: bool = True
     debounce_seconds: float = 2.0
-    log_file: Optional[str] = None  # Path to log file, defaults to XDG location
+    log_file: Optional[str] = None
+
+    def __post_init__(self):
+        """Ensure watch_paths is never empty."""
+        if not self.watch_paths:
+            self.watch_paths = ['.']
     
     @classmethod
     def from_yaml(cls, config_path: Optional[Path] = None) -> 'TCRConfig':
@@ -97,6 +123,11 @@ class TCRConfig:
                     config_dict = data
                 else:
                     config_dict = {}
+
+                # Ensure watch_paths defaults to current directory if not specified or empty
+                if 'watch_paths' not in config_dict or not config_dict.get('watch_paths'):
+                    config_dict['watch_paths'] = ['.']
+
                 return cls(**config_dict)
         
         return cls()
@@ -114,15 +145,17 @@ class TCRHandler(FileSystemEventHandler):
         if event.is_directory:
             return
             
-        # Debounce rapid changes
         current_time = time.time()
         if current_time - self.last_run < self.config.debounce_seconds:
             return
             
         # Check if there are any changes using git status (respects .gitignore)
+        # Filter by watch_paths (always has at least one path)
+        git_cmd = ['git', 'status', '--porcelain', '--'] + self.config.watch_paths
+
         result = subprocess.run(
-            ['git', 'status', '--porcelain'], 
-            capture_output=True, 
+            git_cmd,
+            capture_output=True,
             text=True
         )
         
@@ -139,7 +172,6 @@ class TCRHandler(FileSystemEventHandler):
         logger.info(f"\n🔄 TCR: Change detected in {changed_file}")
         logger.debug(f"Starting TCR cycle for file: {changed_file}")
         
-        # Run tests
         test_result = self._run_tests()
         
         if test_result:
@@ -182,16 +214,17 @@ class TCRHandler(FileSystemEventHandler):
     def _commit_changes(self, changed_file: Path):
         """Commit changes to git."""
         try:
-            logger.debug("Staging all changes with git add -A")
-            # Stage all changes
-            subprocess.run(['git', 'add', '-A'], check=True, capture_output=True)
+            # Stage only files in watch_paths
+            git_add_cmd = ['git', 'add', '--'] + self.config.watch_paths
+            logger.debug(f"Staging changes in watch_paths with: {' '.join(git_add_cmd)}")
+            subprocess.run(git_add_cmd, check=True, capture_output=True)
             
             # Create commit message
             timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
             message = f"{self.config.commit_prefix}: {timestamp} - Modified {changed_file.name}"
             
-            logger.debug(f"Committing with message: {message}")
             # Commit
+            logger.debug(f"Committing with message: {message}")
             subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True)
             logger.info(f"✅ Committed: {message}")
             
@@ -204,11 +237,11 @@ class TCRHandler(FileSystemEventHandler):
         if not self.config.revert_on_failure:
             logger.warning("⚠️ Tests failed but revert is disabled")
             return
-            
+
         try:
-            logger.debug("Reverting changes with git reset --hard HEAD")
-            # Reset to HEAD
-            subprocess.run(['git', 'reset', '--hard', 'HEAD'], check=True, capture_output=True)
+            git_checkout_cmd = ['git', 'checkout', 'HEAD', '--'] + self.config.watch_paths
+            logger.debug(f"Reverting changes in watch_paths with: {' '.join(git_checkout_cmd)}")
+            subprocess.run(git_checkout_cmd, check=True, capture_output=True)
             logger.info("🔙 Reverted changes")
             
         except subprocess.CalledProcessError as e:
@@ -221,10 +254,12 @@ class TCRRunner:
     
     def __init__(self, config_path: Optional[Path] = None):
         self.config = TCRConfig.from_yaml(config_path)
+
         # Re-initialize logger with config-specified log file if provided
         if self.config.log_file:
             global logger
             logger = setup_logger(Path(self.config.log_file))
+            
         self.observer = Observer()
         self.handler = TCRHandler(self.config)
         
@@ -240,7 +275,9 @@ class TCRRunner:
         logger.debug(f"Full configuration: {self.config}")
         
         # Check for uncommitted changes
-        result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+        git_cmd = ['git', 'status', '--porcelain', '--'] + self.config.watch_paths
+
+        result = subprocess.run(git_cmd, capture_output=True, text=True)
         if result.stdout.strip():
             logger.warning("⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first.")
             logger.debug(f"Uncommitted changes:\n{result.stdout}")

@@ -64,15 +64,16 @@ class TestTCRHandler:
     def test_on_modified__when_no_git_changes__event_ignored(self, mock_run, handler, temp_file):
         event = FileModifiedEvent(str(temp_file))
         event.is_directory = False
-        
+
         # Mock git status returning empty (no changes)
         mock_run.return_value = Mock(stdout='', returncode=0)
-        
+
         with patch.object(handler, '_run_tcr_cycle') as mock_cycle:
             handler.on_modified(event)
             mock_cycle.assert_not_called()
+            # Now expects watch_paths to be included
             mock_run.assert_called_once_with(
-                ['git', 'status', '--porcelain'],
+                ['git', 'status', '--porcelain', '--', str(temp_file.parent)],
                 capture_output=True,
                 text=True
             )
@@ -82,14 +83,43 @@ class TestTCRHandler:
         """Test that TCR cycle runs when git changes are detected."""
         event = FileModifiedEvent(str(temp_file))
         event.is_directory = False
-        
+
         mock_run.return_value = Mock(stdout=f'M {temp_file.name}\n', returncode=0)
-        
+
         with patch.object(handler, '_run_tcr_cycle') as mock_cycle:
             handler.on_modified(event)
             mock_cycle.assert_called_once()
+            # Now expects watch_paths to be included
             mock_run.assert_called_once_with(
-                ['git', 'status', '--porcelain'],
+                ['git', 'status', '--porcelain', '--', str(temp_file.parent)],
+                capture_output=True,
+                text=True
+            )
+
+    @patch('subprocess.run')
+    def test_on_modified__filters_git_status_by_watch_paths(self, mock_run, config, temp_dir):
+        """Test that git status is filtered by watch_paths."""
+        # Set specific watch paths
+        config.watch_paths = ['src/', 'tests/']
+        handler = TCRHandler(config)
+
+        # Create event for a file in the watched directory
+        test_file = temp_dir / 'src' / 'module.py'
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file.touch()
+
+        event = FileModifiedEvent(str(test_file))
+        event.is_directory = False
+
+        # Mock git status returning changes
+        mock_run.return_value = Mock(stdout='M src/module.py\n', returncode=0)
+
+        with patch.object(handler, '_run_tcr_cycle'):
+            handler.on_modified(event)
+
+            # Assert git status is called with filtering by watch paths
+            mock_run.assert_called_once_with(
+                ['git', 'status', '--porcelain', '--', 'src/', 'tests/'],
                 capture_output=True,
                 text=True
             )
@@ -141,7 +171,7 @@ class TestTCRHandler:
                 text=True,
                 timeout=handler.config.test_timeout
             ),
-            call(['git', 'add', '-A'], check=True, capture_output=True),
+            call(['git', 'add', '--'] + handler.config.watch_paths, check=True, capture_output=True),
             call(
                 ['git', 'commit', '-m', f'TEST: 2024-01-01 12:00:00 - Modified {temp_file.name}'],
                 check=True,
@@ -172,7 +202,7 @@ class TestTCRHandler:
                 text=True,
                 timeout=handler.config.test_timeout
             ),
-            call(['git', 'reset', '--hard', 'HEAD'], check=True, capture_output=True)
+            call(['git', 'checkout', 'HEAD', '--'] + handler.config.watch_paths, check=True, capture_output=True)
         ]
         
         mock_run.assert_has_calls(expected_calls)
@@ -195,13 +225,58 @@ class TestTCRHandler:
     def test_commit_changes__makes_expected_git_calls(self, mock_run, handler, temp_file):
         mock_run.return_value = Mock(returncode=0)
         handler._commit_changes(temp_file)
+        # Now expects git add with watch_paths
         expected_calls = [
-            call(['git', 'add', '-A'], check=True, capture_output=True),
+            call(['git', 'add', '--'] + handler.config.watch_paths, check=True, capture_output=True),
             call(['git', 'commit', '-m', f'TEST: 2024-01-01 12:00:00 - Modified {temp_file.name}'],
                  check=True, capture_output=True)
         ]
         mock_run.assert_has_calls(expected_calls)
     
+    @freeze_time("2024-01-01 12:00:00")
+    @patch('subprocess.run')
+    def test_commit_changes__only_stages_files_in_watch_paths(self, mock_run, config, temp_dir):
+        """Test that commit only stages files within watch_paths."""
+        # Set specific watch paths
+        config.watch_paths = ['src/', 'tests/']
+        handler = TCRHandler(config)
+
+        # Create a file in the watched directory
+        test_file = temp_dir / 'src' / 'module.py'
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file.touch()
+
+        mock_run.return_value = Mock(returncode=0)
+        handler._commit_changes(test_file)
+
+        # Should call git add with only the watch_paths
+        expected_calls = [
+            call(['git', 'add', '--', 'src/', 'tests/'], check=True, capture_output=True),
+            call(['git', 'commit', '-m', f'TEST: 2024-01-01 12:00:00 - Modified module.py'],
+                 check=True, capture_output=True)
+        ]
+        mock_run.assert_has_calls(expected_calls)
+
+    @freeze_time("2024-01-01 12:00:00")
+    @patch('subprocess.run')
+    def test_commit_changes__with_default_watch_path(self, mock_run):
+        """Test that commit works with default watch_path (current directory)."""
+        # Create config with default watch_paths
+        config = TCRConfig()  # This defaults to ['.']
+        handler = TCRHandler(config)
+
+        test_file = Path('test.py')
+        mock_run.return_value = Mock(returncode=0)
+        handler._commit_changes(test_file)
+
+        # Should call git add with current directory
+        expected_calls = [
+            call(['git', 'add', '--', '.'], check=True, capture_output=True),
+            call(['git', 'commit', '-m', 'TCR: 2024-01-01 12:00:00 - Modified test.py'],
+                 check=True, capture_output=True)
+        ]
+        mock_run.assert_has_calls(expected_calls)
+
     @patch('subprocess.run')
     def test_commit_changes__when_git_error__no_exception_raised(self, mock_run, handler, temp_file):
         mock_run.side_effect = subprocess.CalledProcessError(1, 'git')
@@ -211,10 +286,11 @@ class TestTCRHandler:
     def test_revert__when_changes_revert_on_failure_true__makes_expected_git_calls(self, mock_run, handler):
         handler.config.revert_on_failure = True
         mock_run.return_value = Mock(returncode=0)
-        
+
         handler._revert_changes()
+        # Now expects git checkout with watch_paths
         mock_run.assert_called_once_with(
-            ['git', 'reset', '--hard', 'HEAD'],
+            ['git', 'checkout', 'HEAD', '--'] + handler.config.watch_paths,
             check=True,
             capture_output=True
         )
@@ -228,6 +304,42 @@ class TestTCRHandler:
             mock_run.assert_not_called()
             mock_logger.warning.assert_called_with("⚠️ Tests failed but revert is disabled")
     
+    @patch('subprocess.run')
+    def test_revert__only_resets_files_in_watch_paths(self, mock_run, config, temp_dir):
+        """Test that revert only resets files within watch_paths."""
+        # Set specific watch paths
+        config.watch_paths = ['src/', 'tests/']
+        config.revert_on_failure = True
+        handler = TCRHandler(config)
+
+        mock_run.return_value = Mock(returncode=0)
+        handler._revert_changes()
+
+        # Should use git checkout to reset only watch_paths files
+        expected_calls = [
+            call(['git', 'checkout', 'HEAD', '--'] + config.watch_paths,
+                 check=True, capture_output=True)
+        ]
+        mock_run.assert_has_calls(expected_calls)
+
+    @patch('subprocess.run')
+    def test_revert__with_default_watch_path(self, mock_run):
+        """Test that revert works with default watch_path (current directory)."""
+        # Create config with default watch_paths
+        config = TCRConfig()  # This defaults to ['.']
+        config.revert_on_failure = True
+        handler = TCRHandler(config)
+
+        mock_run.return_value = Mock(returncode=0)
+        handler._revert_changes()
+
+        # Should call git checkout with current directory
+        mock_run.assert_called_once_with(
+            ['git', 'checkout', 'HEAD', '--', '.'],
+            check=True,
+            capture_output=True
+        )
+
     @patch('subprocess.run')
     def test_revert__when_git_error__no_exception_raised(self, mock_run, handler):
         """Test failed revert."""

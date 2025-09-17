@@ -2,9 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 import yaml
 
 from tcr.tcr import TCRConfig
@@ -17,7 +15,7 @@ class TestTCRConfig:
         """Test default configuration values."""
         config = TCRConfig()
         assert config.enabled is True
-        assert config.watch_paths == []
+        assert config.watch_paths == ['.']
         assert config.test_command == 'poetry run pytest -xvs'
         assert config.test_timeout == 30
         assert config.commit_prefix == 'TCR'
@@ -101,7 +99,7 @@ class TestTCRConfig:
         """Test loading config from nonexistent YAML file returns defaults."""
         config = TCRConfig.from_yaml(Path('/nonexistent/path/config.yaml'))
         assert config.enabled is True
-        assert config.watch_paths == []
+        assert config.watch_paths == ['.']
         assert config.test_command == 'poetry run pytest -xvs'
         assert config.test_timeout == 30
         assert config.commit_prefix == 'TCR'
@@ -117,7 +115,7 @@ class TestTCRConfig:
         try:
             config = TCRConfig.from_yaml(temp_path)
             assert config.enabled is True
-            assert config.watch_paths == []
+            assert config.watch_paths == ['.']
             assert config.test_command == 'poetry run pytest -xvs'
             assert config.test_timeout == 30
             assert config.commit_prefix == 'TCR'
@@ -125,3 +123,4 @@ class TestTCRConfig:
             assert config.debounce_seconds == 2.0
         finally:
             temp_path.unlink()
+

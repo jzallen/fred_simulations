@@ -1,6 +1,5 @@
 """Tests for TCRRunner class."""
 
-import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, call, patch
@@ -52,7 +51,7 @@ tcr:
         with patch.object(Path, 'exists', return_value=False):
             runner = TCRRunner()
             assert runner.config.enabled is True
-            assert runner.config.watch_paths == []
+            assert runner.config.watch_paths == ['.']
             assert runner.config.test_command == 'poetry run pytest -xvs'
     
     def test_init__uses_tcr_yaml_in_home_directory_as_default_config(self):
@@ -76,7 +75,6 @@ tcr:
             temp_path.rename(tcr_yaml_path)
             
             with patch.object(Path, 'home', return_value=mock_home_dir):
-                # Now TCRRunner should read from our mocked ~/tcr.yaml
                 runner = TCRRunner()
                 
                 # Verify the config was loaded from the file
@@ -124,7 +122,6 @@ tcr:
                     with patch('tcr.tcr.logger') as mock_logger:
                         runner.start()
                         
-                        # Check that warning was logged
                         mock_logger.warning.assert_called_with(
                             "⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first."
                         )
@@ -186,13 +183,11 @@ tcr:
                 ]
                 mock_observer.schedule.assert_has_calls(expected_calls, any_order=True)
                 
-                # Also verify the exact number of calls
                 assert mock_observer.schedule.call_count == 2
     
     @patch('subprocess.run')
     def test_start__when_nonexistent_watch_path__path_not_scheduled_with_observer(self, mock_run, temp_dir):
         """Test that only existing paths are scheduled with observer."""
-        # Create one existing directory
         existing_dir = temp_dir / 'existing'
         existing_dir.mkdir()
         nonexistent_path = '/nonexistent/path'
@@ -227,7 +222,6 @@ tcr:
         """Test stopping the runner."""
         runner = TCRRunner()
         
-        # Mock the observer
         mock_observer = Mock()
         runner.observer = mock_observer
         
@@ -239,6 +233,34 @@ tcr:
             assert any("🛑 Stopping TCR mode..." in str(call) for call in mock_logger.info.call_args_list)
             assert any("TCR mode stopped" in str(call) for call in mock_logger.info.call_args_list)
     
+    @patch('subprocess.run')
+    def test_start__filters_git_status_by_watch_paths(self, mock_run, temp_dir):
+        """Test that TCRRunner filters git status by watch_paths when checking uncommitted changes."""
+        with patch('tcr.tcr.TCRConfig.from_yaml') as mock_from_yaml:
+            mock_from_yaml.return_value = TCRConfig(
+                enabled=True,
+                watch_paths=['src/', 'tests/']
+            )
+
+            with patch('tcr.tcr.Observer') as mock_observer_class:
+                mock_observer = Mock()
+                mock_observer_class.return_value = mock_observer
+
+                runner = TCRRunner()
+
+                # Mock git status to show uncommitted changes
+                mock_run.return_value = Mock(stdout='M src/file.py\n', returncode=0)
+
+                # Use KeyboardInterrupt to exit the loop after setup
+                with patch('time.sleep', side_effect=KeyboardInterrupt):
+                    runner.start()
+
+                mock_run.assert_called_with(
+                    ['git', 'status', '--porcelain', '--', 'src/', 'tests/'],
+                    capture_output=True,
+                    text=True
+                )
+
     @patch('subprocess.run')
     def test_run__when_keyboard_interrupt__file_observer_stopped(self, mock_run, temp_dir):
         with patch('tcr.tcr.TCRConfig.from_yaml') as mock_from_yaml:
