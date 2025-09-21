@@ -3,8 +3,6 @@
 
 import argparse
 import logging
-import logging.handlers
-import os
 import re
 import secrets
 import subprocess
@@ -18,8 +16,10 @@ import yaml
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from tcr.logging_config import LoggerType, logger_factory
 
-def _get_or_generate_session_id(session_id: Optional[str]) -> str:
+
+def get_or_generate_session_id(session_id: Optional[str]) -> str:
     """Get session_id or generate a random one if not provided.
 
     Args:
@@ -35,62 +35,18 @@ def _get_or_generate_session_id(session_id: Optional[str]) -> str:
         return re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
 
 
-def setup_logger(log_file: Optional[Path] = None, session_id: Optional[str] = None) -> logging.Logger:
-    """Set up logger to write to both console and file.
+def get_log_file_path(session_id: str) -> Path:
+    """Generate log file path based on session ID.
 
     Args:
-        log_file: Path to log file. If provided, session_id is ignored.
-        session_id: Optional session identifier for namespacing logs.
-                   If not provided, generates a random alphanumeric string.
+        session_id: Session identifier for namespacing logs.
 
     Returns:
-        Configured logger instance
+        Path to log file.
     """
-    if log_file is None:
-        session_id = _get_or_generate_session_id(session_id)
-
-        # Use XDG Base Directory specification with session_id
-        log_dir = Path.home() / '.local' / 'share' / 'tcr' / session_id
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / 'tcr.log'
-    
-    logger = logging.getLogger('tcr')
-    logger.setLevel(logging.DEBUG)
-    
-    # Remove existing handlers to avoid duplicates
-    logger.handlers.clear()
-    
-    # Console handler with INFO level
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_format = logging.Formatter('%(message)s')
-    console_handler.setFormatter(console_format)
-    
-    # File handler with DEBUG level and rotation
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_file,
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(file_format)
-    
-    logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
-    
-    return logger
-
-
-# Initialize logger only if enabled via environment variable
-# Default to enabled if not set
-IS_TCR_LOGGER_ENABLED = os.environ.get('IS_TCR_LOGGER_ENABLED', 'true').lower() != 'false'
-if IS_TCR_LOGGER_ENABLED:
-    logger = setup_logger()
-else:
-    # Create a null logger when disabled
-    logger = logging.getLogger('tcr')
-    logger.addHandler(logging.NullHandler())
+    # Use XDG Base Directory specification with session_id
+    log_dir = Path.home() / '.local' / 'share' / 'tcr' / session_id
+    return log_dir / 'tcr.log'
 
 @dataclass
 class TCRConfig:
@@ -144,9 +100,10 @@ class TCRConfig:
 
 class TCRHandler(FileSystemEventHandler):
     """Handle file system events and trigger TCR workflow."""
-    
-    def __init__(self, config: TCRConfig):
+
+    def __init__(self, config: TCRConfig, logger: logging.Logger):
         self.config = config
+        self.logger = logger
         self.last_run = 0
         
     def on_modified(self, event):
@@ -178,8 +135,8 @@ class TCRHandler(FileSystemEventHandler):
         
     def _run_tcr_cycle(self, changed_file: Path):
         """Run the TCR cycle: test && commit || revert."""
-        logger.info(f"\n🔄 TCR: Change detected in {changed_file}")
-        logger.debug(f"Starting TCR cycle for file: {changed_file}")
+        self.logger.info(f"\n🔄 TCR: Change detected in {changed_file}")
+        self.logger.debug(f"Starting TCR cycle for file: {changed_file}")
         
         test_result = self._run_tests()
         
@@ -190,8 +147,8 @@ class TCRHandler(FileSystemEventHandler):
             
     def _run_tests(self) -> bool:
         """Run tests and return success status."""
-        logger.info("🧪 Running tests...")
-        logger.debug(f"Executing command: {self.config.test_command}")
+        self.logger.info("🧪 Running tests...")
+        self.logger.debug(f"Executing command: {self.config.test_command}")
         
         try:
             result = subprocess.run(
@@ -203,21 +160,21 @@ class TCRHandler(FileSystemEventHandler):
             )
             
             if result.returncode == 0:
-                logger.info("✅ Tests passed!")
-                logger.debug(f"Test output:\n{result.stdout}")
+                self.logger.info("✅ Tests passed!")
+                self.logger.debug(f"Test output:\n{result.stdout}")
                 return True
             else:
-                logger.error(f"❌ Tests failed!")
-                logger.error(f"stdout:\n{result.stdout}")
-                logger.error(f"stderr:\n{result.stderr}")
+                self.logger.error(f"❌ Tests failed!")
+                self.logger.error(f"stdout:\n{result.stdout}")
+                self.logger.error(f"stderr:\n{result.stderr}")
                 return False
                 
         except subprocess.TimeoutExpired:
-            logger.error(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
+            self.logger.error(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
             return False
         except Exception as e:
-            logger.error(f"🚨 Error running tests: {e}")
-            logger.debug(f"Exception details:", exc_info=True)
+            self.logger.error(f"🚨 Error running tests: {e}")
+            self.logger.debug(f"Exception details:", exc_info=True)
             return False
             
     def _commit_changes(self, changed_file: Path):
@@ -225,91 +182,74 @@ class TCRHandler(FileSystemEventHandler):
         try:
             # Stage only files in watch_paths
             git_add_cmd = ['git', 'add', '--'] + self.config.watch_paths
-            logger.debug(f"Staging changes in watch_paths with: {' '.join(git_add_cmd)}")
+            self.logger.debug(f"Staging changes in watch_paths with: {' '.join(git_add_cmd)}")
             subprocess.run(git_add_cmd, check=True, capture_output=True)
-            
+
             # Create commit message
             timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
             message = f"{self.config.commit_prefix}: {timestamp} - Modified {changed_file.name}"
-            
+
             # Commit
-            logger.debug(f"Committing with message: {message}")
+            self.logger.debug(f"Committing with message: {message}")
             subprocess.run(['git', 'commit', '-m', message], check=True, capture_output=True)
-            logger.info(f"✅ Committed: {message}")
-            
+            self.logger.info(f"✅ Committed: {message}")
+
         except subprocess.CalledProcessError as e:
-            logger.warning(f"⚠️ Could not commit: {e}")
-            logger.debug(f"Commit error details:", exc_info=True)
+            self.logger.warning(f"⚠️ Could not commit: {e}")
+            self.logger.debug(f"Commit error details:", exc_info=True)
             
     def _revert_changes(self):
         """Revert uncommitted changes."""
         if not self.config.revert_on_failure:
-            logger.warning("⚠️ Tests failed but revert is disabled")
+            self.logger.warning("⚠️ Tests failed but revert is disabled")
             return
 
         try:
             git_checkout_cmd = ['git', 'checkout', 'HEAD', '--'] + self.config.watch_paths
-            logger.debug(f"Reverting changes in watch_paths with: {' '.join(git_checkout_cmd)}")
+            self.logger.debug(f"Reverting changes in watch_paths with: {' '.join(git_checkout_cmd)}")
             subprocess.run(git_checkout_cmd, check=True, capture_output=True)
-            logger.info("🔙 Reverted changes")
-            
+            self.logger.info("🔙 Reverted changes")
+
         except subprocess.CalledProcessError as e:
-            logger.warning(f"⚠️ Could not revert: {e}")
-            logger.debug(f"Revert error details:", exc_info=True)
+            self.logger.warning(f"⚠️ Could not revert: {e}")
+            self.logger.debug(f"Revert error details:", exc_info=True)
 
 
 class TCRRunner:
     """Main TCR runner that manages the file watching."""
 
-    def __init__(self, config_path: Optional[Path] = None, session_id: Optional[str] = None):
-        self.config = TCRConfig.from_yaml(config_path)
-        self.session_id = session_id
-
-        # Re-initialize logger with config-specified log file or session_id
-        global logger
-        if self.config.log_file:
-            # If log_file is explicitly specified in config, use it (ignores session_id)
-            logger = setup_logger(log_file=Path(self.config.log_file))
-            # Even with log_file, set process name if session_id provided
-            if session_id:
-                setproctitle.setproctitle(f'tcr:{session_id}')
-        else:
-            # Otherwise use session_id (or generate random if None)
-            # If no session_id provided, generate one for both logger and process name
-            effective_session_id = _get_or_generate_session_id(session_id)
-            logger = setup_logger(session_id=effective_session_id)
-            # Always set process name with the effective session_id
-            setproctitle.setproctitle(f'tcr:{effective_session_id}')
-
+    def __init__(self, config: TCRConfig, logger: logging.Logger):
+        self.config = config
+        self.logger = logger
         self.observer = Observer()
-        self.handler = TCRHandler(self.config)
+        self.handler = TCRHandler(self.config, self.logger)
         
     def start(self):
         """Start watching for file changes."""
         if not self.config.enabled:
-            logger.info("TCR is disabled in configuration")
+            self.logger.info("TCR is disabled in configuration")
             return
-            
-        logger.info("🚀 Starting TCR mode...")
-        logger.info(f"Watching: {self.config.watch_paths}")
-        logger.info(f"Test command: {self.config.test_command}")
-        logger.debug(f"Full configuration: {self.config}")
+
+        self.logger.info("🚀 Starting TCR mode...")
+        self.logger.info(f"Watching: {self.config.watch_paths}")
+        self.logger.info(f"Test command: {self.config.test_command}")
+        self.logger.debug(f"Full configuration: {self.config}")
         
         # Check for uncommitted changes
         git_cmd = ['git', 'status', '--porcelain', '--'] + self.config.watch_paths
 
         result = subprocess.run(git_cmd, capture_output=True, text=True)
         if result.stdout.strip():
-            logger.warning("⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first.")
-            logger.debug(f"Uncommitted changes:\n{result.stdout}")
+            self.logger.warning("⚠️ Warning: You have uncommitted changes. Consider committing or stashing them first.")
+            self.logger.debug(f"Uncommitted changes:\n{result.stdout}")
             
         # Set up watchers for each path
         for path in self.config.watch_paths:
             if Path(path).exists():
-                logger.debug(f"Setting up watcher for path: {path}")
+                self.logger.debug(f"Setting up watcher for path: {path}")
                 self.observer.schedule(self.handler, path, recursive=True)
             else:
-                logger.warning(f"⚠️ Watch path does not exist: {path}")
+                self.logger.warning(f"⚠️ Watch path does not exist: {path}")
                 
         self.observer.start()
         
@@ -321,15 +261,20 @@ class TCRRunner:
             
     def stop(self):
         """Stop watching for file changes."""
-        logger.info("\n🛑 Stopping TCR mode...")
-        logger.debug("Stopping file observer")
+        self.logger.info("\n🛑 Stopping TCR mode...")
+        self.logger.debug("Stopping file observer")
         self.observer.stop()
         self.observer.join()
-        logger.info("TCR mode stopped")
+        self.logger.info("TCR mode stopped")
 
 
-def list_sessions():
-    """List all running TCR sessions by checking process names."""
+def list_sessions(logger: logging.Logger):
+    """List all running TCR sessions by checking process names.
+
+    Args:
+        logger: Logger instance for output.
+    """
+
     try:
         # Use pgrep to find all processes matching tcr:*
         # Using tcr:* instead of tcr:.* to avoid 15 char limit
@@ -351,8 +296,14 @@ def list_sessions():
         logger.error(f"Error listing sessions: {e}")
 
 
-def stop_session(session_id: str):
-    """Stop a TCR session by sending SIGINT to the process with matching session_id."""
+def stop_session(session_id: str, logger: logging.Logger):
+    """Stop a TCR session by sending SIGINT to the process with matching session_id.
+
+    Args:
+        session_id: The session identifier to stop.
+        logger: Logger instance for output.
+    """
+
     try:
         # Use pgrep with grep to avoid the 15 character limit
         # pgrep -a "tcr:*" gets all tcr processes, then grep filters for the specific session
@@ -417,14 +368,30 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'start':
-        # Pass both config_path and session_id to TCRRunner
-        runner = TCRRunner(config_path=args.config, session_id=args.session_id)
+        # Load config
+        config = TCRConfig.from_yaml(args.config)
+
+        # Generate or use session_id
+        effective_session_id = get_or_generate_session_id(args.session_id)
+
+        # Set process name for visibility
+        setproctitle.setproctitle(f'tcr:{effective_session_id}')
+
+        # Setup logger using factory with ternary for log_file
+        log_file = Path(config.log_file) if config.log_file else get_log_file_path(effective_session_id)
+        logger = logger_factory(logger_type=LoggerType.DEFAULT, log_file=log_file)
+
+        # Create and start runner with injected dependencies
+        runner = TCRRunner(config=config, logger=logger)
         runner.start()
     elif args.command == 'stop':
-        # Stop the specified session
-        stop_session(args.session_id)
+        # Stop the specified session with console logger
+        console_logger = logger_factory(logger_type=LoggerType.CONSOLE)
+        stop_session(args.session_id, console_logger)
     elif args.command == 'ls':
-        list_sessions()
+        # List sessions with console logger
+        console_logger = logger_factory(logger_type=LoggerType.CONSOLE)
+        list_sessions(console_logger)
     else:
         parser.print_help()
         

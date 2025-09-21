@@ -11,7 +11,8 @@ import pytest
 from freezegun import freeze_time
 from watchdog.events import FileModifiedEvent
 
-from tcr.tcr import TCRConfig, TCRHandler
+from tcr.cli import TCRConfig, TCRHandler
+from tcr.logging_config import LoggerType, logger_factory
 
 
 class TestTCRHandler:
@@ -36,7 +37,8 @@ class TestTCRHandler:
     
     @pytest.fixture
     def handler(self, config):
-        return TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        return TCRHandler(config, null_logger)
     
     @pytest.fixture
     def temp_file(self, temp_dir):
@@ -45,11 +47,13 @@ class TestTCRHandler:
         return file_path
     
     def test_init__stores_passed_config(self, config):
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
         assert handler.config == config
 
     def test_intit__initializes_last_run(self, config):
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
         assert handler.last_run == 0
     
     def test_on_modified__when_event_is_for_directory__event_is_ignored(self, handler, temp_dir):
@@ -101,7 +105,8 @@ class TestTCRHandler:
         """Test that git status is filtered by watch_paths."""
         # Set specific watch paths
         config.watch_paths = ['src/', 'tests/']
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
 
         # Create event for a file in the watched directory
         test_file = temp_dir / 'src' / 'module.py'
@@ -239,7 +244,8 @@ class TestTCRHandler:
         """Test that commit only stages files within watch_paths."""
         # Set specific watch paths
         config.watch_paths = ['src/', 'tests/']
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
 
         # Create a file in the watched directory
         test_file = temp_dir / 'src' / 'module.py'
@@ -263,7 +269,8 @@ class TestTCRHandler:
         """Test that commit works with default watch_path (current directory)."""
         # Create config with default watch_paths
         config = TCRConfig()  # This defaults to ['.']
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
 
         test_file = Path('test.py')
         mock_run.return_value = Mock(returncode=0)
@@ -299,7 +306,7 @@ class TestTCRHandler:
     def test_revert_changes__when_changes_revert_on_failure_false__not_git_calls_made(self, mock_run, handler):
         """Test reverting changes when disabled."""
         handler.config.revert_on_failure = False
-        with patch('tcr.tcr.logger') as mock_logger:
+        with patch.object(handler, 'logger') as mock_logger:
             handler._revert_changes()
             mock_run.assert_not_called()
             mock_logger.warning.assert_called_with("⚠️ Tests failed but revert is disabled")
@@ -310,7 +317,8 @@ class TestTCRHandler:
         # Set specific watch paths
         config.watch_paths = ['src/', 'tests/']
         config.revert_on_failure = True
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
 
         mock_run.return_value = Mock(returncode=0)
         handler._revert_changes()
@@ -328,7 +336,8 @@ class TestTCRHandler:
         # Create config with default watch_paths
         config = TCRConfig()  # This defaults to ['.']
         config.revert_on_failure = True
-        handler = TCRHandler(config)
+        null_logger = logger_factory(LoggerType.NULL)
+        handler = TCRHandler(config, null_logger)
 
         mock_run.return_value = Mock(returncode=0)
         handler._revert_changes()

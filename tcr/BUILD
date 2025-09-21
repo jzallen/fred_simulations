@@ -27,7 +27,7 @@ python_tests(
 
 pex_binary(
     name="tcr-cli",
-    entry_point="tcr.tcr:main",
+    entry_point="tcr.cli:main",
     dependencies=[
         ":tcr",
         ":tcr-reqs#watchdog",

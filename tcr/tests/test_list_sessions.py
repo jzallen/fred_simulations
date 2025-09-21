@@ -1,31 +1,31 @@
 """Tests for list_sessions functionality."""
 
-import subprocess
 from unittest.mock import Mock, patch
 
-import pytest
-
-from tcr.tcr import list_sessions
+from tcr.cli import list_sessions
+from tcr.logging_config import LoggerType, logger_factory
 
 
 class TestListSessions:
     """Test suite for list_sessions function."""
 
     @patch('subprocess.run')
-    @patch('tcr.tcr.logger')
-    def test_list_sessions__when_no_sessions_running__logs_no_sessions(self, mock_logger, mock_run):
+    def test_list_sessions__when_no_sessions_running__logs_no_sessions(self, mock_run):
         """Test that list_sessions logs 'No TCR sessions' when pgrep finds nothing."""
         # pgrep returns 1 when no processes are found
         mock_run.return_value = Mock(returncode=1, stdout='')
 
-        list_sessions()
+        # Create a mock logger
+        mock_logger = Mock()
+
+        list_sessions(mock_logger)
 
         mock_run.assert_called_once_with(
             ['pgrep', '-a', 'tcr:'],
             capture_output=True,
             text=True
         )
-        mock_logger.info.assert_called_with("No TCR sessions currently running")
+        mock_logger.info.assert_called_once_with("No TCR sessions currently running")
 
     @patch('subprocess.run')
     @patch('builtins.print')
@@ -37,7 +37,10 @@ class TestListSessions:
             stdout='12345 tcr:my-feature\n'
         )
 
-        list_sessions()
+        # Create a mock logger
+        mock_logger = Mock()
+
+        list_sessions(mock_logger)
 
         mock_run.assert_called_once_with(
             ['pgrep', '-a', 'tcr:'],
@@ -57,28 +60,35 @@ class TestListSessions:
             stdout='12345 tcr:feature-1\n67890 tcr:bugfix-xyz\n11111 tcr:test-session\n'
         )
 
-        list_sessions()
+        # Use null logger for this test since we're testing print output
+        null_logger = logger_factory(LoggerType.NULL)
+
+        list_sessions(null_logger)
 
         # Check that raw output was printed
         mock_print.assert_called_once_with('12345 tcr:feature-1\n67890 tcr:bugfix-xyz\n11111 tcr:test-session')
 
     @patch('subprocess.run')
-    @patch('tcr.tcr.logger')
-    def test_list_sessions__when_pgrep_not_found__logs_error(self, mock_logger, mock_run):
+    def test_list_sessions__when_pgrep_not_found__logs_error(self, mock_run):
         """Test that list_sessions handles missing pgrep gracefully."""
         mock_run.side_effect = FileNotFoundError("pgrep not found")
 
-        list_sessions()
+        # Create a mock logger
+        mock_logger = Mock()
+
+        list_sessions(mock_logger)
 
         mock_logger.error.assert_called_with("pgrep command not found. Please ensure procps is installed.")
 
     @patch('subprocess.run')
-    @patch('tcr.tcr.logger')
-    def test_list_sessions__when_unexpected_error__logs_error(self, mock_logger, mock_run):
+    def test_list_sessions__when_unexpected_error__logs_error(self, mock_run):
         """Test that list_sessions handles unexpected errors gracefully."""
         mock_run.side_effect = Exception("Unexpected error")
 
-        list_sessions()
+        # Create a mock logger
+        mock_logger = Mock()
+
+        list_sessions(mock_logger)
 
         mock_logger.error.assert_called_with("Error listing sessions: Unexpected error")
 

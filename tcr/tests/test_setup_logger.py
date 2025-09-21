@@ -1,4 +1,4 @@
-"""Tests for setup_logger function with session_id functionality."""
+"""Tests for setup_logger function."""
 
 import logging
 import tempfile
@@ -7,11 +7,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tcr.tcr import setup_logger
+from tcr.logging_config import setup_logger
 
 
 class TestSetupLogger:
-    """Test suite for setup_logger function with session_id support."""
+    """Test suite for setup_logger function."""
 
     @pytest.fixture
     def temp_home_dir(self):
@@ -19,148 +19,65 @@ class TestSetupLogger:
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
-    def test_setup_logger__when_session_id_provided__creates_log_file_with_session_id_path(self, temp_home_dir):
-        """Test that setup_logger creates log file in session-specific directory when session_id is provided."""
-        session_id = "test_session_123"
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / session_id / 'tcr.log'
+    def test_setup_logger__creates_log_file_at_specified_path(self, temp_home_dir):
+        """Test that setup_logger creates log file at the specified path."""
+        log_file = temp_home_dir / 'test_logs' / 'tcr.log'
 
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(session_id=session_id)
+        logger = setup_logger(log_file)
 
         # Logger should be configured
         assert logger.name == 'tcr'
         assert logger.level == logging.DEBUG
 
         # Log directory should be created
-        assert expected_log_path.parent.exists()
+        assert log_file.parent.exists()
 
-        # File handler should be pointing to the session-specific log file
+        # File handler should be pointing to the specified log file
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
         assert len(file_handlers) == 1
-        assert Path(file_handlers[0].baseFilename) == expected_log_path
+        assert Path(file_handlers[0].baseFilename) == log_file
 
-    def test_setup_logger__when_session_id_none__generates_random_session_id_using_secrets(self, temp_home_dir):
-        """Test that setup_logger generates random session_id using secrets library when none provided."""
-        mock_session_id = "abc123def456"
+    def test_setup_logger__creates_parent_directories_if_not_exist(self, temp_home_dir):
+        """Test that setup_logger creates parent directories if they don't exist."""
+        log_file = temp_home_dir / 'deep' / 'nested' / 'path' / 'tcr.log'
 
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir), \
-             patch('tcr.tcr.secrets.token_urlsafe', return_value=mock_session_id) as mock_secrets:
+        # Ensure directories don't exist initially
+        assert not log_file.parent.exists()
 
-            logger = setup_logger(session_id=None)
+        logger = setup_logger(log_file)
 
-        # secrets.token_urlsafe should have been called to generate session_id
-        mock_secrets.assert_called_once_with(8)
-
-        # Log file should be created with generated session_id
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / mock_session_id / 'tcr.log'
-        assert expected_log_path.parent.exists()
-
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
-        assert len(file_handlers) == 1
-        rotating_file_handler = file_handlers[0]
-        assert Path(rotating_file_handler.baseFilename) == expected_log_path
-
-    def test_setup_logger__when_session_id_not_provided__generates_random_session_id_using_secrets(self, temp_home_dir):
-        """Test that setup_logger generates random session_id when parameter is not provided at all."""
-        mock_session_id = "xyz789uvw012"
-
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir), \
-             patch('tcr.tcr.secrets.token_urlsafe', return_value=mock_session_id) as mock_secrets:
-
-            logger = setup_logger()  # No session_id parameter provided
-
-        # secrets.token_urlsafe should have been called to generate session_id
-        mock_secrets.assert_called_once_with(8)
-
-        # Log file should be created with generated session_id
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / mock_session_id / 'tcr.log'
-        assert expected_log_path.parent.exists()
-
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
-        assert len(file_handlers) == 1
-        assert Path(file_handlers[0].baseFilename) == expected_log_path
-
-    def test_setup_logger__when_session_id_empty_string__generates_random_session_id(self, temp_home_dir):
-        """Test that setup_logger generates random session_id when empty string is provided."""
-        mock_session_id = "empty456str789"
-
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir), \
-             patch('tcr.tcr.secrets.token_urlsafe', return_value=mock_session_id) as mock_secrets:
-
-            logger = setup_logger(session_id="")
-
-        # secrets.token_urlsafe should have been called for empty string
-        mock_secrets.assert_called_once_with(8)
-
-        # Log file should be created with generated session_id
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / mock_session_id / 'tcr.log'
-        assert expected_log_path.parent.exists()
-
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
-        assert len(file_handlers) == 1
-        assert Path(file_handlers[0].baseFilename) == expected_log_path
-
-    def test_setup_logger__when_session_id_has_special_characters__sanitizes_session_id(self, temp_home_dir):
-        """Test that setup_logger handles session_id with special characters appropriately."""
-        session_id = "test/session\\with:special*chars"
-        # Expected sanitized version (implementation will determine exact sanitization)
-
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(session_id=session_id)
-
-        # Should create log directory (exact path depends on sanitization implementation)
-        tcr_base_dir = temp_home_dir / '.local' / 'share' / 'tcr'
-        assert tcr_base_dir.exists()
-
-        # Should have exactly one subdirectory for the session
-        session_dirs = [d for d in tcr_base_dir.iterdir() if d.is_dir()]
-        assert len(session_dirs) == 1
+        # All parent directories should be created
+        assert log_file.parent.exists()
 
         # File handler should be created
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
         assert len(file_handlers) == 1
+        assert Path(file_handlers[0].baseFilename) == log_file
 
-    def test_setup_logger__when_session_id_alphanumeric__uses_session_id_directly(self, temp_home_dir):
-        """Test that setup_logger uses alphanumeric session_id directly without modification."""
-        session_id = "SessionABC123"
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / session_id / 'tcr.log'
+    def test_setup_logger__clears_existing_handlers(self, temp_home_dir):
+        """Test that setup_logger clears existing handlers before adding new ones."""
+        log_file = temp_home_dir / 'tcr.log'
 
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(session_id=session_id)
+        # Get the logger and add some existing handlers
+        tcr_logger = logging.getLogger('tcr')
+        # Clear any existing handlers first
+        tcr_logger.handlers.clear()
+        tcr_logger.addHandler(logging.StreamHandler())
+        tcr_logger.addHandler(logging.FileHandler(str(temp_home_dir / 'old.log')))
+        assert len(tcr_logger.handlers) == 2
 
-        # Log directory should be created with exact session_id
-        assert expected_log_path.parent.exists()
-        assert expected_log_path.parent.name == session_id
+        # Call setup_logger
+        logger = setup_logger(log_file)
 
-        # File handler should point to correct path
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
-        assert len(file_handlers) == 1
-        assert Path(file_handlers[0].baseFilename) == expected_log_path
+        # Should have exactly 2 handlers (console + file)
+        assert len(logger.handlers) == 2
+        assert logger is tcr_logger  # Same logger instance
 
-    def test_setup_logger__creates_directory_structure_recursively(self, temp_home_dir):
-        """Test that setup_logger creates the complete directory structure recursively."""
-        session_id = "recursive_test"
+    def test_setup_logger__maintains_proper_logger_configuration(self, temp_home_dir):
+        """Test that setup_logger maintains proper logger configuration."""
+        log_file = temp_home_dir / 'tcr.log'
 
-        # Ensure the .local directory doesn't exist initially
-        local_dir = temp_home_dir / '.local'
-        assert not local_dir.exists()
-
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(session_id=session_id)
-
-        # All directories should be created
-        expected_log_path = temp_home_dir / '.local' / 'share' / 'tcr' / session_id / 'tcr.log'
-        assert expected_log_path.parent.exists()
-        assert expected_log_path.parent.parent.exists()  # tcr directory
-        assert expected_log_path.parent.parent.parent.exists()  # share directory
-        assert expected_log_path.parent.parent.parent.parent.exists()  # .local directory
-
-    def test_setup_logger__maintains_existing_logger_configuration(self, temp_home_dir):
-        """Test that setup_logger maintains proper logger configuration with session_id."""
-        session_id = "config_test"
-
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(session_id=session_id)
+        logger = setup_logger(log_file)
 
         # Logger should have proper configuration
         assert logger.name == 'tcr'
@@ -181,20 +98,17 @@ class TestSetupLogger:
         # File handler should be DEBUG level
         assert file_handlers[0].level == logging.DEBUG
 
-    def test_setup_logger__when_log_file_parameter_provided__ignores_session_id(self, temp_home_dir):
-        """Test that when log_file parameter is provided, session_id is ignored."""
-        session_id = "should_be_ignored"
-        custom_log_file = temp_home_dir / 'custom.log'
+    def test_setup_logger__configures_rotating_file_handler(self, temp_home_dir):
+        """Test that file handler is configured with rotation settings."""
+        log_file = temp_home_dir / 'tcr.log'
 
-        with patch('tcr.tcr.Path.home', return_value=temp_home_dir):
-            logger = setup_logger(log_file=custom_log_file, session_id=session_id)
+        logger = setup_logger(log_file)
 
-        # File handler should point to custom log file, not session-based path
+        # Get the rotating file handler
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
         assert len(file_handlers) == 1
-        assert Path(file_handlers[0].baseFilename) == custom_log_file
 
-        # Session directory should not be created
-        session_dir = temp_home_dir / '.local' / 'share' / 'tcr' / session_id
-        
-        assert not session_dir.exists()
+        handler = file_handlers[0]
+        # Check rotation settings
+        assert handler.maxBytes == 10 * 1024 * 1024  # 10MB
+        assert handler.backupCount == 5
