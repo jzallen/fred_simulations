@@ -2,8 +2,7 @@
 
 import subprocess
 import tempfile
-import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 

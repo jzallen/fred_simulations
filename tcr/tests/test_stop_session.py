@@ -3,8 +3,6 @@
 import subprocess
 from unittest.mock import Mock, call, patch
 
-import pytest
-
 from tcr.cli import stop_session
 from tcr.logging_config import LoggerType, logger_factory
 
