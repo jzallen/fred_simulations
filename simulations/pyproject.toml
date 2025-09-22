@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "simulations"
+version = "0.1.0"
+description = "FRED simulation configurations and scripts"
+authors = ["Zach Allen <j.zachary.allen@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pact-python = "^2.0.0"
+epx = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
