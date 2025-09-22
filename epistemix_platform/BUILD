@@ -1,34 +1,33 @@
-# BUILD file for epistemix_platform module
-
-python_sources(
-    name="cli",
-    sources=["cli.py"],
-    dependencies=[
-        "epistemix_platform/controllers:lib",
-        "epistemix_platform/mappers:lib",
-        "epistemix_platform/models:lib",
-        "epistemix_platform/repositories:lib",
-        "epistemix_platform/use_cases:lib",
-    ]
+poetry_requirements(
+    name="epistemix-reqs",
 )
 
-# Define the CLI as a PEX binary
 pex_binary(
     name="epistemix-cli",
     entry_point="epistemix_platform.cli:cli",
     dependencies=[
-        ":cli",
-        "//:root#click",
-        "//:root#requests",
-        "//:root#returns",
-        "//:root#pydantic",
-        "//:root#boto3",
-        "//:root#botocore",
-        "//:root#python-dotenv",
-        "//:root#sqlalchemy",
+        "./src/epistemix_platform:lib",
+        ":epistemix-reqs#click",
+        ":epistemix-reqs#requests",
+        ":epistemix-reqs#returns",
+        ":epistemix-reqs#pydantic",
+        ":epistemix-reqs#boto3",
+        ":epistemix-reqs#botocore",
+        ":epistemix-reqs#python-dotenv",
+        ":epistemix-reqs#sqlalchemy",
     ],
 )
 
-python_requirements(
-    name="reqs",
+python_tests(
+    name="tests",
+    sources=[
+        "**/test_*.py",
+        "!infrastructure/**",
+    ],
+    dependencies=[
+        "./src/epistemix_platform:lib",
+        "./tests:test-utils",
+        "//:root#freezegun",
+        "//:root#pytest"
+    ],
 )

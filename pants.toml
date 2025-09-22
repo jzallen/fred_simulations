@@ -17,6 +17,9 @@ backend_packages = [
 [source]
 root_patterns = [
     "/",
+    "simulations",
+    "epistemix_platform/src",
+    "tcr/src",
 ]
 
 # Python configuration

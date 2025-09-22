@@ -1,0 +1,10 @@
+python_sources(
+    name="lib",
+    dependencies=[
+        "epistemix_platform/src/epistemix_platform/models:lib",
+        "epistemix_platform/src/epistemix_platform/mappers:lib",
+        "epistemix_platform/src/epistemix_platform/repositories:lib",
+        "epistemix_platform/src/epistemix_platform/controllers:lib",
+        "epistemix_platform/src/epistemix_platform/use_cases:lib",
+    ]
+)
