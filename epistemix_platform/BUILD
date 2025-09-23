@@ -19,15 +19,29 @@ pex_binary(
 )
 
 python_tests(
-    name="tests",
+    name="src-tests",
     sources=[
-        "**/test_*.py",
-        "!infrastructure/**",
+        "tests/**/test_*.py",
+        "tests/test_*.py",
     ],
     dependencies=[
         "./src/epistemix_platform:lib",
         "./tests:test-utils",
         "//:root#freezegun",
         "//:root#pytest"
+    ],
+)
+
+python_tests(
+    name="infrastructure-tests",
+    sources=[
+        "infrastructure/tests/**/test_*.py",
+    ],
+    dependencies=[
+        "./infrastructure/tests:test-utils",
+        "./infrastructure:lib",
+        "./infrastructure:infrastructure-reqs#sceptre",
+        "./infrastructure:infrastructure-reqs#jsonschema",
+        "//:root#pytest",
     ],
 )

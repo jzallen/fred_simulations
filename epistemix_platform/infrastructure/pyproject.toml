@@ -1,25 +1,21 @@
-[project]
+[tool.poetry]
 name = "epistemix-platform-infrastructure"
 version = "0.1.0"
 description = "Infrastructure as code for the Epistemix platform"
-authors = [
-    {name = "Zach Allen",email = "j.zachary.allen@gmail.com"}
-]
+authors = ["Zach Allen <j.zachary.allen@gmail.com>"]
 readme = "README.md"
-requires-python = "<4.0,>=3.9"
-dependencies = [
-    "sceptre (>=4.5.3,<5.0.0)",
-    "awscli (>=1.42.22,<2.0.0)",
-    "cfn-lint (>=1.39.1,<2.0.0)",
-    "boto3 (>=1.26.0,<2.0.0)",
-    "botocore (>=1.29.0,<2.0.0)",
-    "moto[all] (>=4.2.0,<5.0.0)",
-    "jsonschema (>=3.2,<4.0.0)",
-    "requests (>=2.28.0,<3.0.0)"
-]
-
-[tool.poetry]
 package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.9"
+sceptre = ">=4.5.3,<5.0.0"
+awscli = ">=1.42.22,<2.0.0"
+cfn-lint = ">=1.39.1,<2.0.0"
+boto3 = ">=1.26.0,<2.0.0"
+botocore = ">=1.29.0,<2.0.0"
+moto = {extras = ["all"], version = ">=4.2.0,<5.0.0"}
+jsonschema = ">=3.2,<4.0.0"
+requests = ">=2.28.0,<3.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

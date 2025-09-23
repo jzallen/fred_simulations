@@ -11,7 +11,7 @@ This module tests the S3 upload bucket template for compliance with:
 
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 import json
 import pytest

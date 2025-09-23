@@ -1,3 +1,7 @@
 poetry_requirements(
-    name="poetry",
+    name="infrastructure-reqs",
+)
+
+python_sources(
+    name="lib",
 )
