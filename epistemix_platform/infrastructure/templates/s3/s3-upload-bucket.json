@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "S3 bucket for file uploads with CORS configuration",
+    "Description": "S3 bucket for file uploads with CORS configuration and server-side encryption (AES256)",
     "Parameters": {
         "BucketName": {
             "Type": "String",
@@ -41,6 +41,16 @@
                     "BlockPublicPolicy": true,
                     "IgnorePublicAcls": true,
                     "RestrictPublicBuckets": true
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            },
+                            "BucketKeyEnabled": true
+                        }
+                    ]
                 },
                 "CorsConfiguration": {
                     "CorsRules": [
@@ -162,7 +172,20 @@
                                     "Effect": "Allow",
                                     "Action": [
                                         "s3:PutObject",
-                                        "s3:PutObjectAcl",
+                                        "s3:PutObjectAcl"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+                                    },
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "s3:x-amz-server-side-encryption": "AES256"
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
                                         "s3:GetObject",
                                         "s3:GetObjectVersion",
                                         "s3:DeleteObject",
@@ -195,6 +218,52 @@
                         }
                     }
                 ]
+            }
+        },
+        "BucketEncryptionPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "UploadBucket"
+                },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "DenyInsecureConnections",
+                            "Effect": "Deny",
+                            "Principal": "*",
+                            "Action": "s3:*",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:aws:s3:::${UploadBucket}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+                                }
+                            ],
+                            "Condition": {
+                                "Bool": {
+                                    "aws:SecureTransport": "false"
+                                }
+                            }
+                        },
+                        {
+                            "Sid": "DenyUnencryptedObjectUploads",
+                            "Effect": "Deny",
+                            "Principal": "*",
+                            "Action": "s3:PutObject",
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+                            },
+                            "Condition": {
+                                "StringNotEquals": {
+                                    "s3:x-amz-server-side-encryption": "AES256"
+                                }
+                            }
+                        }
+                    ]
+                }
             }
         }
     },

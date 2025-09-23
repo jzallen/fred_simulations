@@ -407,27 +407,43 @@ class TestS3Template:
         
         assert policies[0]["PolicyName"] == "S3UploadPolicy", "IAM role should have S3UploadPolicy attached."
 
-    def test_iam_upload_role__s3_upload_policy__has_2_statement_rules(self, s3_template: Dict[str, Any]):
-        """Test that S3 upload policy has exactly 2 statements."""
+    def test_iam_upload_role__s3_upload_policy__has_3_statement_rules(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has exactly 3 statements (encrypted upload, download, bucket operations)."""
         resources = s3_template.get("Resources", {})
         role = resources["S3UploadRole"]
         policy = role["Properties"]["Policies"][0]
         statements = policy["PolicyDocument"]["Statement"]
-        
-        assert len(statements) == 2, "S3 upload policy should have exactly 2 statements."
 
-    def test_iam_upload_role__s3_upload_policy__has_expected_bucket_contents_rule(self, s3_template: Dict[str, Any]):
-        """Test that S3 upload policy has expected bucket contents rule."""
+        assert len(statements) == 3, "S3 upload policy should have exactly 3 statements."
+
+    def test_iam_upload_role__s3_upload_policy__has_encrypted_upload_and_download_rules(self, s3_template: Dict[str, Any]):
+        """Test that S3 upload policy has separate encrypted upload and download rules."""
         resources = s3_template.get("Resources", {})
         role = resources["S3UploadRole"]
         policy = role["Properties"]["Policies"][0]
         statements = policy["PolicyDocument"]["Statement"]
-        
-        expected_rule = {
+
+        # Check for encrypted upload rule (should be first statement)
+        upload_rule = {
             "Effect": "Allow",
             "Action": [
                 "s3:PutObject",
-                "s3:PutObjectAcl",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+            },
+            "Condition": {
+                "StringEquals": {
+                    "s3:x-amz-server-side-encryption": "AES256"
+                }
+            }
+        }
+
+        # Check for download/read rule (should be second statement)
+        download_rule = {
+            "Effect": "Allow",
+            "Action": [
                 "s3:GetObject",
                 "s3:GetObjectVersion",
                 "s3:DeleteObject",
@@ -437,8 +453,9 @@ class TestS3Template:
                 "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
             }
         }
-        
-        assert expected_rule in statements, "S3 upload policy should have expected bucket contents rule."
+
+        assert upload_rule in statements, "S3 upload policy should have encrypted upload rule with AES256 condition."
+        assert download_rule in statements, "S3 upload policy should have download/read rule without encryption condition."
 
     def test_iam_upload_role__s3_upload_policy__has_expected_bucket_level_rule(self, s3_template: Dict[str, Any]):
         """Test that S3 upload policy has expected bucket-level rule."""
@@ -626,3 +643,57 @@ class TestS3Template:
                     att_resource = value["GetAtt"][0] if isinstance(value["GetAtt"], list) else value["GetAtt"]
                     if not att_resource.startswith("AWS::"):
                         assert att_resource in resources, f"Output {output_name} GetAtt references non-existent resource {att_resource}"
+
+    def test_bucket_has_encryption_configuration(self, s3_template: Dict[str, Any]):
+        """Test that S3 bucket has server-side encryption configured."""
+        resources = s3_template.get("Resources", {})
+        bucket = resources["UploadBucket"]
+
+        assert "BucketEncryption" in bucket["Properties"], "S3 bucket should have BucketEncryption configuration."
+
+        encryption_config = bucket["Properties"]["BucketEncryption"]
+        assert "ServerSideEncryptionConfiguration" in encryption_config, "BucketEncryption should have ServerSideEncryptionConfiguration."
+
+        sse_config = encryption_config["ServerSideEncryptionConfiguration"][0]
+        assert sse_config["ServerSideEncryptionByDefault"]["SSEAlgorithm"] == "AES256", "Bucket should use AES256 encryption."
+        assert sse_config["BucketKeyEnabled"] is True, "Bucket key should be enabled for cost optimization."
+
+    def test_bucket_encryption_policy_exists(self, s3_template: Dict[str, Any]):
+        """Test that bucket encryption policy resource exists."""
+        resources = s3_template.get("Resources", {})
+
+        assert "BucketEncryptionPolicy" in resources, "BucketEncryptionPolicy resource should exist."
+
+        policy = resources["BucketEncryptionPolicy"]
+        assert policy["Type"] == "AWS::S3::BucketPolicy", "BucketEncryptionPolicy should be an S3 BucketPolicy."
+        assert policy["Properties"]["Bucket"]["Ref"] == "UploadBucket", "Policy should reference the UploadBucket."
+
+    def test_bucket_encryption_policy_denies_insecure_connections(self, s3_template: Dict[str, Any]):
+        """Test that bucket policy denies insecure connections."""
+        resources = s3_template.get("Resources", {})
+        policy = resources["BucketEncryptionPolicy"]
+        statements = policy["Properties"]["PolicyDocument"]["Statement"]
+
+        # Find the deny insecure connections statement
+        deny_insecure = next((s for s in statements if s.get("Sid") == "DenyInsecureConnections"), None)
+
+        assert deny_insecure is not None, "Policy should have DenyInsecureConnections statement."
+        assert deny_insecure["Effect"] == "Deny", "DenyInsecureConnections should be a Deny effect."
+        assert deny_insecure["Principal"] == "*", "DenyInsecureConnections should apply to all principals."
+        assert deny_insecure["Action"] == "s3:*", "DenyInsecureConnections should apply to all S3 actions."
+        assert deny_insecure["Condition"]["Bool"]["aws:SecureTransport"] == "false", "Should deny when SecureTransport is false."
+
+    def test_bucket_encryption_policy_denies_unencrypted_uploads(self, s3_template: Dict[str, Any]):
+        """Test that bucket policy denies unencrypted uploads."""
+        resources = s3_template.get("Resources", {})
+        policy = resources["BucketEncryptionPolicy"]
+        statements = policy["Properties"]["PolicyDocument"]["Statement"]
+
+        # Find the deny unencrypted uploads statement
+        deny_unencrypted = next((s for s in statements if s.get("Sid") == "DenyUnencryptedObjectUploads"), None)
+
+        assert deny_unencrypted is not None, "Policy should have DenyUnencryptedObjectUploads statement."
+        assert deny_unencrypted["Effect"] == "Deny", "DenyUnencryptedObjectUploads should be a Deny effect."
+        assert deny_unencrypted["Principal"] == "*", "DenyUnencryptedObjectUploads should apply to all principals."
+        assert deny_unencrypted["Action"] == "s3:PutObject", "DenyUnencryptedObjectUploads should apply to PutObject."
+        assert deny_unencrypted["Condition"]["StringNotEquals"]["s3:x-amz-server-side-encryption"] == "AES256", "Should deny when encryption is not AES256."
