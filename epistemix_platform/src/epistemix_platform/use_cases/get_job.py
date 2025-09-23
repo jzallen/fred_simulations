@@ -34,7 +34,7 @@ def get_job(job_repository: IJobRepository, job_id: int) -> Optional[Job]:
         raise ValueError("Job ID must be positive")
 
     # Retrieve the job
-    job = job_repository.find_by_id(5)
+    job = job_repository.find_by_id(job_id)
 
     if job:
         logger.info(f"Job {job_id} retrieved successfully")
