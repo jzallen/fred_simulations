@@ -1,5 +1,8 @@
 poetry_requirements(
     name="simulations-reqs",
+    module_mapping={
+        "pact-python": ["pact", "pact.matchers"],
+    }
 )
 
 files(
