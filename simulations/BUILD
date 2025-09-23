@@ -17,7 +17,7 @@ python_sources(
 
 python_tests(
     name="tests",
-    sources=["tests/test_*.py"],
+    sources=["tests/**/test_*.py"],
     dependencies=[
         ":simulations",
         ":fred-files",

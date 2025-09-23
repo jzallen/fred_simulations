@@ -1,4 +1,6 @@
 import os
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -15,10 +17,18 @@ EPISTEMIX_MOCK_PORT = 5555
 S3_MOCK_HOST = "localhost"  # Changed to localhost since it's a mock
 S3_MOCK_PORT = 5556
 
-SIMULATIONS_FOLDER = Path(__file__).parent.parent
-EPISTEMIX_PLATFORM_FOLDER = SIMULATIONS_FOLDER.parent / "epistemix_platform"
-EPISTEMIX_PACTS_DIR = EPISTEMIX_PLATFORM_FOLDER / "pacts"
-EPISTEMIX_LOGS_DIR = SIMULATIONS_FOLDER / "logs"
+# Check for PACTS_OUTPUT_DIR environment variable
+if os.environ.get("PACTS_OUTPUT_DIR"):
+    EPISTEMIX_PACTS_DIR = Path(os.environ["PACTS_OUTPUT_DIR"])
+    EPISTEMIX_PACTS_DIR.mkdir(parents=True, exist_ok=True)
+    TEMP_PACTS_DIR = None
+else:
+    # Use temporary directory that will be cleaned up
+    TEMP_PACTS_DIR = tempfile.mkdtemp(prefix="pacts_")
+    EPISTEMIX_PACTS_DIR = Path(TEMP_PACTS_DIR)
+
+# Always use temp directory for logs
+EPISTEMIX_LOGS_DIR = Path(tempfile.mkdtemp(prefix="pact_logs_"))
 
 
 # Define mock server for epistemix api
@@ -321,7 +331,13 @@ class TestAgentInfoJob(unittest.TestCase):
         except RuntimeError:
             # Ignore errors when stopping the service as it might already be stopped
             pass
-        # self.mock_request.stop()
+
+        # Clean up temporary directories if they were created
+        if TEMP_PACTS_DIR:
+            shutil.rmtree(TEMP_PACTS_DIR, ignore_errors=True)
+        if EPISTEMIX_LOGS_DIR.exists():
+            shutil.rmtree(EPISTEMIX_LOGS_DIR, ignore_errors=True)
+
         super().tearDown()
 
     def test_job_is_registered(self):
