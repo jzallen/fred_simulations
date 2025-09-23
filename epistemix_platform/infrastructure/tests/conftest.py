@@ -20,7 +20,14 @@ from sceptre.context import SceptreContext
 @pytest.fixture(scope="session")
 def infrastructure_root() -> Path:
     """Return the path to the infrastructure root directory."""
-    return Path(__file__).parent.parent
+    # Start from the current file's directory
+    current_file = Path(__file__)
+
+    # Go up from conftest.py to tests/, then to infrastructure/
+    # conftest.py is in infrastructure/tests/, so parent.parent gives us infrastructure/
+    infrastructure_dir = current_file.parent.parent
+
+    return infrastructure_dir
 
 
 @pytest.fixture(scope="session") 
