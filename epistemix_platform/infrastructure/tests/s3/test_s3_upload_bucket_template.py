@@ -656,7 +656,6 @@ class TestS3Template:
 
         sse_config = encryption_config["ServerSideEncryptionConfiguration"][0]
         assert sse_config["ServerSideEncryptionByDefault"]["SSEAlgorithm"] == "AES256", "Bucket should use AES256 encryption."
-        assert sse_config["BucketKeyEnabled"] is True, "Bucket key should be enabled for cost optimization."
 
     def test_bucket_encryption_policy_exists(self, s3_template: Dict[str, Any]):
         """Test that bucket encryption policy resource exists."""
