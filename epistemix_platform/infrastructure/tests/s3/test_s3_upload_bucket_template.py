@@ -708,3 +708,18 @@ class TestS3Template:
         assert deny_unencrypted["Principal"] == "*", "DenyUnencryptedObjectUploads should apply to all principals."
         assert deny_unencrypted["Action"] == "s3:PutObject", "DenyUnencryptedObjectUploads should apply to PutObject."
         assert deny_unencrypted["Condition"]["StringNotEquals"]["s3:x-amz-server-side-encryption"] == "AES256", "Should deny when encryption is not AES256."
+
+    def test_bucket_encryption_policy_denies_missing_encryption_header(self, s3_template: Dict[str, Any]):
+        """Test that bucket policy denies uploads missing encryption header."""
+        resources = s3_template.get("Resources", {})
+        policy = resources["BucketEncryptionPolicy"]
+        statements = policy["Properties"]["PolicyDocument"]["Statement"]
+
+        # Find the deny missing header statement
+        deny_missing = next((s for s in statements if s.get("Sid") == "DenyMissingEncryptionHeader"), None)
+
+        assert deny_missing is not None, "Policy should have DenyMissingEncryptionHeader statement."
+        assert deny_missing["Effect"] == "Deny", "DenyMissingEncryptionHeader should be a Deny effect."
+        assert deny_missing["Principal"] == "*", "DenyMissingEncryptionHeader should apply to all principals."
+        assert deny_missing["Action"] == "s3:PutObject", "DenyMissingEncryptionHeader should apply to PutObject."
+        assert deny_missing["Condition"]["Null"]["s3:x-amz-server-side-encryption"] == "true", "Should deny when encryption header is missing."

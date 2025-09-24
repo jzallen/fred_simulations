@@ -266,6 +266,20 @@
                                     "s3:x-amz-server-side-encryption": "AES256"
                                 }
                             }
+                        },
+                        {
+                            "Sid": "DenyMissingEncryptionHeader",
+                            "Effect": "Deny",
+                            "Principal": "*",
+                            "Action": "s3:PutObject",
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
+                            },
+                            "Condition": {
+                                "Null": {
+                                    "s3:x-amz-server-side-encryption": "true"
+                                }
+                            }
                         }
                     ]
                 }
