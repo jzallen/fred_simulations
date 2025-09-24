@@ -26,16 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added bucket policy to deny unencrypted uploads
   - Enforced HTTPS-only connections
   - Implemented AES256 server-side encryption by default
+- Infrastructure tests target to Pants build system
+  - Enabled automated testing of CloudFormation templates
+  - Added validation checks for template syntax
 
 ### Changed
 - Reorganized infrastructure BUILD files for better structure
   - Improved Pants build configuration
   - Better separation of test and production targets
-
-### Added
-- Infrastructure tests target to Pants build system
-  - Enabled automated testing of CloudFormation templates
-  - Added validation checks for template syntax
 
 ## [2025-09-22]
 
