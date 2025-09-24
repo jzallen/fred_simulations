@@ -36,6 +36,13 @@
                 "VersioningConfiguration": {
                     "Status": "Enabled"
                 },
+                "OwnershipControls": {
+                    "Rules": [
+                        {
+                            "ObjectOwnership": "BucketOwnerEnforced"
+                        }
+                    ]
+                },
                 "PublicAccessBlockConfiguration": {
                     "BlockPublicAcls": true,
                     "BlockPublicPolicy": true,
@@ -170,8 +177,7 @@
                                 {
                                     "Effect": "Allow",
                                     "Action": [
-                                        "s3:PutObject",
-                                        "s3:PutObjectAcl"
+                                        "s3:PutObject"
                                     ],
                                     "Resource": {
                                         "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"

@@ -427,8 +427,7 @@ class TestS3Template:
         upload_rule = {
             "Effect": "Allow",
             "Action": [
-                "s3:PutObject",
-                "s3:PutObjectAcl"
+                "s3:PutObject"
             ],
             "Resource": {
                 "Fn::Sub": "arn:aws:s3:::${UploadBucket}/*"
@@ -643,6 +642,19 @@ class TestS3Template:
                     att_resource = value["GetAtt"][0] if isinstance(value["GetAtt"], list) else value["GetAtt"]
                     if not att_resource.startswith("AWS::"):
                         assert att_resource in resources, f"Output {output_name} GetAtt references non-existent resource {att_resource}"
+
+    def test_bucket_has_ownership_controls(self, s3_template: Dict[str, Any]):
+        """Test that S3 bucket has ownership controls to disable ACLs."""
+        resources = s3_template.get("Resources", {})
+        bucket = resources["UploadBucket"]
+
+        assert "OwnershipControls" in bucket["Properties"], "S3 bucket should have OwnershipControls configuration."
+
+        ownership_controls = bucket["Properties"]["OwnershipControls"]
+        assert "Rules" in ownership_controls, "OwnershipControls should have Rules."
+
+        rule = ownership_controls["Rules"][0]
+        assert rule["ObjectOwnership"] == "BucketOwnerEnforced", "Bucket should enforce BucketOwnerEnforced to disable ACLs."
 
     def test_bucket_has_encryption_configuration(self, s3_template: Dict[str, Any]):
         """Test that S3 bucket has server-side encryption configured."""
