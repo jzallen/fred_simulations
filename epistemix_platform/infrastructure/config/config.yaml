@@ -5,8 +5,7 @@ region: us-east-1
 # template_bucket_name: fred-simulations-sceptre-templates
 
 # Default tags applied to all stacks
-template_defaults:
-  tags:
-    Project: FREDSimulations
-    ManagedBy: Sceptre
-    CreatedWith: InfrastructureAsCode
+stack_tags:
+  Project: FREDSimulations
+  ManagedBy: Sceptre
+  CreatedWith: InfrastructureAsCode

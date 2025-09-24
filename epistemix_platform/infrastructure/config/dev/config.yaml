@@ -2,10 +2,9 @@ project_code: fred-simulations
 region: us-east-1
 
 # Development environment configuration
-template_defaults:
-  tags:
-    Environment: dev
-    Project: FREDSimulations
-    ManagedBy: Sceptre
-    CreatedWith: InfrastructureAsCode
-    CostCenter: Development
+stack_tags:
+  Environment: dev
+  Project: FREDSimulations
+  ManagedBy: Sceptre
+  CreatedWith: InfrastructureAsCode
+  CostCenter: Development
