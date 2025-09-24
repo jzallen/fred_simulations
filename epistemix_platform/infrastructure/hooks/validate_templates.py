@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Sceptre hook to validate CloudFormation templates using cfn-lint.
 
@@ -6,9 +5,7 @@ This hook runs before stack creation/update to ensure templates are valid.
 """
 
 import subprocess
-import sys
 from pathlib import Path
-from typing import Optional
 
 from sceptre.hooks import Hook
 from sceptre.exceptions import SceptreException

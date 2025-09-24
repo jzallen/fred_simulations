@@ -6,7 +6,6 @@ Sceptre-managed CloudFormation templates and deployed resources.
 """
 
 import json
-import json
 from pathlib import Path
 from typing import Dict, Any, List
 from unittest.mock import Mock

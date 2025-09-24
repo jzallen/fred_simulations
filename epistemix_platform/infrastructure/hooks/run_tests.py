@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Sceptre hook to run infrastructure tests.
 
@@ -6,9 +5,7 @@ This hook can be configured to run tests before or after stack operations.
 """
 
 import subprocess
-import sys
 from pathlib import Path
-from typing import List, Optional
 
 from sceptre.hooks import Hook
 from sceptre.exceptions import SceptreException
