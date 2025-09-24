@@ -26,9 +26,33 @@
             "Default": "http://localhost:3000,https://localhost:3000"
         }
     },
+    "Conditions": {
+        "IsProduction": {
+            "Fn::Equals": [
+                {
+                    "Ref": "Environment"
+                },
+                "production"
+            ]
+        }
+    },
     "Resources": {
         "UploadBucket": {
             "Type": "AWS::S3::Bucket",
+            "DeletionPolicy": {
+                "Fn::If": [
+                    "IsProduction",
+                    "Retain",
+                    "Delete"
+                ]
+            },
+            "UpdateReplacePolicy": {
+                "Fn::If": [
+                    "IsProduction",
+                    "Retain",
+                    "Delete"
+                ]
+            },
             "Properties": {
                 "BucketName": {
                     "Ref": "BucketName"
