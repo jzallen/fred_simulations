@@ -53,10 +53,9 @@ class TestECRTemplate:
         parameters = ecr_template.get("Parameters", {})
         required_params = [
             "RepositoryName",
-            "Environment", 
+            "Environment",
             "EnableVulnerabilityScanning",
-            "EnableCloudWatchLogs",
-            "NotificationTopicArn"
+            "EnableCloudWatchLogs"
         ]
         
         for param in required_params:
@@ -130,16 +129,6 @@ class TestECRTemplate:
         logs_param = ecr_template["Parameters"]["EnableCloudWatchLogs"]
         assert set(logs_param["AllowedValues"]) == {"true", "false"}
 
-    def test_has_notification_topic_conditon_defines_true_as_notification_topic_arn_present(self, ecr_template: Dict[str, Any]):
-        """Test HasNotificationTopic condition logic."""
-        conditions = ecr_template.get("Conditions", {})
-        condition = conditions["HasNotificationTopic"]
-        expected_condition = {
-            "Fn::Not": [
-                {"Fn::Equals": [{"Ref": "NotificationTopicArn"}, ""]}
-            ]
-        }
-        assert condition == expected_condition, "HasNotificationTopic condition does not match expected logic"
 
     def test_enable_cloudwatch_logs_condition_defines_true_as_enable_cloudwatch_logs_is_true(self, ecr_template: Dict[str, Any]):
         """Test EnableCloudWatchLogsCondition logic."""
@@ -158,6 +147,15 @@ class TestECRTemplate:
             "Fn::Equals": [{"Ref": "Environment"}, "production"]
         }
         assert condition == expected_condition, "IsProduction condition does not match expected logic"
+
+    def test_enable_vulnerability_scanning_condition_defines_true_as_enable_vulnerability_scanning_is_true(self, ecr_template: Dict[str, Any]):
+        """Test EnableVulnerabilityScanningCondition logic."""
+        conditions = ecr_template.get("Conditions", {})
+        condition = conditions["EnableVulnerabilityScanningCondition"]
+        expected_condition = {
+            "Fn::Equals": [{"Ref": "EnableVulnerabilityScanning"}, "true"]
+        }
+        assert condition == expected_condition, "EnableVulnerabilityScanningCondition does not match expected logic"
 
     def test_ecr_repository_resource_exists(self, ecr_template: Dict[str, Any]):
         """Test ECR repository resource configuration."""
@@ -182,9 +180,10 @@ class TestECRTemplate:
         scan_config = ecr_repo["Properties"]["ImageScanningConfiguration"]
         expected_config = {
             "ScanOnPush": {
-                "Fn::Equals": [
-                    {"Ref": "EnableVulnerabilityScanning"},
-                    "true"
+                "Fn::If": [
+                    "EnableVulnerabilityScanningCondition",
+                    True,
+                    False
                 ]
             }
         }
@@ -624,3 +623,20 @@ class TestECRTemplate:
             }
         }
         assert dashboard_output == expected_definition, "DashboardUrl output definition does not match expected"
+
+    # Validates removal of SNS notification related resources and parameters
+    # TODO: Remove these tests on next update after confirming no stacks use SNS notifications
+    def test_notification_topic_arn_parameter_not_present(self, ecr_template: Dict[str, Any]):
+        """Test NotificationTopicArn parameter is not present in the template."""
+        parameters = ecr_template.get("Parameters", {})
+        assert "NotificationTopicArn" not in parameters, "NotificationTopicArn parameter should not exist after SNS notification removal"
+
+    def test_has_notification_topic_condition_not_present(self, ecr_template: Dict[str, Any]):
+        """Test HasNotificationTopic condition is not present in the template."""
+        conditions = ecr_template.get("Conditions", {})
+        assert "HasNotificationTopic" not in conditions, "HasNotificationTopic condition should not exist after SNS notification removal"
+
+    def test_ecr_scan_event_rule_not_present(self, ecr_template: Dict[str, Any]):
+        """Test ECRScanEventRule resource is not present in the template."""
+        resources = ecr_template.get("Resources", {})
+        assert "ECRScanEventRule" not in resources, "ECRScanEventRule resource should not exist after SNS notification removal"
