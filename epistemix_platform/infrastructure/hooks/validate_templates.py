@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from sceptre.hooks import Hook
-from sceptre.exceptions import HookFailed
+from sceptre.exceptions import SceptreException
 
 
 class ValidateTemplate(Hook):
@@ -43,14 +43,14 @@ class ValidateTemplate(Hook):
             template_path = template_config
         
         if not template_path:
-            raise HookFailed(f"No template path found for stack {self.stack.name}")
+            raise SceptreException(f"No template path found for stack {self.stack.name}")
         
         # Construct full template path
         template_dir = Path(self.stack.project_path) / "templates"
         full_template_path = template_dir / template_path
         
         if not full_template_path.exists():
-            raise HookFailed(f"Template file not found: {full_template_path}")
+            raise SceptreException(f"Template file not found: {full_template_path}")
         
         # Run cfn-lint validation
         self.logger.info(f"Validating template: {full_template_path}")
@@ -60,16 +60,37 @@ class ValidateTemplate(Hook):
                 ["poetry", "run", "cfn-lint", str(full_template_path)],
                 capture_output=True,
                 text=True,
-                check=False,
+                check=True,  # Automatically raise CalledProcessError on non-zero exit
+                timeout=300,  # 5-minute timeout for validation
                 cwd=Path(self.stack.project_path).parent.parent  # Go up to project root for Poetry
             )
-            
-            if result.returncode != 0:
-                self.logger.error(f"Template validation failed:\n{result.stdout}\n{result.stderr}")
-                raise HookFailed(f"cfn-lint validation failed for {template_path}")
-            
+
+            # Log output (cfn-lint may provide useful info even on success)
+            if result.stdout:
+                self.logger.info(f"cfn-lint output:\n{result.stdout}")
+
+            # Log stderr if present (even on success, for warnings)
+            if result.stderr:
+                self.logger.warning(f"cfn-lint warnings/stderr:\n{result.stderr}")
+
             self.logger.info(f"Template validation successful: {template_path}")
-            
+
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(f"Template validation timed out after {e.timeout} seconds")
+            if e.stdout:
+                self.logger.error(f"Partial stdout:\n{e.stdout}")
+            if e.stderr:
+                self.logger.error(f"Partial stderr:\n{e.stderr}")
+            raise SceptreException(f"cfn-lint validation timed out for {template_path}")
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Template validation failed with return code {e.returncode}")
+            if e.stdout:
+                self.logger.error(f"cfn-lint stdout:\n{e.stdout}")
+            if e.stderr:
+                self.logger.error(f"cfn-lint stderr:\n{e.stderr}")
+            raise SceptreException(f"cfn-lint validation failed for {template_path}")
+
         except Exception as e:
-            self.logger.error(f"Error running cfn-lint: {str(e)}")
-            raise HookFailed(f"Failed to run cfn-lint: {str(e)}")
+            self.logger.error(f"Unexpected error running cfn-lint: {str(e)}")
+            raise SceptreException(f"Failed to run cfn-lint: {str(e)}")

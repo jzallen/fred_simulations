@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from sceptre.hooks import Hook
-from sceptre.exceptions import HookFailed
+from sceptre.exceptions import SceptreException
 
 
 class RunTests(Hook):
@@ -80,21 +80,37 @@ class RunTests(Hook):
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False,
+                check=True,  # Automatically raise CalledProcessError on non-zero exit
+                timeout=300,  # 5-minute timeout for test execution
                 cwd=Path(self.stack.project_path).parent.parent  # Go up to project root for Poetry
             )
-            
+
             # Log output
             if result.stdout:
                 self.logger.info(f"Test output:\n{result.stdout}")
-            
-            if result.returncode != 0:
-                if result.stderr:
-                    self.logger.error(f"Test errors:\n{result.stderr}")
-                raise HookFailed(f"Tests failed with return code {result.returncode}")
-            
+
+            # Log stderr if present (even on success, for warnings)
+            if result.stderr:
+                self.logger.warning(f"Test warnings/stderr:\n{result.stderr}")
+
             self.logger.info("All tests passed successfully")
-            
+
+        except subprocess.TimeoutExpired as e:
+            self.logger.error(f"Tests timed out after {e.timeout} seconds")
+            if e.stdout:
+                self.logger.error(f"Partial stdout:\n{e.stdout}")
+            if e.stderr:
+                self.logger.error(f"Partial stderr:\n{e.stderr}")
+            raise SceptreException(f"Tests timed out after {e.timeout} seconds")
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Tests failed with return code {e.returncode}")
+            if e.stdout:
+                self.logger.error(f"Test stdout:\n{e.stdout}")
+            if e.stderr:
+                self.logger.error(f"Test stderr:\n{e.stderr}")
+            raise SceptreException(f"Tests failed with return code {e.returncode}")
+
         except Exception as e:
-            self.logger.error(f"Error running tests: {str(e)}")
-            raise HookFailed(f"Failed to run tests: {str(e)}")
+            self.logger.error(f"Unexpected error running tests: {str(e)}")
+            raise SceptreException(f"Failed to run tests: {str(e)}")
