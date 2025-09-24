@@ -277,8 +277,8 @@ class TestS3Template:
         assert "ExpirationInDays" in complete_rule
         assert complete_rule["ExpirationInDays"] == 7
 
-    def test_s3__lifecycle_policies__complete_file_lifecycle_non_current_version__has_1_transition_rules(self, s3_template: Dict[str, Any]):
-        """Test that complete file lifecycle non-current version has exactly 2 transition rules."""
+    def test_s3__lifecycle_policies__complete_file_lifecycle_non_current_version__has_1_transition_rule(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle non-current version has exactly 1 transition rule."""
         bucket = s3_template["Resources"]["UploadBucket"]
         lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
 
@@ -289,8 +289,8 @@ class TestS3Template:
         non_current_transitions = complete_rule["NoncurrentVersionTransitions"]
         assert len(non_current_transitions) == 1
 
-    def test_s3__lifecycle_policies__complete_file_lifecycle_moves_non_current_versions_to_glacier_after_2_day(self, s3_template: Dict[str, Any]):
-        """Test that complete file lifecycle moves non-current versions to Glacier after 1 day."""
+    def test_s3__lifecycle_policies__complete_file_lifecycle_moves_non_current_versions_to_glacier_after_2_days(self, s3_template: Dict[str, Any]):
+        """Test that complete file lifecycle moves non-current versions to Glacier after 2 days."""
         bucket = s3_template["Resources"]["UploadBucket"]
         lifecycle_rules = bucket["Properties"]["LifecycleConfiguration"]["Rules"]
 
