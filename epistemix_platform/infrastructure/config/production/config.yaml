@@ -2,11 +2,10 @@ project_code: fred-simulations
 region: us-east-1
 
 # Production environment configuration
-template_defaults:
-  tags:
-    Environment: production
-    Project: FREDSimulations
-    ManagedBy: Sceptre
-    CreatedWith: InfrastructureAsCode
-    CostCenter: Production
-    Backup: true
+stack_tags:
+  Environment: production
+  Project: FREDSimulations
+  ManagedBy: Sceptre
+  CreatedWith: InfrastructureAsCode
+  CostCenter: Production
+  Backup: true
