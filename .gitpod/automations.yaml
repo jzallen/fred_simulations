@@ -19,6 +19,15 @@ tasks:
             cd /workspaces/fred_simulations/fred-framework/src && make
             cd /workspaces/fred_simulations
 
+            # Install AWS CLI v2
+            cd /tmp
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install --update
+            rm -rf awscliv2.zip aws/
+            aws --version
+            cd /workspaces/fred_simulations
+
             # Install Poetry
             curl -sSL https://install.python-poetry.org | python3 -
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
