@@ -1,5 +1,9 @@
 # FRED Simulation Project .gitignore
 
+# VS Code settings (local only - use .gitpod for shared settings)
+.vscode/
+**/.vscode/
+
 # FRED compiled binaries and build artifacts
 fred-framework/src/FRED
 fred-framework/src/FRED_API
