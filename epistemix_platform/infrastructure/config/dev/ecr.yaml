@@ -8,7 +8,6 @@ parameters:
   Environment: dev
   EnableVulnerabilityScanning: "true"
   EnableCloudWatchLogs: "true"
-  NotificationTopicArn: ""
 
 # Stack-specific tags
 tags:

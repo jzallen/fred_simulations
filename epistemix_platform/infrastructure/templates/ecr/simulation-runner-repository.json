@@ -38,26 +38,9 @@
                 "true",
                 "false"
             ]
-        },
-        "NotificationTopicArn": {
-            "Type": "String",
-            "Description": "SNS topic ARN for notifications (optional)",
-            "Default": ""
         }
     },
     "Conditions": {
-        "HasNotificationTopic": {
-            "Fn::Not": [
-                {
-                    "Fn::Equals": [
-                        {
-                            "Ref": "NotificationTopicArn"
-                        },
-                        ""
-                    ]
-                }
-            ]
-        },
         "EnableCloudWatchLogsCondition": {
             "Fn::Equals": [
                 {
@@ -73,6 +56,14 @@
                 },
                 "production"
             ]
+        },
+        "EnableVulnerabilityScanningCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EnableVulnerabilityScanning"
+                },
+                "true"
+            ]
         }
     },
     "Resources": {
@@ -85,9 +76,10 @@
                 "ImageTagMutability": "MUTABLE",
                 "ImageScanningConfiguration": {
                     "ScanOnPush": {
-                        "Fn::Equals": [
-                            {"Ref": "EnableVulnerabilityScanning"},
-                            "true"
+                        "Fn::If": [
+                            "EnableVulnerabilityScanningCondition",
+                            true,
+                            false
                         ]
                     }
                 },
@@ -317,43 +309,6 @@
                     {
                         "Key": "ManagedBy",
                         "Value": "CloudFormation"
-                    }
-                ]
-            }
-        },
-        "ECRScanEventRule": {
-            "Type": "AWS::Events::Rule",
-            "Condition": "HasNotificationTopic",
-            "Properties": {
-                "Description": {
-                    "Fn::Sub": "ECR image scan completion events for ${RepositoryName}"
-                },
-                "EventPattern": {
-                    "source": [
-                        "aws.ecr"
-                    ],
-                    "detail-type": [
-                        "ECR Image Scan"
-                    ],
-                    "detail": {
-                        "repository-name": [
-                            {
-                                "Ref": "RepositoryName"
-                            }
-                        ],
-                        "scan-status": [
-                            "COMPLETE",
-                            "FAILED"
-                        ]
-                    }
-                },
-                "State": "ENABLED",
-                "Targets": [
-                    {
-                        "Arn": {
-                            "Ref": "NotificationTopicArn"
-                        },
-                        "Id": "ECRScanNotification"
                     }
                 ]
             }
