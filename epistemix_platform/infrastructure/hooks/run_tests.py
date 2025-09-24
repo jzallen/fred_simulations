@@ -29,10 +29,13 @@ class RunTests(Hook):
     def run(self) -> None:
         """
         Execute infrastructure tests.
-        
+
         The hook accepts an optional 'test_files' argument to specify
         which test files to run. If not provided, runs all tests.
-        
+
+        Security: This hook validates that all test file paths remain within
+        the designated test directory to prevent path traversal attacks.
+
         Example configuration in stack config:
             hooks:
                 after_create:
@@ -40,9 +43,9 @@ class RunTests(Hook):
                         test_files:
                             - test_ecr_deployment.py
                             - test_s3_deployment.py
-        
+
         Raises:
-            HookFailed: If any tests fail.
+            SceptreException: If any tests fail or if path traversal is attempted.
         """
         # Get test files from hook arguments
         test_files = self.argument.get('test_files', []) if self.argument else []
@@ -60,7 +63,18 @@ class RunTests(Hook):
         if test_files:
             # Run specific test files
             for test_file in test_files:
-                test_path = test_dir / test_file
+                # Resolve the path to prevent path traversal attacks
+                test_path = (test_dir / test_file).resolve()
+
+                # Validate that the resolved path is within the test directory
+                try:
+                    # Check if the path is within test_dir (Python 3.9+)
+                    test_path.relative_to(test_dir.resolve())
+                except ValueError:
+                    # Path is outside test directory - potential security issue
+                    self.logger.error(f"Invalid test file path (outside test directory): {test_file}")
+                    raise SceptreException(f"Test file path traversal attempt detected: {test_file}")
+
                 if test_path.exists():
                     cmd.append(str(test_path))
                 else:
