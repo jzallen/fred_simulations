@@ -4,11 +4,84 @@ This project demonstrates how to work with the FRED (Framework for Reconstructin
 
 ## Dependencies
 
-This project uses Poetry for Python dependency management. The dependencies are locked in `poetry.lock` for reproducible builds.
+This project uses Pants build system with Poetry for Python dependency management. Dependencies are managed through lockfiles for reproducible builds.
 
-### Installing Dependencies
+### Pants Build System
 
-Poetry is automatically installed in the devcontainer. If you're running locally:
+Pants is used to manage Python dependencies, create PEX binaries, and run tests. Key concepts:
+
+#### Generating Lockfiles
+
+Generate or update lockfiles for Python dependencies:
+
+```bash
+# Generate lockfiles for all resolves (Python dependency groups)
+pants generate-lockfiles
+
+# Generate lockfile for a specific resolve
+pants generate-lockfiles --resolve=epistemix_platform_env
+
+# Common resolves in this project:
+# - epistemix_platform_env: Dependencies for the Epistemix API platform
+# - root: Root-level Python dependencies
+```
+
+The lockfiles are stored in `3rdparty/python/` directory (which is gitignored).
+
+#### Creating Virtual Environments from Lockfiles
+
+Export Python dependencies from lockfiles to create virtual environments:
+
+```bash
+# Export all dependencies for a specific resolve
+pants export --resolve=epistemix_platform_env
+
+# The virtual environment will be created in:
+# dist/export/python/virtualenvs/epistemix_platform_env/<python-version>/
+
+# To use this environment in VS Code:
+# 1. Open Command Palette (Ctrl+Shift+P)
+# 2. Type "Python: Select Interpreter"
+# 3. Choose "Enter interpreter path..."
+# 4. Navigate to: dist/export/python/virtualenvs/epistemix_platform_env/<version>/bin/python
+```
+
+#### Building PEX Binaries
+
+Create standalone Python executables:
+
+```bash
+# Build the Epistemix CLI
+pants package epistemix_platform:epistemix-cli
+
+# Build the test runner
+pants package epistemix_platform:epistemix_platform_test_runner
+
+# Build TCR (Test && Commit || Revert) tool
+pants package tcr:tcr-cli
+```
+
+#### Running Tests
+
+Run tests using Pants:
+
+```bash
+# Run all tests in epistemix_platform
+pants test epistemix_platform::
+
+# Run specific test file
+pants test epistemix_platform/tests/test_app_routes.py
+
+# Run tests with coverage
+pants test --test-use-coverage epistemix_platform::
+
+# Run tests in parallel (default)
+pants test epistemix_platform:: --pytest-args="-n auto"
+```
+
+### Poetry (Legacy)
+
+Poetry is still used in some components. If you need to install Poetry dependencies directly:
 
 ```bash
 # Install Poetry

@@ -16,43 +16,25 @@ This pattern is particularly useful when working with AI code assistants like Cl
 - Reduces review burden by creating smaller, focused commits
 - Maintains a working codebase at all times
 
-## Installation and Build
-
-TCR uses Pants as its build system to create a standalone executable. To build and install:
-
-```bash
-# Build the TCR executable using Pants
-pants package tcr:tcr-cli
-
-# The executable will be created in dist/tcr/tcr-cli.pex
-# You can then run it directly:
-./dist/tcr/tcr-cli.pex start
-```
-
-Alternatively, for development, you can use Poetry:
-
-```bash
-poetry install
-poetry run python -m tcr.tcr start
-```
-
 ## Usage
 
-### Start TCR Mode
+### Using the TCR Command
 
-Using the built executable:
-```bash
-./dist/tcr/tcr-cli.pex start
-```
+In Gitpod environments, the TCR CLI is automatically built and installed during container startup. The Gitpod automation:
+- Builds the TCR binary using Pants
+- Installs it to `/usr/local/bin/tcr`
+- Makes it globally accessible via the `tcr` command
 
-Or during development:
+Simply use the `tcr` command:
 ```bash
-poetry run python -m tcr.tcr start
-```
+# Start TCR mode
+tcr start
 
-With a custom configuration:
-```bash
-./dist/tcr/tcr-cli.pex start --config tcr.yaml
+# With a custom configuration
+tcr start --config tcr.yaml
+
+# Show help
+tcr --help
 ```
 
 ### Stop TCR Mode
@@ -154,29 +136,35 @@ The logs include:
 - Python 3.11+
 - Git repository
 - Configured test suite
-- Pants build system (for creating executable)
+- Pants build system (for building the executable)
 
-## Development
+## Building from Source
 
-### Building the Executable
+If you need to manually build TCR or are working outside of Gitpod:
+
+### Using Pants Build System
 
 ```bash
-# Build the PEX executable
+# Build the TCR executable using Pants
 pants package tcr:tcr-cli
 
-# Test the built executable
-./dist/tcr/tcr-cli.pex --help
+# The executable will be created at dist/tcr.tcr-cli/tcr-cli.pex
+# Install it globally (requires sudo)
+sudo cp dist/tcr.tcr-cli/tcr-cli.pex /usr/local/bin/tcr
+sudo chmod +x /usr/local/bin/tcr
+
+# Verify installation
+tcr --help
 ```
 
 ### Running Tests
 
 ```bash
 # Using Pants
-pants test tcr:tests:
-
-# Using Poetry
-poetry run pytest tcr/tests/
+pants test tcr::
 ```
+
+## Development
 
 ### Code Quality
 

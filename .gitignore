@@ -76,6 +76,7 @@ poetry.toml  # Poetry local config (not poetry.lock which should be committed)
 # Pants build system
 .pants.d/
 .pids/
+3rdparty/
 
 # Additional project-specific files
 claude

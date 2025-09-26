@@ -1,5 +1,6 @@
 poetry_requirements(
     name="epistemix-reqs",
+    resolve="epistemix_platform_env",
 )
 
 pex_binary(
@@ -44,4 +45,14 @@ python_tests(
         "./infrastructure:infrastructure-reqs#jsonschema",
         "//:root#pytest",
     ],
+)
+
+pex_binary(
+    name="epistemix_platform_test_runner",
+    # No entry_point specified - this creates a Python interpreter with all dependencies
+    dependencies=[
+        ":src-tests",  # This will transitively include all needed dependencies
+    ],
+    # Use "prefer" to check system paths first, allowing VS Code pytest plugin to be found
+    inherit_path="prefer",
 )

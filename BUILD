@@ -1,5 +1,6 @@
 poetry_requirements(
     name="root",
+    resolve="epistemix_platform_env",
 )
 
 files(

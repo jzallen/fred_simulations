@@ -1,5 +1,6 @@
 poetry_requirements(
     name="tcr-reqs",
+    resolve="tcr_env",
 )
 
 python_tests(

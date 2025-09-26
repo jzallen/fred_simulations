@@ -1,5 +1,6 @@
 poetry_requirements(
     name="infrastructure-reqs",
+    resolve="infrastructure_env",
 )
 
 # Bundle all infrastructure resources and code

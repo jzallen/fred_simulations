@@ -42,7 +42,7 @@ tasks:
             # Install Claude CLI
             npm install @anthropic-ai/claude-code
             echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
-        triggeredBy: ['postEnvironmentStart', 'manual']
+        triggeredBy: ['postDevcontainerStart', 'manual']
 
     setup_epx_config:
         name: Setup EPX Configuration
@@ -56,7 +56,8 @@ tasks:
             }
             EOF
             echo "Generated ~/.epx/config.json"
-        triggeredBy: ['postEnvironmentStart', 'manual']
+        dependsOn: ['setup_fred_environment']
+        triggeredBy: ['postDevcontainerStart', 'manual']
 
     install_github_cli:
         name: Install GitHub CLI
@@ -71,4 +72,144 @@ tasks:
             sudo apt install gh -y
             echo "GitHub CLI installed successfully"
             gh --version
+        dependsOn: ['setup_fred_environment']
+        triggeredBy: ['postDevcontainerStart', 'manual']
+
+    build_tcr:
+        name: Build TCR with Pants
+        description: Build the TCR (Test && Commit || Revert) CLI tool using Pants build system
+        command: |
+            set -e
+            echo "Building TCR with Pants..."
+            cd $PWD
+            # Ensure Pants is in PATH
+            export PATH="$HOME/.local/bin:$PATH"
+            # Build the TCR CLI binary
+            pants package tcr:tcr-cli
+            echo "TCR build complete!"
+            # Copy the binary to /usr/local/bin for global access
+            if [ -f "dist/tcr/tcr-cli.pex" ]; then
+                echo "Installing TCR CLI to /usr/local/bin/tcr..."
+                sudo cp dist/tcr/tcr-cli.pex /usr/local/bin/tcr
+                sudo chmod +x /usr/local/bin/tcr
+                echo "TCR CLI installed successfully!"
+                # Verify installation by showing help
+                echo "Verifying TCR installation..."
+                tcr --help
+            else
+                echo "Error: TCR CLI build output not found at expected location"
+                exit 1
+            fi
+        dependsOn: ['setup_fred_environment']
+        triggeredBy: ['postDevcontainerStart', 'manual']
+
+    build_epistemix_test_runner:
+        name: Build Epistemix Test Runner
+        description: Build the PEX test runner binary for VS Code test discovery
+        command: |
+            set -e
+            echo "Building Epistemix test runner PEX binary..."
+            cd $PWD
+
+            # Ensure Pants is in PATH
+            export PATH="$HOME/.local/bin:$PATH"
+
+            # Build the test runner PEX binary
+            echo "Running: pants package epistemix_platform:epistemix_platform_test_runner"
+            pants package epistemix_platform:epistemix_platform_test_runner
+
+            # Check if the PEX was built successfully
+            if [ ! -f "$PWD/dist/epistemix_platform/epistemix_platform_test_runner.pex" ]; then
+                echo "Error: Test runner PEX not found at expected location"
+                exit 1
+            fi
+
+            # Find VS Code Python extension files dynamically
+            VSCODE_PYTHON_FILES=$(find /home/vscode/.vscode-server/extensions -name "python_files" -type d 2>/dev/null | grep ms-python.python | head -1)
+
+            echo ""
+            echo "================================================================"
+            echo "Test runner build complete!"
+            echo "The PEX binary has been created at:"
+            echo "  $PWD/dist/epistemix_platform/epistemix_platform_test_runner.pex"
+            echo ""
+            echo "This test runner includes:"
+            echo "  - All epistemix_platform dependencies"
+            echo "  - Proper Python path configuration"
+            echo "  - VS Code pytest plugin support (inherit_path='prefer')"
+            echo ""
+            echo "================================================================"
+            echo "OPTIONAL: To use this as your system Python for VS Code testing:"
+            echo ""
+            echo "1. Check current Python symlink:"
+            echo "   readlink /usr/local/bin/python"
+            echo ""
+            echo "2. Update the symlink to use the test runner:"
+            echo "   sudo rm -f /usr/local/bin/python"
+            echo "   sudo ln -s $PWD/dist/epistemix_platform/epistemix_platform_test_runner.pex /usr/local/bin/python"
+            echo ""
+            if [ -n "$VSCODE_PYTHON_FILES" ]; then
+                echo "3. Set PYTHONPATH for VS Code pytest plugin (add to ~/.bashrc):"
+                echo "   export PYTHONPATH=\"$VSCODE_PYTHON_FILES:\$PYTHONPATH\""
+                echo ""
+                echo "4. Reload VS Code window (Ctrl+Shift+P → 'Developer: Reload Window')"
+            else
+                echo "3. Reload VS Code window (Ctrl+Shift+P → 'Developer: Reload Window')"
+            fi
+            echo ""
+            echo "This will enable VS Code to automatically discover and run tests."
+            echo "================================================================"
+            ./dist/epistemix_platform/epistemix_platform_test_runner.pex --version
+        dependsOn: ['setup_fred_environment']
+        triggeredBy: ['postDevcontainerStart', 'manual']
+
+    configure_vscode:
+        name: Configure VS Code Settings
+        description: Setup VS Code with dynamic PYTHONPATH and Python testing configuration
+        command: |
+            set -e
+            echo "Configuring VS Code settings..."
+            cd $PWD
+
+            # Create or update VS Code settings.json
+            mkdir -p $PWD/.vscode
+
+            # Create settings.json with testing configuration
+            cat > $PWD/.vscode/settings.json << EOF
+            {
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true,
+                "python.terminal.activateEnvironment": false,
+                "terminal.integrated.env.linux": {
+                    "PYTHONPATH": "$PWD/epistemix_platform/src:$PWD/tcr/src:$PWD"
+                },
+                "python.testing.pytestArgs": [
+                    "epistemix_platform/tests",
+                    "-vv"
+                ],
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestEnabled": true,
+                "python.testing.cwd": "$PWD"
+            }
+            EOF
+
+            echo "VS Code settings updated successfully!"
+            echo "PYTHONPATH configured with:"
+            echo "  - $PWD (root)"
+            echo "  - $PWD/epistemix_platform/src"
+            echo "  - $PWD/tcr/src"
+            echo ""
+            echo "================================================================"
+            echo "IMPORTANT: Python Test Runner Setup"
+            echo "================================================================"
+            echo "To enable VS Code test discovery:"
+            echo ""
+            echo "1. Run the 'build_epistemix_test_runner' automation task"
+            echo "   This will build the PEX test runner and configure it as the system Python"
+            echo ""
+            echo "2. Reload VS Code window (Ctrl+Shift+P → 'Developer: Reload Window')"
+            echo ""
+            echo "VS Code will then automatically use the test runner for pytest discovery."
+            echo "The test runner includes all epistemix_platform dependencies."
+            echo "================================================================"
         triggeredBy: ['manual']
