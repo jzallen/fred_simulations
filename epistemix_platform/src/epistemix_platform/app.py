@@ -5,6 +5,7 @@ This app follows Clean Architecture principles with proper separation of concern
 
 import logging
 import os
+import sys
 from datetime import datetime
 from functools import wraps
 from typing import List
@@ -29,8 +30,15 @@ from epistemix_platform.repositories.s3_upload_location_repository import (
 app = Flask(__name__)
 CORS(app)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging to stdout for Docker
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Use stdout for all logs
+    ],
+    force=True
+)
 logger = logging.getLogger(__name__)
 
 # Configure database
@@ -38,6 +46,16 @@ app.config["DATABASE_URL"] = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs
 
 
 # Global error handlers
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for container monitoring."""
+    return jsonify({
+        "status": "healthy",
+        "service": "epistemix-api",
+        "timestamp": datetime.utcnow().isoformat()
+    }), 200
+
+
 @app.errorhandler(ValidationError)
 def handle_validation_error(e):
     """Handle Pydantic validation errors globally."""
@@ -58,7 +76,8 @@ def handle_general_exception(e):
     if hasattr(e, "code") and e.code is not None:
         return e
 
-    logger.error(f"Unexpected error: {e}", exc_info=True)
+    # Use logger.exception for better traceback logging
+    logger.exception(f"Unexpected error in request {request.method} {request.path}: {e}")
     return jsonify({"error": "Internal server error"}), 500
 
 
@@ -330,10 +349,6 @@ def get_job_results():
     return jsonify({"urls": urls}), 200
 
 
-@app.route("/health", methods=["GET"])
-def health_check():
-    """Basic health check endpoint."""
-    return jsonify({"status": "healthy", "timestamp": datetime.utcnow().isoformat()}), 200
 
 
 @app.route("/", methods=["GET"])
@@ -351,7 +366,6 @@ def root():
                     "POST /runs": "Submit run requests",
                     "GET /runs": "Get runs by job_id",
                     "GET /jobs/results": "Get URLs for runs by job_id",
-                    "GET /health": "Health check",
                 },
             }
         ),

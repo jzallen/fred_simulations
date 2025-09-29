@@ -20,6 +20,8 @@
 //     "flask-cors<5.0.0,>=4.0.0",
 //     "flask<4.0.0,>=3.0.0",
 //     "freezegun<2.0.0,>=1.5.3",
+//     "gevent<24.0.0,>=23.0.0",
+//     "gunicorn<22.0.0,>=21.2.0",
 //     "jupyter<2.0.0,>=1.0.0",
 //     "matplotlib<4.0.0,>=3.7.0",
 //     "numpy<2.0.0,>=1.24.0",
@@ -1188,13 +1190,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "33c51a0d21cab2b9722d4e56dbb9316f3687155be6b276191790d8da03507552",
-              "url": "https://files.pythonhosted.org/packages/6d/45/d9d3e8eeefbe93be1c50060a9d9a9f366dba66f288bb518a9566a23a8631/fastapi-0.117.1-py3-none-any.whl"
+              "hash": "705137a61e2ef71019d2445b123aa8845bd97273c395b744d5a7dfe559056855",
+              "url": "https://files.pythonhosted.org/packages/54/20/54e2bdaad22ca91a59455251998d43094d5c3d3567c52c7c04774b3f43f2/fastapi-0.118.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "fb2d42082d22b185f904ca0ecad2e195b851030bd6c5e4c032d1c981240c631a",
-              "url": "https://files.pythonhosted.org/packages/7e/7e/d9788300deaf416178f61fb3c2ceb16b7d0dc9f82a08fdb87a5e64ee3cc7/fastapi-0.117.1.tar.gz"
+              "hash": "5e81654d98c4d2f53790a7d32d25a7353b30c81441be7d0958a26b5d761fa1c8",
+              "url": "https://files.pythonhosted.org/packages/28/3c/2b9345a6504e4055eaa490e0b41c10e338ad61d9aeaae41d97807873cdf2/fastapi-0.118.0.tar.gz"
             }
           ],
           "project_name": "fastapi",
@@ -1228,7 +1230,7 @@
             "uvicorn[standard]>=0.12.0; extra == \"standard-no-fastapi-cloud-cli\""
           ],
           "requires_python": ">=3.8",
-          "version": "0.117.1"
+          "version": "0.118.0"
         },
         {
           "artifacts": [
@@ -1466,6 +1468,85 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "ada07076b380918829250201df1d016bdafb3acf352f35e5693b59dceee8dd2e",
+              "url": "https://files.pythonhosted.org/packages/03/1e/c91b54c41e0cdbad3f15cb7490652d22373269be9841ef674f9ee3ad1323/gevent-23.9.1-cp311-cp311-musllinux_1_1_x86_64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "65883ac026731ac112184680d1f0f1e39fa6f4389fd1fc0bf46cc1388e2599f9",
+              "url": "https://files.pythonhosted.org/packages/2f/1c/bc56dda6ae19c7e11cd546cc46de71563d3961e1859ff86e677e0c0992a8/gevent-23.9.1-cp311-cp311-manylinux_2_17_s390x.manylinux2014_s390x.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "45792c45d60f6ce3d19651d7fde0bc13e01b56bb4db60d3f32ab7d9ec467374c",
+              "url": "https://files.pythonhosted.org/packages/64/ca/e1bb6dacc2cad01eee09d6970510ebd008fffbc9d4b4c044d15896b97af1/gevent-23.9.1-cp311-cp311-macosx_11_0_universal2.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "c3e5d2fa532e4d3450595244de8ccf51f5721a05088813c1abd93ad274fe15e7",
+              "url": "https://files.pythonhosted.org/packages/84/b6/7116695e784c074277e872e56acae4bf1ec3c69251c21a18114e961f4508/gevent-23.9.1-cp311-cp311-manylinux_2_28_x86_64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "72c002235390d46f94938a96920d8856d4ffd9ddf62a303a0d7c118894097e34",
+              "url": "https://files.pythonhosted.org/packages/8e/ce/d2b9a376ee010f6d548bf1b6b6eddc372a175e6e100896e607c57e37f7cf/gevent-23.9.1.tar.gz"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "c84d34256c243b0a53d4335ef0bc76c735873986d478c53073861a92566a8d71",
+              "url": "https://files.pythonhosted.org/packages/93/61/9da7ea2682d1bff5af94b5730919d2672b2205fd4de19d155b818cee754e/gevent-23.9.1-cp311-cp311-musllinux_1_1_aarch64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "bf7af500da05363e66f122896012acb6e101a552682f2352b618e541c941a011",
+              "url": "https://files.pythonhosted.org/packages/99/59/db1e0af2d6b1ffa401e13547e034bd23f686bb24fc5ca5630df082899036/gevent-23.9.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "e1ead6863e596a8cc2a03e26a7a0981f84b6b3e956101135ff6d02df4d9a6b07",
+              "url": "https://files.pythonhosted.org/packages/d6/a4/4aadc91970cd2dc2b0f359dd6a5b3184581f14843105d3a10bc9e789ecd8/gevent-23.9.1-cp311-cp311-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "4e24c2af9638d6c989caffc691a039d7c7022a31c0363da367c0d32ceb4a0648",
+              "url": "https://files.pythonhosted.org/packages/fc/c2/2301e8a34bfc032a17f52d0f2fc07fbc77a574312669fd3a10fca5e94383/gevent-23.9.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"
+            }
+          ],
+          "project_name": "gevent",
+          "requires_dists": [
+            "cffi>=1.12.2; platform_python_implementation == \"CPython\" and extra == \"recommended\"",
+            "cffi>=1.12.2; platform_python_implementation == \"CPython\" and extra == \"test\"",
+            "cffi>=1.12.2; platform_python_implementation == \"CPython\" and sys_platform == \"win32\"",
+            "coverage>=5.0; sys_platform != \"win32\" and extra == \"test\"",
+            "dnspython<2.0,>=1.16.0; python_version < \"3.10\" and extra == \"dnspython\"",
+            "dnspython<2.0,>=1.16.0; python_version < \"3.10\" and extra == \"recommended\"",
+            "dnspython<2.0,>=1.16.0; python_version < \"3.10\" and extra == \"test\"",
+            "furo; extra == \"docs\"",
+            "greenlet>=2.0.0; platform_python_implementation == \"CPython\" and python_version < \"3.11\"",
+            "greenlet>=3.0rc3; platform_python_implementation == \"CPython\" and python_version >= \"3.11\"",
+            "idna; python_version < \"3.10\" and extra == \"dnspython\"",
+            "idna; python_version < \"3.10\" and extra == \"recommended\"",
+            "idna; python_version < \"3.10\" and extra == \"test\"",
+            "objgraph; extra == \"test\"",
+            "psutil>=5.7.0; (sys_platform != \"win32\" or platform_python_implementation == \"CPython\") and extra == \"monitor\"",
+            "psutil>=5.7.0; (sys_platform != \"win32\" or platform_python_implementation == \"CPython\") and extra == \"recommended\"",
+            "psutil>=5.7.0; (sys_platform != \"win32\" or platform_python_implementation == \"CPython\") and extra == \"test\"",
+            "repoze.sphinx.autointerface; extra == \"docs\"",
+            "requests; extra == \"test\"",
+            "setuptools; extra == \"test\"",
+            "sphinx; extra == \"docs\"",
+            "sphinxcontrib-programoutput; extra == \"docs\"",
+            "zope.event",
+            "zope.interface",
+            "zope.schema; extra == \"docs\""
+          ],
+          "requires_python": ">=3.8",
+          "version": "23.9.1"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "55e9c5affaa6775e2c6b67659f3a71684de4c549b3dd9afca3bc773533d284fa",
               "url": "https://files.pythonhosted.org/packages/3f/cc/b07000438a29ac5cfb2194bfc128151d52f333cee74dd7dfe3fb733fc16c/greenlet-3.2.4-cp311-cp311-musllinux_1_1_x86_64.whl"
             },
@@ -1520,6 +1601,31 @@
           ],
           "requires_python": ">=3.9",
           "version": "3.2.4"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
+              "hash": "3213aa5e8c24949e792bcacfc176fef362e7aac80b76c56f6b5122bf350722f0",
+              "url": "https://files.pythonhosted.org/packages/0e/2a/c3a878eccb100ccddf45c50b6b8db8cf3301a6adede6e31d48e8531cab13/gunicorn-21.2.0-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "88ec8bff1d634f98e61b9f65bc4bf3cd918a90806c6f5c48bc5603849ec81033",
+              "url": "https://files.pythonhosted.org/packages/06/89/acd9879fa6a5309b4bf16a5a8855f1e58f26d38e0c18ede9b3a70996b021/gunicorn-21.2.0.tar.gz"
+            }
+          ],
+          "project_name": "gunicorn",
+          "requires_dists": [
+            "eventlet>=0.24.1; extra == \"eventlet\"",
+            "gevent>=1.4.0; extra == \"gevent\"",
+            "importlib-metadata; python_version < \"3.8\"",
+            "packaging",
+            "setproctitle; extra == \"setproctitle\"",
+            "tornado>=0.2; extra == \"tornado\""
+          ],
+          "requires_python": ">=3.5",
+          "version": "21.2.0"
         },
         {
           "artifacts": [
@@ -6118,6 +6224,76 @@
           ],
           "requires_python": ">=3.9",
           "version": "1.20.1"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
+              "hash": "6f0922593407cc673e7d8766b492c519f91bdc99f3080fe43dcec0a800d682a3",
+              "url": "https://files.pythonhosted.org/packages/d1/b5/1abb5a8b443314c978617bf46d5d9ad648bdf21058074e817d7efbb257db/zope_event-6.0-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "0ebac894fa7c5f8b7a89141c272133d8c1de6ddc75ea4b1f327f00d1f890df92",
+              "url": "https://files.pythonhosted.org/packages/c2/d8/9c8b0c6bb1db09725395618f68d3b8a08089fca0aed28437500caaf713ee/zope_event-6.0.tar.gz"
+            }
+          ],
+          "project_name": "zope-event",
+          "requires_dists": [
+            "Sphinx; extra == \"docs\"",
+            "setuptools>=75.8.2",
+            "zope.testrunner>=6.4; extra == \"test\""
+          ],
+          "requires_python": ">=3.9",
+          "version": "6.0"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
+              "hash": "b2737c11c34fb9128816759864752d007ec4f987b571c934c30723ed881a7a4f",
+              "url": "https://files.pythonhosted.org/packages/dc/78/8419a2b4e88410520ed4b7f93bbd25a6d4ae66c4e2b131320f2b90f43077/zope_interface-8.0.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "eba5610d042c3704a48222f7f7c6ab5b243ed26f917e2bc69379456b115e02d1",
+              "url": "https://files.pythonhosted.org/packages/88/3a/7fcf02178b8fad0a51e67e32765cd039ae505d054d744d76b8c2bbcba5ba/zope_interface-8.0.1.tar.gz"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "29be8db8b712d94f1c05e24ea230a879271d787205ba1c9a6100d1d81f06c69a",
+              "url": "https://files.pythonhosted.org/packages/b5/e1/9845ac3697f108d9a1af6912170c59a23732090bbfb35955fe77e5544955/zope_interface-8.0.1-cp311-cp311-macosx_11_0_arm64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "d2e7596149cb1acd1d4d41b9f8fe2ffc0e9e29e2e91d026311814181d0d9efaf",
+              "url": "https://files.pythonhosted.org/packages/e2/fd/908b0fd4b1ab6e412dfac9bd2b606f2893ef9ba3dd36d643f5e5b94c57b3/zope_interface-8.0.1-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "4bd01022d2e1bce4a4a4ed9549edb25393c92e607d7daa6deff843f1f68b479d",
+              "url": "https://files.pythonhosted.org/packages/f2/2f/c10c739bcb9b072090c97c2e08533777497190daa19d190d72b4cce9c7cb/zope_interface-8.0.1-cp311-cp311-macosx_10_9_x86_64.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "51ae1b856565b30455b7879fdf0a56a88763b401d3f814fa9f9542d7410dbd7e",
+              "url": "https://files.pythonhosted.org/packages/f2/49/6573bc8b841cfab18e80c8e8259f1abdbbf716140011370de30231be79ad/zope_interface-8.0.1-cp311-cp311-manylinux1_i686.manylinux2014_i686.manylinux_2_17_i686.manylinux_2_5_i686.whl"
+            }
+          ],
+          "project_name": "zope-interface",
+          "requires_dists": [
+            "Sphinx; extra == \"docs\"",
+            "coverage[toml]; extra == \"test\"",
+            "coverage[toml]; extra == \"testing\"",
+            "furo; extra == \"docs\"",
+            "repoze.sphinx.autointerface; extra == \"docs\"",
+            "zope.event; extra == \"test\"",
+            "zope.event; extra == \"testing\"",
+            "zope.testing; extra == \"test\"",
+            "zope.testing; extra == \"testing\""
+          ],
+          "requires_python": ">=3.9",
+          "version": "8.0.1"
         }
       ],
       "platform_tag": null
@@ -6142,6 +6318,8 @@
     "flask-cors<5.0.0,>=4.0.0",
     "flask<4.0.0,>=3.0.0",
     "freezegun<2.0.0,>=1.5.3",
+    "gevent<24.0.0,>=23.0.0",
+    "gunicorn<22.0.0,>=21.2.0",
     "jupyter<2.0.0,>=1.0.0",
     "matplotlib<4.0.0,>=3.7.0",
     "numpy<2.0.0,>=1.24.0",

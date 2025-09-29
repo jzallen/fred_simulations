@@ -56,3 +56,34 @@ pex_binary(
     # Use "prefer" to check system paths first, allowing VS Code pytest plugin to be found
     inherit_path="prefer",
 )
+
+pex_binary(
+    name="app",
+    entry_point="epistemix_platform.wsgi:application",
+    dependencies=[
+        "./src/epistemix_platform:lib",
+        ":epistemix-reqs#flask",
+        ":epistemix-reqs#flask-cors",
+        ":epistemix-reqs#gunicorn",
+        ":epistemix-reqs#gevent",
+        ":epistemix-reqs#werkzeug",
+        ":epistemix-reqs#sqlalchemy",
+        ":epistemix-reqs#pydantic",
+        ":epistemix-reqs#boto3",
+        ":epistemix-reqs#botocore",
+        ":epistemix-reqs#click",
+        ":epistemix-reqs#requests",
+        ":epistemix-reqs#python-dotenv",
+        ":epistemix-reqs#returns",
+    ],
+)
+
+files(
+    name="configs",
+    sources=["configs/**"],
+)
+
+files(
+    name="scripts",
+    sources=["scripts/**"],
+)

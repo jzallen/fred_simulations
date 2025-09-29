@@ -35,6 +35,8 @@ epistemix_platform_env = "epistemix_platform/epistemix_platform_env.lock"
 infrastructure_env = "epistemix_platform/infrastructure/infrastructure_env.lock"
 # TCR tool dependencies
 tcr_env = "tcr/tcr_env.lock"
+# Simulations dependencies (epx, pact-python)
+simulations_env = "simulations/simulations_env.lock"
 
 [python-infer]
 imports = true

@@ -1,6 +1,6 @@
 poetry_requirements(
     name="simulations-reqs",
-    resolve="epistemix_platform_env",
+    resolve="simulations_env",
     module_mapping={
         "pact-python": ["pact", "pact.matchers"],
     }
