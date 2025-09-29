@@ -30,11 +30,11 @@ default_resolve = "epistemix_platform_env"
 
 [python.resolves]
 # Main epistemix platform dependencies
-epistemix_platform_env = "3rdparty/python/epistemix_platform_env.lock"
+epistemix_platform_env = "epistemix_platform/epistemix_platform_env.lock"
 # Infrastructure-specific dependencies (sceptre, cloudformation, etc.)
-infrastructure_env = "3rdparty/python/infrastructure_env.lock"
+infrastructure_env = "epistemix_platform/infrastructure/infrastructure_env.lock"
 # TCR tool dependencies
-tcr_env = "3rdparty/python/tcr_env.lock"
+tcr_env = "tcr/tcr_env.lock"
 
 [python-infer]
 imports = true
