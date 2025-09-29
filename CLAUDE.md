@@ -4,12 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a FRED (Framework for Reconstructing Epidemiological Dynamics) simulation project with three main components:
+This is a FRED (Framework for Reconstructing Epidemiological Dynamics) simulation project using **Pants build system** for Python dependency management and PEX binary creation. The repository contains:
+
 1. **fred-framework/**: Core FRED simulation engine (C++ source)
-2. **epistemix_platform/**: Flask-based mock API server for Epistemix API
+2. **epistemix_platform/**: Flask-based mock API server implementing Epistemix API with clean architecture
+   - Also includes AWS infrastructure templates (CloudFormation/Sceptre) in `infrastructure/` subdirectory
 3. **simulations/**: Agent-based simulation configurations and scripts
+4. **tcr/**: Test && Commit || Revert (TCR) development tool
 
 ## Common Development Commands
+
+### Pants Build System Commands
+```bash
+# Generate/update lockfiles for Python dependencies
+pants generate-lockfiles
+pants generate-lockfiles --resolve=epistemix_platform_env
+
+# Export dependencies to virtual environment
+pants export --resolve=epistemix_platform_env
+
+# Build PEX binaries
+pants package epistemix_platform:epistemix-cli
+pants package tcr:tcr-cli
+pants package epistemix_platform:epistemix_platform_test_runner
+
+# Run tests with Pants
+pants test ::  # Run all tests
+pants test epistemix_platform::  # Run epistemix_platform tests
+pants test tcr::  # Run TCR tests
+```
 
 ### Building and Running FRED Simulations
 ```bash
@@ -35,7 +58,7 @@ make run-and-analyze
 make clean
 ```
 
-### Python Development (using Poetry)
+### Python Development (using Poetry for local development)
 ```bash
 # Install dependencies
 poetry install --no-root
@@ -72,30 +95,64 @@ poetry run python epistemix_platform/run_server.py
 
 ## High-Level Architecture
 
-### FRED Framework Structure
-The FRED framework (`fred-framework/`) is a compiled C++ epidemiological simulation engine:
-- **src/**: Core simulation engine with classes for Person, Place, Epidemic, Transmission models
-- **bin/**: Compiled executables including `FRED`, `fred_run`, `fred_plot`, `fred_stats`
-- **data/**: Location data for US counties, states, demographics
-- **models/**: Pre-built simulation models (influenza, vaccine scenarios, school closure)
+### Build System - Pants
+This project uses **Pants** as the primary build system for Python components:
+- **Dependency Management**: Three separate Python resolves (dependency groups):
+  - `epistemix_platform_env`: Main platform dependencies
+  - `infrastructure_env`: AWS infrastructure/Sceptre dependencies
+  - `tcr_env`: TCR tool dependencies
+- **PEX Binaries**: Creates standalone Python executables for:
+  - `epistemix-cli`: Command-line interface for Epistemix API
+  - `tcr-cli`: Test && Commit || Revert development tool
+  - `epistemix_platform_test_runner`: VS Code test discovery support
+- **Source Roots**: Configured for `epistemix_platform/src`, `tcr/src`, and project root
 
-### Epistemix API Mock Server
-The `epistemix_platform/` directory implements a Flask-based mock server following Pact contract specifications:
-- **Clean Architecture Pattern**: Separates controllers, use cases, repositories, and models
-- **Repository Pattern**: Database abstraction through interfaces (SQLAlchemy and in-memory implementations)
-- **Pact Contract Testing**: All endpoints validated against `pacts/epx-epistemix.json`
-- **Key endpoints**: `/jobs/register`, `/jobs`, `/runs` for job submission and monitoring
-
-### Simulation Workflow
-1. Configuration files (`.fred` format) define simulation parameters
-2. FRED executable processes the configuration with location data
-3. Results are output to `output/` directory as CSV files
-4. Python scripts analyze and visualize the results
+### Component Details
+Each major component has its own README.md with detailed documentation:
+- **fred-framework/**: C++ epidemiological simulation engine
+- **epistemix_platform/**: Flask API server with clean architecture and AWS infrastructure templates
+- **simulations/**: FRED simulation configurations and analysis scripts
+- **tcr/**: Development workflow tool for rapid feedback cycles
 
 ## Key Configuration Files
+- **pants.toml**: Pants build system configuration with Python resolves and source roots
+- **pyproject.toml**: Poetry dependencies for local development
+- **BUILD files**: Pants build targets throughout the repository
 - **simulation_config.fred**: Generated FRED simulation configuration
-- **pyproject.toml**: Poetry dependencies and project metadata
 - **epistemix_platform/pacts/**: Pact contracts defining API specifications
+
+## Git Commit Convention
+
+This project follows the **Conventional Commits** standard (https://www.conventionalcommits.org/). All commits should use the following format:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Commit Types:
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc.)
+- **refactor**: A code change that neither fixes a bug nor adds a feature
+- **perf**: A code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **build**: Changes that affect the build system or external dependencies
+- **ci**: Changes to CI configuration files and scripts
+- **chore**: Other changes that don't modify src or test files
+- **revert**: Reverts a previous commit
+
+### Examples:
+- `feat(api): Add endpoint for batch job submission`
+- `fix: Resolve race condition in simulation runner`
+- `docs: Update README with new installation steps`
+- `refactor(epistemix_platform): Extract repository interface`
+- `test: Add integration tests for job scheduler`
+- `chore: Update dependencies in pyproject.toml`
 
 ## Testing Strategy
 - **Unit tests**: Located in `epistemix_platform/tests/` using pytest with parallel execution (`-n auto`)
@@ -109,6 +166,8 @@ The `epistemix_platform/` directory implements a Flask-based mock server followi
 
 ## Important Notes
 - FRED_HOME environment variable should point to `/workspaces/fred_simulations/fred-framework`
-- The project uses Poetry for Python dependency management - always use `poetry run` or activate the virtual environment
+- The project uses **Pants** for building PEX binaries and managing Python dependencies across multiple resolves
+- Poetry is used for local development and quick iterations; Pants is used for production builds
 - API server runs on port 5000 by default with CORS enabled
 - Simulation output goes to `output/` directory with run-specific subdirectories
+- Pants lockfiles are stored in component-specific locations (e.g., `epistemix_platform/epistemix_platform_env.lock`)
