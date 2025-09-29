@@ -56,8 +56,7 @@ tasks:
             }
             EOF
             echo "Generated ~/.epx/config.json"
-        dependsOn: ['setup_fred_environment']
-        triggeredBy: ['postDevcontainerStart', 'manual']
+        triggeredBy: ['manual']
 
     install_github_cli:
         name: Install GitHub CLI
@@ -72,8 +71,7 @@ tasks:
             sudo apt install gh -y
             echo "GitHub CLI installed successfully"
             gh --version
-        dependsOn: ['setup_fred_environment']
-        triggeredBy: ['postDevcontainerStart', 'manual']
+        triggeredBy: ['manual']
 
     build_tcr:
         name: Build TCR with Pants
@@ -100,8 +98,7 @@ tasks:
                 echo "Error: TCR CLI build output not found at expected location"
                 exit 1
             fi
-        dependsOn: ['setup_fred_environment']
-        triggeredBy: ['postDevcontainerStart', 'manual']
+        triggeredBy: ['manual']
 
     build_epistemix_test_runner:
         name: Build Epistemix Test Runner
@@ -160,8 +157,7 @@ tasks:
             echo "This will enable VS Code to automatically discover and run tests."
             echo "================================================================"
             ./dist/epistemix_platform/epistemix_platform_test_runner.pex --version
-        dependsOn: ['setup_fred_environment']
-        triggeredBy: ['postDevcontainerStart', 'manual']
+        triggeredBy: ['manual']
 
     configure_vscode:
         name: Configure VS Code Settings
