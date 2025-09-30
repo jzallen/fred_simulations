@@ -8,6 +8,7 @@ to serve the Epistemix API in production environments.
 import os
 import sys
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 from epistemix_platform.app import app
 from epistemix_platform.config import config
@@ -62,7 +63,6 @@ app.config['PROPAGATE_EXCEPTIONS'] = True
 
 # Log startup information
 logger.info(f"Epistemix API WSGI application initialized for {config_name} environment")
-logger.info(f"Database URL: {app.config.get('DATABASE_URL', 'Not configured')}")
 
 # WSGI application object - this is what Gunicorn will import
 application = app
