@@ -6,7 +6,6 @@ bind = "unix:/tmp/gunicorn.sock"
 # Worker processes
 workers = 4
 worker_class = "gthread"  # Use gthread instead of gevent to avoid SSL monkey patching issues
-worker_connections = 1000
 threads = 4  # Number of threads per worker
 
 # Timeout settings
