@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "simulations-tests"
+version = "0.1.0"
+description = "Test dependencies for simulations"
+authors = ["Simulations Team"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pytest = "^7.4.4"
+pytest-xdist = "^3.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

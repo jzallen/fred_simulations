@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """
-Script to run the Epistemix API Flask app.
+Script to run the Epistemix API Flask app for LOCAL DEVELOPMENT.
+
+Note: This script uses Flask's built-in development server and is intended
+for local development and testing only. For production deployment, use the
+Docker container which includes Gunicorn and nginx for proper WSGI serving.
+
+To build and run the production Docker container:
+  pants package //:epistemix-api
+  docker run -p 5555:5555 epistemix-api:latest
 """
 
 import os

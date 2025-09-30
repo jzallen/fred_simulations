@@ -76,7 +76,6 @@ poetry.toml  # Poetry local config (not poetry.lock which should be committed)
 # Pants build system
 .pants.d/
 .pids/
-3rdparty/
 
 # Additional project-specific files
 claude
@@ -96,3 +95,6 @@ CLAUDE.md
 # Epistemix CLI config
 ~/.epistemix/cli.env
 cli.env
+
+# Local data directory for database volumes
+/data/

@@ -177,10 +177,10 @@ class TestS3Template:
         """Test that CORS rules allow specific HTTP methods."""
         bucket = s3_template["Resources"]["UploadBucket"]
         cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
-        
+
         allowed_methods = cors_rule["AllowedMethods"]
-        expected_methods = ["GET", "PUT", "POST"]
-        
+        expected_methods = ["GET", "PUT", "POST", "HEAD"]
+
         assert allowed_methods == expected_methods, f"CORS should allow methods {expected_methods}"
 
     def test_s3__cors_rules__uses_parameter_for_origins(self, s3_template: Dict[str, Any]):
