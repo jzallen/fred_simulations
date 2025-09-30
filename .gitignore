@@ -76,10 +76,6 @@ poetry.toml  # Poetry local config (not poetry.lock which should be committed)
 # Pants build system
 .pants.d/
 .pids/
-epistemix_platform/epistemix_platform_env.lock
-epistemix_platform/infrastructure/infrastructure_env.lock
-tcr/tcr_env.lock
-simulations/simulations_env.lock
 
 # Additional project-specific files
 claude

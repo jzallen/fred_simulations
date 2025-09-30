@@ -1,7 +1,3 @@
-poetry_requirements(
-    name="root",
-)
-
 files(
     name="fred-framework",
     sources=["fred-framework/**"],
@@ -79,16 +75,4 @@ docker_image(
         "epistemix_platform:configs",
         "epistemix_platform:scripts",
     ],
-)
-
-python_sources(
-    name="0",
-)
-
-shell_sources(
-    name="1",
-)
-
-python_tests(
-    name="tests0",
 )

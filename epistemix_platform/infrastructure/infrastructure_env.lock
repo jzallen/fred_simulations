@@ -15,6 +15,8 @@
 //     "cfn-lint<2.0.0,>=1.39.1",
 //     "jsonschema<4.0.0,>=3.2",
 //     "moto[all]<5.0.0,>=4.2.0",
+//     "pytest<8.0.0,>=7.4.4",
+//     "pyyaml<7.0.0,>=6.0.3",
 //     "requests<3.0.0,>=2.28.0",
 //     "sceptre<5.0.0,>=4.5.3"
 //   ],
@@ -182,36 +184,36 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "385904de68623e1c341bdc095d94a30006843032c912adeb1e0752a343632ec6",
-              "url": "https://files.pythonhosted.org/packages/90/69/c65566dbdaaea3af0c23f7731ab0f185a38b593fd449d2423374150dbfe0/boto3-1.40.40-py3-none-any.whl"
+              "hash": "02eac942aaa9f3a1c8a11f77e6f971b41c125973888f80f3eb177c2f21ad7a01",
+              "url": "https://files.pythonhosted.org/packages/45/a8/d5c924e3dfce8804ff7119c1e84f423414851a82d30d744e81f4b61ddbff/boto3-1.40.41-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "f384d3a0410d0f1a4d4ae7aa69c41d0549c6ca5a76667dc25fc97d50ad6db740",
-              "url": "https://files.pythonhosted.org/packages/3c/12/1a31b36802d0f33bc6982ab8b7e6437d75ef3c179abe6c53d4d8f7b4248f/boto3-1.40.40.tar.gz"
+              "hash": "2ea2463fc42812f3cab66b53114579b1f4b9a378ee48921d4385511a94307b24",
+              "url": "https://files.pythonhosted.org/packages/52/f7/d652732fd8fc28f427f3e698e488b7422ede535fe4d813c7988642c7734b/boto3-1.40.41.tar.gz"
             }
           ],
           "project_name": "boto3",
           "requires_dists": [
-            "botocore<1.41.0,>=1.40.40",
+            "botocore<1.41.0,>=1.40.41",
             "botocore[crt]<2.0a0,>=1.21.0; extra == \"crt\"",
             "jmespath<2.0.0,>=0.7.1",
             "s3transfer<0.15.0,>=0.14.0"
           ],
           "requires_python": ">=3.9",
-          "version": "1.40.40"
+          "version": "1.40.41"
         },
         {
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "68506142b3cde93145ef3ee0268f2444f2b68ada225a151f714092bbd3d6516a",
-              "url": "https://files.pythonhosted.org/packages/ed/5e/3bbf6d34cbf307c1b9e58e0204ceba2d35bbc0c93b4e3b3cc895aae0a5fd/botocore-1.40.40-py3-none-any.whl"
+              "hash": "8246bf73a2e20647cf1d4dae1e9a7c40f97f38a34a6a1fbfd49aa6b3dce5ffaa",
+              "url": "https://files.pythonhosted.org/packages/c3/d2/1b5bc59c746413d3eca16bd659b8c00cf2d4eeb6274053d1ff3110d13670/botocore-1.40.41-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "78eb121a16a6481ed0f6e1aebe53a4f23aa121f34466846c13a5ca48fa980e31",
-              "url": "https://files.pythonhosted.org/packages/83/5a/43a7fea503ad14fa79819f2b3103a38977fb587a3663d1ac6e958fccf592/botocore-1.40.40.tar.gz"
+              "hash": "320873c6a34bfd64fb9bbc55e8ac38e7904a574cfc634d1f0f66b1490c62b89d",
+              "url": "https://files.pythonhosted.org/packages/c8/55/fa23104e4352f28a457c452a3621b00fe2a7a1e096d04e2f4a9890250448/botocore-1.40.41.tar.gz"
             }
           ],
           "project_name": "botocore",
@@ -223,7 +225,7 @@
             "urllib3<1.27,>=1.25.4; python_version < \"3.10\""
           ],
           "requires_python": ">=3.9",
-          "version": "1.40.40"
+          "version": "1.40.41"
         },
         {
           "artifacts": [
@@ -334,13 +336,13 @@
           "artifacts": [
             {
               "algorithm": "sha256",
-              "hash": "1321dfce4a7e9b1a4c2e2aa7aae5f9055d94c5cd15705568da7ce1a4c26fd7bc",
-              "url": "https://files.pythonhosted.org/packages/f7/78/2172ef1950e6ecaf171968c354065278067f29b76fde8bb6caf72b477a2c/cfn_lint-1.39.1-py3-none-any.whl"
+              "hash": "24e8e1f0a41f0928548b5960c2b0ffa458e08802ddda7dc11b75b613b8903df6",
+              "url": "https://files.pythonhosted.org/packages/0a/1a/742ee754996eba40250a71aef4e08cf07802e24bf090fbc3095abbe83b90/cfn_lint-1.40.0-py3-none-any.whl"
             },
             {
               "algorithm": "sha256",
-              "hash": "ddad90025c72d7e31bb2d449e2444e5cfd3fe6d2bb30caa69f865aa17e60279f",
-              "url": "https://files.pythonhosted.org/packages/1f/a6/f61ded3fe3c6551e3cf1d310e3255e3546807e55ca637168461932dfe625/cfn_lint-1.39.1.tar.gz"
+              "hash": "ec3aedb928f04501c99742d8585251aeac073799823c60f2660f96acb9830987",
+              "url": "https://files.pythonhosted.org/packages/e2/0c/a395e0f9989b778bae6acb1dc8c57f4f2632a8f3c669144ba206e780f095/cfn_lint-1.40.0.tar.gz"
             }
           ],
           "project_name": "cfn-lint",
@@ -362,7 +364,7 @@
             "typing_extensions"
           ],
           "requires_python": ">=3.9",
-          "version": "1.39.1"
+          "version": "1.40.0"
         },
         {
           "artifacts": [
@@ -810,6 +812,24 @@
           ],
           "requires_python": ">=3.6",
           "version": "3.10"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
+              "hash": "9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760",
+              "url": "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7",
+              "url": "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz"
+            }
+          ],
+          "project_name": "iniconfig",
+          "requires_dists": [],
+          "requires_python": ">=3.8",
+          "version": "2.1.0"
         },
         {
           "artifacts": [
@@ -1316,6 +1336,30 @@
           "artifacts": [
             {
               "algorithm": "sha256",
+              "hash": "e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746",
+              "url": "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3",
+              "url": "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz"
+            }
+          ],
+          "project_name": "pluggy",
+          "requires_dists": [
+            "coverage; extra == \"testing\"",
+            "pre-commit; extra == \"dev\"",
+            "pytest-benchmark; extra == \"testing\"",
+            "pytest; extra == \"testing\"",
+            "tox; extra == \"dev\""
+          ],
+          "requires_python": ">=3.9",
+          "version": "1.6.0"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
               "hash": "a7c2bb54c8a123332d8853aaaad37cdb7c4503d0c6ee2309d10ee878b0edaa6b",
               "url": "https://files.pythonhosted.org/packages/50/f4/91196e6dde8f05f7cbb5acedaa1194a5140a894525b402c789f0c316067e/py_partiql_parser-0.4.0-py3-none-any.whl"
             },
@@ -1564,6 +1608,41 @@
           "requires_dists": [],
           "requires_python": ">=3.8",
           "version": "0.20.0"
+        },
+        {
+          "artifacts": [
+            {
+              "algorithm": "sha256",
+              "hash": "b090cdf5ed60bf4c45261be03239c2c1c22df034fbffe691abe93cd80cea01d8",
+              "url": "https://files.pythonhosted.org/packages/51/ff/f6e8b8f39e08547faece4bd80f89d5a8de68a38b2d179cc1c4490ffa3286/pytest-7.4.4-py3-none-any.whl"
+            },
+            {
+              "algorithm": "sha256",
+              "hash": "2cf0005922c6ace4a3e2ec8b4080eb0d9753fdc93107415332f50ce9e7994280",
+              "url": "https://files.pythonhosted.org/packages/80/1f/9d8e98e4133ffb16c90f3b405c43e38d3abb715bb5d7a63a5a684f7e46a3/pytest-7.4.4.tar.gz"
+            }
+          ],
+          "project_name": "pytest",
+          "requires_dists": [
+            "argcomplete; extra == \"testing\"",
+            "attrs>=19.2.0; extra == \"testing\"",
+            "colorama; sys_platform == \"win32\"",
+            "exceptiongroup>=1.0.0rc8; python_version < \"3.11\"",
+            "hypothesis>=3.56; extra == \"testing\"",
+            "importlib-metadata>=0.12; python_version < \"3.8\"",
+            "iniconfig",
+            "mock; extra == \"testing\"",
+            "nose; extra == \"testing\"",
+            "packaging",
+            "pluggy<2.0,>=0.12",
+            "pygments>=2.7.2; extra == \"testing\"",
+            "requests; extra == \"testing\"",
+            "setuptools; extra == \"testing\"",
+            "tomli>=1.0.0; python_version < \"3.11\"",
+            "xmlschema; extra == \"testing\""
+          ],
+          "requires_python": ">=3.7",
+          "version": "7.4.4"
         },
         {
           "artifacts": [
@@ -2217,6 +2296,8 @@
     "cfn-lint<2.0.0,>=1.39.1",
     "jsonschema<4.0.0,>=3.2",
     "moto[all]<5.0.0,>=4.2.0",
+    "pytest<8.0.0,>=7.4.4",
+    "pyyaml<7.0.0,>=6.0.3",
     "requests<3.0.0,>=2.28.0",
     "sceptre<5.0.0,>=4.5.3"
   ],

@@ -6,6 +6,12 @@ poetry_requirements(
     }
 )
 
+poetry_requirements(
+    name="test-reqs",
+    source="tests/pyproject.toml",
+    resolve="simulations_env",
+)
+
 files(
     name="fred-files",
     sources=["**/*.fred"]
@@ -14,16 +20,18 @@ files(
 python_sources(
     name="simulations",
     sources=["**/*.py", "!tests/**/*.py"],
+    resolve="simulations_env",
 )
 
 python_tests(
     name="tests",
     sources=["tests/**/test_*.py"],
+    resolve="simulations_env",
     dependencies=[
         ":simulations",
         ":fred-files",
-        "//:root#pytest",
-        "//:root#pytest-xdist",
+        ":test-reqs#pytest",
+        ":test-reqs#pytest-xdist",
         ":simulations-reqs#pact-python",
         ":simulations-reqs#epx",
     ],
