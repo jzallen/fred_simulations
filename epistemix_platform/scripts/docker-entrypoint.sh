@@ -7,6 +7,7 @@ echo "Port: 5555"
 
 # Function to handle shutdown gracefully
 shutdown() {
+    code="${1:-0}"
     echo "Shutting down services..."
     if [ ! -z "$NGINX_PID" ]; then
         kill -TERM "$NGINX_PID" 2>/dev/null || true
@@ -14,7 +15,7 @@ shutdown() {
     if [ ! -z "$GUNICORN_PID" ]; then
         kill -TERM "$GUNICORN_PID" 2>/dev/null || true
     fi
-    exit 0
+    exit "$code"
 }
 
 # Set up signal handlers
@@ -43,9 +44,14 @@ PEX_MODULE=gunicorn /app/app.pex epistemix_platform.wsgi:application \
     &
 GUNICORN_PID=$!
 
-# Wait for either process to exit
-wait -n $NGINX_PID $GUNICORN_PID
-
-# If we get here, one of the processes has died
-echo "Error: One of the services has stopped unexpectedly"
-shutdown
+# Wait for either process to exit, then propagate its status
+set +e
+wait -n "$NGINX_PID" "$GUNICORN_PID"
+status=$?
+set -e
+if [[ $status -ne 0 ]]; then
+  echo "Error: One of the services has stopped unexpectedly (exit=$status)"
+  shutdown "$status"
+else
+  shutdown 0
+fi
