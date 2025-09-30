@@ -97,4 +97,4 @@ CLAUDE.md
 cli.env
 
 # Local data directory for database volumes
-data/
+/data/
