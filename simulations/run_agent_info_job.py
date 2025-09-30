@@ -8,14 +8,14 @@ import os
 import sys
 from pathlib import Path
 
-# Set up the FRED file path before importing
-script_dir = Path(__file__).parent.resolve()
-os.chdir(script_dir)
-
-from agent_info_demo.agent_info_job import info_job
-
 def main():
     """Main function to execute the agent info job."""
+    # Ensure relative FRED assets resolve regardless of invocation location
+    script_dir = Path(__file__).parent.resolve()
+    os.chdir(script_dir)
+
+    from agent_info_demo.agent_info_job import info_job
+
     # Set the API endpoint to our dockerized API
     os.environ["EPISTEMIX_API_URL"] = "http://localhost:5555"
 
