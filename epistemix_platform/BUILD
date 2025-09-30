@@ -74,7 +74,6 @@ pex_binary(
         ":epistemix-reqs#flask",
         ":epistemix-reqs#flask-cors",
         ":epistemix-reqs#gunicorn",
-        ":epistemix-reqs#gevent",
         ":epistemix-reqs#werkzeug",
         ":epistemix-reqs#sqlalchemy",
         ":epistemix-reqs#pydantic",
