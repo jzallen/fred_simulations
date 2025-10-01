@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: epistemix_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: epistemix_db
+      POSTGRES_USER: epistemix_user
+      POSTGRES_PASSWORD: epistemix_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epistemix_user -d epistemix_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - epistemix_network
+
+  migration-runner:
+    # Use the image built by: pants package //:postgres-db
+    image: migration-runner:latest
+    container_name: epistemix_migration_runner
+    volumes:
+      - ./:/fred_simulations:ro  # Mount entire project as read-only
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - epistemix_network
+
+volumes:
+  postgres_data:
+    name: epistemix_postgres_data
+
+networks:
+  epistemix_network:
+    name: epistemix_network
+    driver: bridge

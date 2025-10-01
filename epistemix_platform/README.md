@@ -186,6 +186,10 @@ poetry run python epistemix_platform/run_server.py
 - `FLASK_DEBUG`: Enable debug mode (default: True)
 - `FLASK_ENV`: Environment mode (development, testing, production)
 - `CORS_ORIGINS`: Allowed CORS origins (default: *)
+- `DATABASE_URL`: PostgreSQL connection string (defaults to SQLite if not set)
+- `DATABASE_POOL_SIZE`: Connection pool size for PostgreSQL (default: 10)
+- `DATABASE_MAX_OVERFLOW`: Maximum overflow connections (default: 20)
+- `DATABASE_POOL_TIMEOUT`: Connection pool timeout in seconds (default: 30)
 
 ## Testing
 
@@ -211,9 +215,103 @@ The Flask app is structured as follows:
 
 This mock server maintains in-memory storage for jobs and runs. In a production environment, you would replace this with a proper database backend. The server implements the exact request/response patterns defined in the Pact contract to ensure compatibility with clients expecting the real Epistemix API.
 
+## Database and Migrations
+
+The platform supports both SQLite (default) and PostgreSQL databases with Alembic for schema migrations.
+
+### PostgreSQL Setup
+
+#### Starting PostgreSQL
+```bash
+# Start PostgreSQL container
+docker-compose up -d postgres
+
+# Check logs
+docker-compose logs -f postgres
+
+# Stop database
+docker-compose down
+```
+
+#### Building Migration Runner
+The migration runner is a Docker image that contains Alembic and can be used for both local development and as a bastion for production RDS migrations.
+
+```bash
+# Build the migration runner image
+pants package //:migration-runner
+```
+
+#### Running Migrations
+```bash
+# Check current migration status
+docker-compose run --rm migration-runner alembic current
+
+# Run all pending migrations
+docker-compose run --rm migration-runner alembic upgrade head
+
+# Create a new migration
+docker-compose run --rm migration-runner alembic revision --autogenerate -m "Description"
+
+# Rollback last migration
+docker-compose run --rm migration-runner alembic downgrade -1
+
+# Reset database (drop and recreate)
+docker-compose down -v
+docker-compose up -d postgres
+docker-compose run --rm migration-runner alembic upgrade head
+```
+
+#### Running SQL Queries
+```bash
+# Single query
+docker-compose run --rm migration-runner psql "postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db" -c "SELECT * FROM jobs;"
+
+# Interactive session
+docker-compose run --rm migration-runner psql "postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db"
+
+# Direct access to postgres container
+docker exec -it epistemix_postgres psql -U epistemix_user -d epistemix_db
+```
+
+#### Production RDS Migrations
+The migration runner can act as a bastion for running migrations against production RDS:
+
+```bash
+# Set your production RDS connection string
+export DATABASE_URL="postgresql://prod_user:password@your-rds-endpoint.amazonaws.com:5432/prod_db"
+
+# Run migrations
+docker-compose run --rm -e DATABASE_URL migration-runner alembic upgrade head
+
+# Check status
+docker-compose run --rm -e DATABASE_URL migration-runner alembic current
+```
+
+### Migration Structure
+```
+epistemix_platform/
+├── alembic.ini                 # Alembic configuration
+├── migrations/
+│   ├── env.py                  # Alembic environment config
+│   ├── script.py.mako          # Migration template
+│   └── versions/               # Migration files
+│       └── 001_initial_migration.py
+└── src/epistemix_platform/
+    └── repositories/
+        └── database.py         # SQLAlchemy models & manager
+```
+
+### Database Configuration
+- **Local Development**: Uses dockerized PostgreSQL or SQLite fallback
+- **Production**: Connects to AWS RDS via DATABASE_URL
+- **Backward Compatibility**: Falls back to SQLite when DATABASE_URL is not set
+- **Connection Pooling**: Configurable pool settings for PostgreSQL
+
 ## Notes
 
 - All endpoints validate required headers as specified in the Pact contract
 - Job and run IDs are auto-incremented starting from the values in the Pact contract
 - The server returns mock data that matches the structure expected by clients
 - CORS is enabled to support browser-based clients
+- Database migrations are managed via Alembic with support for both SQLite and PostgreSQL
+- The migration runner Docker image is built using Pants and can be used as a production bastion

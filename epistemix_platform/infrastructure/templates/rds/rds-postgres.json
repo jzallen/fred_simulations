@@ -1,0 +1,151 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Simple RDS PostgreSQL instance for Epistemix Platform POC",
+
+  "Parameters": {
+    "DBName": {
+      "Type": "String",
+      "Default": "epistemixdb",
+      "Description": "Database name",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*"
+    },
+    "DBUsername": {
+      "Type": "String",
+      "Default": "epistemixuser",
+      "Description": "Database master username",
+      "MinLength": "1",
+      "MaxLength": "63",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*"
+    },
+    "DBPassword": {
+      "Type": "String",
+      "Description": "Database master password",
+      "MinLength": "8",
+      "MaxLength": "128",
+      "NoEcho": true
+    },
+    "DBInstanceClass": {
+      "Type": "String",
+      "Default": "db.t3.micro",
+      "Description": "Database instance type",
+      "AllowedValues": [
+        "db.t3.micro",
+        "db.t3.small",
+        "db.t3.medium"
+      ]
+    },
+    "AllocatedStorage": {
+      "Type": "Number",
+      "Default": "20",
+      "Description": "Storage size in GB",
+      "MinValue": "20",
+      "MaxValue": "100"
+    },
+    "AllowedIP": {
+      "Type": "String",
+      "Default": "0.0.0.0/0",
+      "Description": "IP address range allowed to connect to the database",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    }
+  },
+
+  "Resources": {
+    "DBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for RDS PostgreSQL instance",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 5432,
+            "ToPort": 5432,
+            "CidrIp": { "Ref": "AllowedIP" }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "epistemix-rds-sg"
+          },
+          {
+            "Key": "Project",
+            "Value": "epistemix-platform"
+          }
+        ]
+      }
+    },
+
+    "DBInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBInstanceIdentifier": {
+          "Fn::Sub": "epistemix-postgres-${AWS::StackName}"
+        },
+        "DBName": { "Ref": "DBName" },
+        "AllocatedStorage": { "Ref": "AllocatedStorage" },
+        "DBInstanceClass": { "Ref": "DBInstanceClass" },
+        "Engine": "postgres",
+        "EngineVersion": "15",
+        "MasterUsername": { "Ref": "DBUsername" },
+        "MasterUserPassword": { "Ref": "DBPassword" },
+        "VPCSecurityGroups": [
+          { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] }
+        ],
+        "PubliclyAccessible": true,
+        "BackupRetentionPeriod": 7,
+        "PreferredBackupWindow": "03:00-04:00",
+        "PreferredMaintenanceWindow": "sun:04:00-sun:05:00",
+        "StorageType": "gp2",
+        "StorageEncrypted": false,
+        "DeletionProtection": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "epistemix-postgres"
+          },
+          {
+            "Key": "Project",
+            "Value": "epistemix-platform"
+          },
+          {
+            "Key": "Environment",
+            "Value": "dev"
+          }
+        ]
+      },
+      "DeletionPolicy": "Snapshot"
+    }
+  },
+
+  "Outputs": {
+    "DBEndpoint": {
+      "Description": "Database endpoint",
+      "Value": { "Fn::GetAtt": ["DBInstance", "Endpoint.Address"] },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-endpoint" }
+      }
+    },
+    "DBPort": {
+      "Description": "Database port",
+      "Value": { "Fn::GetAtt": ["DBInstance", "Endpoint.Port"] },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-port" }
+      }
+    },
+    "DBName": {
+      "Description": "Database name",
+      "Value": { "Ref": "DBName" },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-database" }
+      }
+    },
+    "ConnectionString": {
+      "Description": "PostgreSQL connection string format (replace PASSWORD)",
+      "Value": {
+        "Fn::Sub": "postgresql://${DBUsername}:PASSWORD@${DBInstance.Endpoint.Address}:${DBInstance.Endpoint.Port}/${DBName}"
+      }
+    }
+  }
+}

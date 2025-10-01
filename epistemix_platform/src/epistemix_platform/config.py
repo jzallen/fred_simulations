@@ -22,6 +22,23 @@ class Config:
     # Logging
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
+    # Database settings
+    @staticmethod
+    def get_database_url():
+        """Get database URL from environment with fallback to SQLite."""
+        database_url = os.environ.get("DATABASE_URL")
+
+        if database_url:
+            return database_url
+
+        # Default to SQLite for backward compatibility
+        return "sqlite:///epistemix_jobs.db"
+
+    # Connection pool settings for PostgreSQL
+    DATABASE_POOL_SIZE = int(os.environ.get("DATABASE_POOL_SIZE", "10"))
+    DATABASE_MAX_OVERFLOW = int(os.environ.get("DATABASE_MAX_OVERFLOW", "20"))
+    DATABASE_POOL_TIMEOUT = int(os.environ.get("DATABASE_POOL_TIMEOUT", "30"))
+
     @staticmethod
     def init_app(app):
         """Initialize app with this configuration."""
