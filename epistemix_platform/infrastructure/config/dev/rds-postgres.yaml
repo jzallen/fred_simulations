@@ -1,0 +1,15 @@
+template:
+  path: rds/rds-postgres.json
+
+parameters:
+  DBName: epistemixdb
+  DBUsername: epistemixuser
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  DBInstanceClass: db.t3.micro
+  AllocatedStorage: 20
+  AllowedIP: 0.0.0.0/0  # Open for POC - restrict in production
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: dev
+  ManagedBy: sceptre
