@@ -20,7 +20,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Create jobs table
-    op.create_table('jobs',
+    op.create_table(
+        'jobs',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('tags', sa.JSON(), nullable=False),
@@ -30,14 +31,15 @@ def upgrade() -> None:
         sa.Column('input_location', sa.String(), nullable=True),
         sa.Column('config_location', sa.String(), nullable=True),
         sa.Column('job_metadata', sa.JSON(), nullable=False),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index(op.f('ix_jobs_created_at'), 'jobs', ['created_at'], unique=False)
     op.create_index(op.f('ix_jobs_status'), 'jobs', ['status'], unique=False)
     op.create_index(op.f('ix_jobs_user_id'), 'jobs', ['user_id'], unique=False)
 
     # Create runs table
-    op.create_table('runs',
+    op.create_table(
+        'runs',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('job_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
@@ -50,7 +52,7 @@ def upgrade() -> None:
         sa.Column('user_deleted', sa.Integer(), nullable=False),
         sa.Column('epx_client_version', sa.String(), nullable=False),
         sa.Column('url', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id'),
     )
     op.create_index(op.f('ix_runs_created_at'), 'runs', ['created_at'], unique=False)
     op.create_index(op.f('ix_runs_job_id'), 'runs', ['job_id'], unique=False)
