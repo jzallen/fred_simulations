@@ -42,7 +42,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configure database
-app.config["DATABASE_URL"] = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
+database_url = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
+# Handle postgres:// -> postgresql:// conversion for compatibility
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+app.config["DATABASE_URL"] = database_url
 
 
 # Global error handlers

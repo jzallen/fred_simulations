@@ -50,12 +50,17 @@ logger = logging.getLogger(__name__)
 
 def get_default_config() -> Dict[str, str]:
     """Get default configuration from environment variables."""
-    return {
+    config = {
         "env": os.getenv("EPISTEMIX_ENV", "PRODUCTION"),
         "bucket": os.getenv("EPISTEMIX_S3_BUCKET"),  # None if not set
         "region": os.getenv("AWS_REGION"),  # None if not set
-        "database_url": os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db"),
     }
+    # Handle postgres:// -> postgresql:// conversion for compatibility
+    database_url = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    config["database_url"] = database_url
+    return config
 
 
 def get_database_session():

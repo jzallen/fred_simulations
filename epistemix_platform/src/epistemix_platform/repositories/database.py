@@ -146,6 +146,10 @@ def create_engine_from_config(config: "Config" = None, database_url: str = None)
     if database_url is None:
         database_url = config.get_database_url()
 
+    # Normalize legacy postgres scheme for SQLAlchemy compatibility
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
     # Choose appropriate engine based on database type
     if database_url.startswith("postgresql"):
         return create_postgresql_engine(database_url, config)

@@ -29,6 +29,10 @@ class Config:
         database_url = os.environ.get("DATABASE_URL")
 
         if database_url:
+            # Handle postgres:// -> postgresql:// conversion for compatibility
+            # (common for RDS/Heroku secrets, but SQLAlchemy requires postgresql://)
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
             return database_url
 
         # Default to SQLite for backward compatibility
