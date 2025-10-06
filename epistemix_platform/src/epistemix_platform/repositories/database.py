@@ -6,7 +6,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String, create_engine
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -77,7 +77,7 @@ class RunRecord(Base):
     __tablename__ = "runs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    job_id = Column(Integer, nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     user_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
