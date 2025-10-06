@@ -133,7 +133,7 @@
         "PreferredBackupWindow": "03:00-04:00",
         "PreferredMaintenanceWindow": "sun:04:00-sun:05:00",
         "StorageType": "gp2",
-        "StorageEncrypted": false,
+        "StorageEncrypted": true,
         "DeletionProtection": false,
         "Tags": [
           {
