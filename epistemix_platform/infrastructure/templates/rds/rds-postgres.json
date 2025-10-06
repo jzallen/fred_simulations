@@ -43,11 +43,28 @@
       "MinValue": "20",
       "MaxValue": "100"
     },
-    "AllowedIP": {
+    "DeveloperIP": {
       "Type": "String",
-      "Default": "0.0.0.0/0",
-      "Description": "IP address range allowed to connect to the database",
-      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+      "Default": "",
+      "Description": "Developer IP address for direct database access (optional, e.g., 1.2.3.4/32)",
+      "AllowedPattern": "^$|^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})$"
+    },
+    "EnableVPCAccess": {
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": ["true", "false"],
+      "Description": "Allow access from default VPC CIDR (172.31.0.0/16)"
+    }
+  },
+
+  "Conditions": {
+    "HasDeveloperIP": {
+      "Fn::Not": [
+        { "Fn::Equals": [{ "Ref": "DeveloperIP" }, ""] }
+      ]
+    },
+    "AllowVPCAccess": {
+      "Fn::Equals": [{ "Ref": "EnableVPCAccess" }, "true"]
     }
   },
 
@@ -55,15 +72,7 @@
     "DBSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "Security group for RDS PostgreSQL instance",
-        "SecurityGroupIngress": [
-          {
-            "IpProtocol": "tcp",
-            "FromPort": 5432,
-            "ToPort": 5432,
-            "CidrIp": { "Ref": "AllowedIP" }
-          }
-        ],
+        "GroupDescription": "Security group for RDS PostgreSQL instance with controlled access",
         "Tags": [
           {
             "Key": "Name",
@@ -74,6 +83,32 @@
             "Value": "epistemix-platform"
           }
         ]
+      }
+    },
+
+    "DBSecurityGroupIngressVPC": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Condition": "AllowVPCAccess",
+      "Properties": {
+        "GroupId": { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] },
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "CidrIp": "172.31.0.0/16",
+        "Description": "Allow PostgreSQL access from default VPC (for K8s and internal resources)"
+      }
+    },
+
+    "DBSecurityGroupIngressDeveloper": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Condition": "HasDeveloperIP",
+      "Properties": {
+        "GroupId": { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] },
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "CidrIp": { "Ref": "DeveloperIP" },
+        "Description": "Allow PostgreSQL access from developer IP"
       }
     },
 
