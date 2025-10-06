@@ -17,23 +17,15 @@ if [[ "$DATABASE_URL" == postgres://* ]]; then
     export DATABASE_URL="${DATABASE_URL/postgres:/postgresql:}"
 fi
 
-echo "Database URL: ${DATABASE_URL%%@*}@***" # Hide credentials in output
+echo "Database URL configured (credentials hidden)"
 
 # Wait for database to be available (with timeout)
 echo "Waiting for database to be available..."
 
-# Parse DATABASE_URL for connection details
-# Format: postgresql://user:password@host:port/database
-DB_URL="$DATABASE_URL"
-DB_USER=$(echo $DB_URL | sed -n 's#.*://\([^:]*\):.*#\1#p')
-DB_PASS=$(echo $DB_URL | sed -n 's#.*://[^:]*:\([^@]*\)@.*#\1#p')
-DB_HOST=$(echo $DB_URL | sed -n 's#.*@\([^:]*\):.*#\1#p')
-DB_PORT=$(echo $DB_URL | sed -n 's#.*:\([0-9]*\)/.*#\1#p')
-DB_NAME=$(echo $DB_URL | sed -n 's#.*/\([^?]*\).*#\1#p')
-
+# Use psql directly with the full connection string
 timeout=30
 counter=0
-until PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c '\q' 2>/dev/null || [ $counter -eq $timeout ]; do
+until psql "$DATABASE_URL" -c '\q' 2>/dev/null || [ $counter -eq $timeout ]; do
     echo "Waiting for database... ($counter/$timeout)"
     sleep 1
     counter=$((counter+1))
@@ -41,7 +33,6 @@ done
 
 if [ $counter -eq $timeout ]; then
     echo "ERROR: Database connection timeout after ${timeout} seconds"
-    echo "Connection details: host=$DB_HOST port=$DB_PORT user=$DB_USER database=$DB_NAME"
     exit 1
 fi
 
