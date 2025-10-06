@@ -1,0 +1,17 @@
+template:
+  path: rds/rds-postgres.json
+
+parameters:
+  DBName: epistemixdb
+  DBUsername: epistemixuser
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  DBInstanceClass: db.t3.micro
+  AllocatedStorage: 20
+  # Security settings - update DeveloperIP with your actual IP (run: curl ifconfig.me)
+  DeveloperIP: ""  # Set to your IP/32 for direct access (e.g., "203.0.113.45/32")
+  EnableVPCAccess: "true"  # Allows access from default VPC (172.31.0.0/16) for K8s
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: dev
+  ManagedBy: sceptre

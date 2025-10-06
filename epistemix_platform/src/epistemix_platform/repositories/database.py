@@ -4,9 +4,14 @@ SQLAlchemy database models and configuration for the Epistemix API.
 
 import enum
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String, create_engine
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+if TYPE_CHECKING:
+    from epistemix_platform.config import Config
 
 Base = declarative_base()
 
@@ -72,7 +77,7 @@ class RunRecord(Base):
     __tablename__ = "runs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    job_id = Column(Integer, nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     user_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -85,17 +90,85 @@ class RunRecord(Base):
     url = Column(String, nullable=True)  # Store the presigned URL for this run
 
 
+def create_postgresql_engine(database_url: str, config: "Config") -> Engine:
+    """
+    Create a PostgreSQL engine with connection pooling.
+
+    Args:
+        database_url: PostgreSQL connection string
+        config: Configuration object with pool settings
+
+    Returns:
+        Configured SQLAlchemy engine for PostgreSQL
+    """
+    return create_engine(
+        database_url,
+        echo=False,
+        pool_size=config.DATABASE_POOL_SIZE,
+        max_overflow=config.DATABASE_MAX_OVERFLOW,
+        pool_timeout=config.DATABASE_POOL_TIMEOUT,
+        pool_pre_ping=True,  # Verify connections before using
+    )
+
+
+def create_sqlite_engine(database_url: str) -> Engine:
+    """
+    Create a SQLite engine with appropriate settings for multi-threaded apps.
+
+    Args:
+        database_url: SQLite connection string
+
+    Returns:
+        Configured SQLAlchemy engine for SQLite
+    """
+    return create_engine(
+        database_url,
+        echo=False,
+        connect_args={"check_same_thread": False}  # Required for SQLite in multi-threaded apps
+    )
+
+
+def create_engine_from_config(config: "Config" = None, database_url: str = None) -> Engine:
+    """
+    Factory function to create the appropriate database engine based on configuration.
+
+    Args:
+        config: Configuration object (if None, will import and use default Config)
+        database_url: Optional database URL to override config
+
+    Returns:
+        Configured SQLAlchemy engine based on the database URL
+    """
+    if config is None:
+        from epistemix_platform.config import Config
+        config = Config
+
+    if database_url is None:
+        database_url = config.get_database_url()
+
+    # Normalize legacy postgres scheme for SQLAlchemy compatibility
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    # Choose appropriate engine based on database type
+    if database_url.startswith("postgresql"):
+        return create_postgresql_engine(database_url, config)
+    else:
+        return create_sqlite_engine(database_url)
+
+
 class DatabaseManager:
     """Manages database connections and sessions."""
 
-    def __init__(self, database_url: str = "sqlite:///epistemix_jobs.db"):
+    def __init__(self, database_url: str = None, config: "Config" = None):
         """
-        Initialize the database manager.
+        Initialize the database manager using the engine factory.
 
         Args:
-            database_url: SQLAlchemy database URL
+            database_url: Optional SQLAlchemy database URL to override config
+            config: Optional configuration object for database settings
         """
-        self.engine = create_engine(database_url, echo=False)
+        self.engine = create_engine_from_config(config, database_url)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     def create_tables(self):
@@ -111,9 +184,18 @@ class DatabaseManager:
         Base.metadata.drop_all(bind=self.engine)
 
 
-def get_database_manager(database_url: str = "sqlite:///epistemix_jobs.db") -> DatabaseManager:
-    """Get or create a database manager instance for the given URL."""
-    return DatabaseManager(database_url)
+def get_database_manager(database_url: str = None, config: "Config" = None) -> DatabaseManager:
+    """
+    Get or create a database manager instance.
+
+    Args:
+        database_url: Optional SQLAlchemy database URL
+        config: Optional configuration object
+
+    Returns:
+        DatabaseManager instance
+    """
+    return DatabaseManager(database_url, config)
 
 
 def get_db_session():
