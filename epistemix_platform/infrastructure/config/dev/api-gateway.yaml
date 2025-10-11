@@ -1,0 +1,30 @@
+template:
+  type: file
+  path: api-gateway/epistemix-api-gateway.json
+
+stack_name: epistemix-api-gateway-dev
+
+# Dependencies - must be deployed after Lambda function (without permission)
+# Deploy order: 1) Lambda (without API GW ID) 2) API Gateway 3) Update Lambda with API GW ID
+dependencies:
+  - dev/epistemix-api-lambda.yaml
+
+# Stack parameters for development environment
+parameters:
+  Environment: dev
+  ServiceName: epistemix-api
+  # Lambda function ARN from Lambda stack output
+  LambdaFunctionArn: !stack_output epistemix-api-lambda-dev::FunctionArn
+  # CORS origins for development
+  AllowedOrigins: "http://localhost:3000,https://localhost:3000,http://localhost:5000,https://localhost:5000"
+  # Stage configuration
+  StageName: v1
+  ThrottlingBurstLimit: 100
+  ThrottlingRateLimit: 50
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Development
+  Component: APIGateway
+  Service: EpistemixAPI

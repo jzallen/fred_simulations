@@ -1,0 +1,504 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Complete API Gateway infrastructure for Epistemix API including REST API, deployment, and stage configuration",
+
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Description": "Environment name for tagging and configuration",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "production"]
+    },
+    "ServiceName": {
+      "Type": "String",
+      "Description": "Name of the service",
+      "Default": "epistemix-api",
+      "MinLength": 1,
+      "MaxLength": 64
+    },
+    "LambdaFunctionArn": {
+      "Type": "String",
+      "Description": "ARN of the Lambda function to integrate with API Gateway",
+      "MinLength": 1
+    },
+    "AllowedOrigins": {
+      "Type": "String",
+      "Description": "Comma-separated list of origins allowed for CORS requests",
+      "Default": "http://localhost:3000,https://localhost:3000,http://localhost:5000,https://localhost:5000"
+    },
+    "StageName": {
+      "Type": "String",
+      "Description": "Name of the API Gateway stage",
+      "Default": "v1",
+      "MinLength": 1,
+      "MaxLength": 128
+    },
+    "ThrottlingBurstLimit": {
+      "Type": "Number",
+      "Description": "API Gateway throttling burst limit",
+      "Default": 1000,
+      "MinValue": 0
+    },
+    "ThrottlingRateLimit": {
+      "Type": "Number",
+      "Description": "API Gateway throttling rate limit (requests per second)",
+      "Default": 500,
+      "MinValue": 0
+    }
+  },
+
+  "Conditions": {
+    "IsProduction": {
+      "Fn::Equals": [{"Ref": "Environment"}, "production"]
+    }
+  },
+
+  "Resources": {
+    "ApiGatewayRestApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${ServiceName}-${Environment}"
+        },
+        "Description": {
+          "Fn::Sub": "Epistemix API Gateway for ${Environment} environment"
+        },
+        "EndpointConfiguration": {
+          "Types": ["REGIONAL"]
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "ApiGatewayHealthResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+        "PathPart": "health"
+      }
+    },
+
+    "ApiGatewayHealthMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayHealthResource"},
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayJobsResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+        "PathPart": "jobs"
+      }
+    },
+
+    "ApiGatewayJobsRegisterResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Ref": "ApiGatewayJobsResource"},
+        "PathPart": "register"
+      }
+    },
+
+    "ApiGatewayJobsRegisterMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayJobsRegisterResource"},
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayJobsPostMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayJobsResource"},
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayJobsResultsResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Ref": "ApiGatewayJobsResource"},
+        "PathPart": "results"
+      }
+    },
+
+    "ApiGatewayJobsResultsMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayJobsResultsResource"},
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "RequestParameters": {
+          "method.request.querystring.job_id": true
+        },
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayRunsResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+        "PathPart": "runs"
+      }
+    },
+
+    "ApiGatewayRunsPostMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayRunsResource"},
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayRunsGetMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayRunsResource"},
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "RequestParameters": {
+          "method.request.querystring.job_id": true
+        },
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayProxyResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+        "PathPart": "{proxy+}"
+      }
+    },
+
+    "ApiGatewayProxyMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Ref": "ApiGatewayProxyResource"},
+        "HttpMethod": "ANY",
+        "AuthorizationType": "NONE",
+        "RequestParameters": {
+          "method.request.path.proxy": true
+        },
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayRootMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "ResourceId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+        "HttpMethod": "ANY",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations"
+          }
+        }
+      }
+    },
+
+    "ApiGatewayAccount": {
+      "Type": "AWS::ApiGateway::Account",
+      "Properties": {
+        "CloudWatchRoleArn": {"Fn::GetAtt": ["ApiGatewayCloudWatchRole", "Arn"]}
+      }
+    },
+
+    "ApiGatewayCloudWatchRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "apigateway.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          }
+        ]
+      }
+    },
+
+    "ApiGatewayDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": [
+        "ApiGatewayHealthMethod",
+        "ApiGatewayJobsRegisterMethod",
+        "ApiGatewayJobsPostMethod",
+        "ApiGatewayJobsResultsMethod",
+        "ApiGatewayRunsPostMethod",
+        "ApiGatewayRunsGetMethod",
+        "ApiGatewayProxyMethod",
+        "ApiGatewayRootMethod"
+      ],
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "Description": {
+          "Fn::Sub": "Deployment for ${Environment} environment at ${AWS::StackName}"
+        }
+      }
+    },
+
+    "ApiGatewayAccessLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/apigateway/${ServiceName}-${Environment}"
+        },
+        "RetentionInDays": {
+          "Fn::If": ["IsProduction", 30, 7]
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          }
+        ]
+      }
+    },
+
+    "ApiGatewayStage": {
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "RestApiId": {"Ref": "ApiGatewayRestApi"},
+        "DeploymentId": {"Ref": "ApiGatewayDeployment"},
+        "StageName": {"Ref": "StageName"},
+        "Description": {
+          "Fn::Sub": "${Environment} environment stage"
+        },
+        "Variables": {
+          "environment": {"Ref": "Environment"},
+          "stackName": {"Ref": "AWS::StackName"}
+        },
+        "TracingEnabled": true,
+        "MethodSettings": [
+          {
+            "ResourcePath": "/*",
+            "HttpMethod": "*",
+            "LoggingLevel": {
+              "Fn::If": ["IsProduction", "ERROR", "INFO"]
+            },
+            "DataTraceEnabled": {
+              "Fn::If": ["IsProduction", false, true]
+            },
+            "MetricsEnabled": true,
+            "ThrottlingBurstLimit": {"Ref": "ThrottlingBurstLimit"},
+            "ThrottlingRateLimit": {"Ref": "ThrottlingRateLimit"}
+          }
+        ],
+        "AccessLogSetting": {
+          "DestinationArn": {"Fn::GetAtt": ["ApiGatewayAccessLogGroup", "Arn"]},
+          "Format": "$context.requestId $context.extendedRequestId $context.identity.sourceIp $context.requestTime $context.routeKey $context.status $context.error.message $context.error.messageString $context.integrationErrorMessage"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "ApiGatewayUsagePlan": {
+      "Type": "AWS::ApiGateway::UsagePlan",
+      "DependsOn": ["ApiGatewayStage"],
+      "Properties": {
+        "UsagePlanName": {
+          "Fn::Sub": "${ServiceName}-${Environment}-usage-plan"
+        },
+        "Description": {
+          "Fn::Sub": "Usage plan for ${ServiceName} ${Environment} environment"
+        },
+        "ApiStages": [
+          {
+            "ApiId": {"Ref": "ApiGatewayRestApi"},
+            "Stage": {"Ref": "StageName"}
+          }
+        ],
+        "Throttle": {
+          "BurstLimit": {"Ref": "ThrottlingBurstLimit"},
+          "RateLimit": {"Ref": "ThrottlingRateLimit"}
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs": {
+    "RestApiId": {
+      "Description": "ID of the API Gateway REST API",
+      "Value": {"Ref": "ApiGatewayRestApi"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RestApiId"}
+      }
+    },
+    "RootResourceId": {
+      "Description": "Root resource ID of the API Gateway",
+      "Value": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RootResourceId"}
+      }
+    },
+    "RestApiName": {
+      "Description": "Name of the API Gateway REST API",
+      "Value": {
+        "Fn::Sub": "${ServiceName}-${Environment}"
+      },
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RestApiName"}
+      }
+    },
+    "DeploymentId": {
+      "Description": "ID of the API Gateway deployment",
+      "Value": {"Ref": "ApiGatewayDeployment"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-DeploymentId"}
+      }
+    },
+    "StageUrl": {
+      "Description": "URL of the API Gateway stage",
+      "Value": {
+        "Fn::Sub": "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
+      },
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-StageUrl"}
+      }
+    },
+    "StageName": {
+      "Description": "Name of the API Gateway stage",
+      "Value": {"Ref": "StageName"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-StageName"}
+      }
+    },
+    "UsagePlanId": {
+      "Description": "ID of the API Gateway usage plan",
+      "Value": {"Ref": "ApiGatewayUsagePlan"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-UsagePlanId"}
+      }
+    }
+  }
+}

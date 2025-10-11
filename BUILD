@@ -36,33 +36,23 @@ docker_image(
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
-        # Copy AWS Lambda Web Adapter from public ECR
         "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter",
-        # Install minimal system dependencies
         "RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*",
         # Create non-root user
         "RUN useradd -m -u 1000 apiuser",
-        # Copy gunicorn configuration
         "COPY epistemix_platform/configs/gunicorn.conf.py /app/configs/gunicorn.conf.py",
-        # Copy PEX binary
         "COPY epistemix_platform/app.pex /app/app.pex",
         "RUN chmod +x /app/app.pex",
-        # Set environment variables
         "ENV PATH=/app/app.pex/bin:/app:$PATH",
         "ENV FLASK_ENV=production",
         "ENV DATABASE_URL=sqlite:////app/epistemix_jobs.db",
         "ENV PYTHONUNBUFFERED=1",
-        # Lambda Web Adapter configuration
         "ENV AWS_LAMBDA_EXEC_WRAPPER=/opt/extensions/lambda-adapter",
         "ENV PORT=8080",
-        # Create writeable database directory
         "RUN mkdir -p /app && chown -R apiuser:apiuser /app",
-        # Switch to non-root user
         "USER apiuser",
         "WORKDIR /app",
-        # Expose port for Lambda Web Adapter
         "EXPOSE 8080",
-        # Health check
         "HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/health || exit 1",
         # Start gunicorn directly (Lambda Web Adapter handles the rest)
         "CMD [\"sh\", \"-c\", \"PEX_MODULE=gunicorn /app/app.pex -c /app/configs/gunicorn.conf.py epistemix_platform.wsgi:application\"]",

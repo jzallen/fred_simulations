@@ -1,0 +1,50 @@
+template:
+  type: file
+  path: lambda/epistemix-api-lambda.json
+
+stack_name: epistemix-api-lambda-dev
+
+# Dependencies - must be deployed after ECR, RDS, and S3
+# Note: API Gateway depends on Lambda, so Lambda is deployed first without API Gateway permission
+# After API Gateway is created, update Lambda stack to add the permission
+dependencies:
+  - dev/ecr.yaml
+  - dev/rds-postgres.yaml
+  - dev/s3-upload-bucket.yaml
+
+# Stack parameters for development environment
+parameters:
+  Environment: dev
+  ServiceName: epistemix-api
+  # ECR image URI from ECR stack output
+  ECRImageUri: !stack_output epistemix-ecr-dev-stack::RepositoryUri
+  # VPC configuration - using default VPC subnets (update with actual subnet IDs)
+  # Note: You'll need to replace these with actual private subnet IDs from your VPC
+  VPCSubnetIds: subnet-XXXXXXXX,subnet-YYYYYYYY  # Replace with actual private subnet IDs
+  # RDS connection parameters from RDS stack outputs
+  DBHost: !stack_output epistemix-postgres-dev::DBEndpoint
+  DBPort: !stack_output epistemix-postgres-dev::DBPort
+  DBName: !stack_output epistemix-postgres-dev::DBName
+  DBUser: epistemixuser
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  # S3 bucket from S3 stack output
+  S3BucketName: !stack_output epistemix-uploads-dev-stack::BucketName
+  # Lambda configuration
+  MemorySize: 3008
+  Timeout: 60
+  # API Gateway ID for Lambda permission (leave empty for initial deployment, update after API Gateway is created)
+  ApiGatewayRestApiId: ""  # Update to: !stack_output epistemix-api-gateway-dev::RestApiId after API Gateway deployment
+
+# Hooks to update RDS security group after Lambda function is created
+hooks:
+  after_create:
+    - !bash "echo 'Lambda function created. Update RDS stack with Lambda security group ID.'"
+  after_update:
+    - !bash "echo 'Lambda function updated.'"
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Development
+  Component: Lambda
+  Service: EpistemixAPI

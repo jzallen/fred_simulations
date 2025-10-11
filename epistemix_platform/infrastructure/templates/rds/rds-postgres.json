@@ -54,10 +54,20 @@
       "Default": "true",
       "AllowedValues": ["true", "false"],
       "Description": "Allow access from default VPC CIDR (172.31.0.0/16)"
+    },
+    "LambdaSecurityGroupId": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Optional security group ID for Lambda function to allow RDS access"
     }
   },
 
   "Conditions": {
+    "HasLambdaSecurityGroup": {
+      "Fn::Not": [
+        { "Fn::Equals": [{ "Ref": "LambdaSecurityGroupId" }, ""] }
+      ]
+    },
     "HasDeveloperIP": {
       "Fn::Not": [
         { "Fn::Equals": [{ "Ref": "DeveloperIP" }, ""] }
@@ -109,6 +119,19 @@
         "ToPort": 5432,
         "CidrIp": { "Ref": "DeveloperIP" },
         "Description": "Allow PostgreSQL access from developer IP"
+      }
+    },
+
+    "DBSecurityGroupIngressLambda": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Condition": "HasLambdaSecurityGroup",
+      "Properties": {
+        "GroupId": { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] },
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "SourceSecurityGroupId": { "Ref": "LambdaSecurityGroupId" },
+        "Description": "Allow PostgreSQL access from Lambda function"
       }
     },
 
@@ -180,6 +203,13 @@
       "Description": "PostgreSQL connection string format (replace PASSWORD)",
       "Value": {
         "Fn::Sub": "postgresql://${DBUsername}:PASSWORD@${DBInstance.Endpoint.Address}:${DBInstance.Endpoint.Port}/${DBName}"
+      }
+    },
+    "SecurityGroupId": {
+      "Description": "Security group ID for the RDS instance",
+      "Value": { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-SecurityGroupId" }
       }
     }
   }

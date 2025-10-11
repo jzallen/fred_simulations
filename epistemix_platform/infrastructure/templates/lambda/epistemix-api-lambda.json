@@ -1,0 +1,427 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Complete Lambda infrastructure for Epistemix API including IAM role, function, and API Gateway permission",
+
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Description": "Environment name for tagging and configuration",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "production"]
+    },
+    "ServiceName": {
+      "Type": "String",
+      "Description": "Name of the service",
+      "Default": "epistemix-api",
+      "MinLength": 1,
+      "MaxLength": 64
+    },
+    "ECRImageUri": {
+      "Type": "String",
+      "Description": "Full URI of the ECR image (e.g., 123456789012.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner:latest)",
+      "MinLength": 1
+    },
+    "VPCSubnetIds": {
+      "Type": "CommaDelimitedList",
+      "Description": "Comma-delimited list of private subnet IDs for Lambda function"
+    },
+    "DBHost": {
+      "Type": "String",
+      "Description": "RDS database endpoint hostname",
+      "MinLength": 1
+    },
+    "DBPort": {
+      "Type": "String",
+      "Description": "RDS database port",
+      "Default": "5432"
+    },
+    "DBName": {
+      "Type": "String",
+      "Description": "RDS database name",
+      "Default": "epistemixdb"
+    },
+    "DBUser": {
+      "Type": "String",
+      "Description": "RDS database username",
+      "Default": "epistemixuser"
+    },
+    "DBPassword": {
+      "Type": "String",
+      "Description": "RDS database password",
+      "NoEcho": true,
+      "MinLength": 8
+    },
+    "S3BucketName": {
+      "Type": "String",
+      "Description": "S3 bucket name for file uploads",
+      "MinLength": 3
+    },
+    "MemorySize": {
+      "Type": "Number",
+      "Description": "Lambda function memory size in MB",
+      "Default": 3008,
+      "MinValue": 128,
+      "MaxValue": 10240
+    },
+    "Timeout": {
+      "Type": "Number",
+      "Description": "Lambda function timeout in seconds",
+      "Default": 60,
+      "MinValue": 3,
+      "MaxValue": 900
+    },
+    "ApiGatewayRestApiId": {
+      "Type": "String",
+      "Description": "ID of the API Gateway REST API (optional, for permission resource)",
+      "Default": ""
+    }
+  },
+
+  "Conditions": {
+    "IsProduction": {
+      "Fn::Equals": [{"Ref": "Environment"}, "production"]
+    },
+    "HasApiGateway": {
+      "Fn::Not": [{"Fn::Equals": [{"Ref": "ApiGatewayRestApiId"}, ""]}]
+    }
+  },
+
+  "Resources": {
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${ServiceName}-lambda-role-${Environment}"
+        },
+        "Description": "Execution role for Epistemix API Lambda function with VPC, RDS, and S3 access",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "CloudWatchLogsPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ServiceName}-*:*"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "S3AccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:DeleteObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:s3:::epistemix-uploads-${Environment}"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:s3:::epistemix-uploads-${Environment}/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "RDSAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "rds:DescribeDBInstances",
+                    "rds:DescribeDBClusters"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "VPCNetworkPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:CreateNetworkInterface",
+                    "ec2:DescribeNetworkInterfaces",
+                    "ec2:DeleteNetworkInterface",
+                    "ec2:AssignPrivateIpAddresses",
+                    "ec2:UnassignPrivateIpAddresses"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "Purpose",
+            "Value": "LambdaExecution"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "LambdaSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupName": {
+          "Fn::Sub": "${ServiceName}-lambda-sg-${Environment}"
+        },
+        "GroupDescription": "Security group for Epistemix API Lambda function",
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow HTTPS outbound for AWS services"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 5432,
+            "ToPort": 5432,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow PostgreSQL outbound to RDS"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${ServiceName}-lambda-sg-${Environment}"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${ServiceName}-${Environment}"
+        },
+        "Description": {
+          "Fn::Sub": "Epistemix API Lambda function for ${Environment} environment"
+        },
+        "PackageType": "Image",
+        "Code": {
+          "ImageUri": {"Ref": "ECRImageUri"}
+        },
+        "Role": {"Fn::GetAtt": ["LambdaExecutionRole", "Arn"]},
+        "Architectures": ["x86_64"],
+        "MemorySize": {"Ref": "MemorySize"},
+        "Timeout": {"Ref": "Timeout"},
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {"Ref": "LambdaSecurityGroup"}
+          ],
+          "SubnetIds": {"Ref": "VPCSubnetIds"}
+        },
+        "Environment": {
+          "Variables": {
+            "FLASK_APP": "epistemix_platform.app",
+            "FLASK_ENV": {"Ref": "Environment"},
+            "DATABASE_URL": {
+              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}"
+            },
+            "DB_HOST": {"Ref": "DBHost"},
+            "DB_PORT": {"Ref": "DBPort"},
+            "DB_NAME": {"Ref": "DBName"},
+            "DB_USER": {"Ref": "DBUser"},
+            "DB_PASSWORD": {"Ref": "DBPassword"},
+            "S3_BUCKET_NAME": {"Ref": "S3BucketName"},
+            "AWS_REGION": {"Ref": "AWS::Region"},
+            "ENVIRONMENT": {"Ref": "Environment"},
+            "AWS_LWA_INVOKE_MODE": "buffered"
+          }
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "LambdaLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${ServiceName}-${Environment}"
+        },
+        "RetentionInDays": {
+          "Fn::If": ["IsProduction", 30, 7]
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          }
+        ]
+      }
+    },
+
+    "LambdaVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {"Ref": "LambdaFunction"},
+        "Description": {
+          "Fn::Sub": "Version created on ${AWS::StackName} deployment"
+        }
+      }
+    },
+
+    "LambdaAlias": {
+      "Type": "AWS::Lambda::Alias",
+      "Properties": {
+        "FunctionName": {"Ref": "LambdaFunction"},
+        "FunctionVersion": {"Fn::GetAtt": ["LambdaVersion", "Version"]},
+        "Name": {"Ref": "Environment"},
+        "Description": {
+          "Fn::Sub": "Alias for ${Environment} environment"
+        }
+      }
+    },
+
+    "LambdaApiGatewayInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "HasApiGateway",
+      "Properties": {
+        "FunctionName": {"Ref": "LambdaFunction"},
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/*"
+        }
+      }
+    }
+  },
+
+  "Outputs": {
+    "RoleArn": {
+      "Description": "ARN of the Lambda execution role",
+      "Value": {"Fn::GetAtt": ["LambdaExecutionRole", "Arn"]},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RoleArn"}
+      }
+    },
+    "RoleName": {
+      "Description": "Name of the Lambda execution role",
+      "Value": {"Ref": "LambdaExecutionRole"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RoleName"}
+      }
+    },
+    "FunctionArn": {
+      "Description": "ARN of the Lambda function",
+      "Value": {"Fn::GetAtt": ["LambdaFunction", "Arn"]},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-FunctionArn"}
+      }
+    },
+    "FunctionName": {
+      "Description": "Name of the Lambda function",
+      "Value": {"Ref": "LambdaFunction"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-FunctionName"}
+      }
+    },
+    "SecurityGroupId": {
+      "Description": "Security group ID for Lambda function",
+      "Value": {"Ref": "LambdaSecurityGroup"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-SecurityGroupId"}
+      }
+    },
+    "AliasArn": {
+      "Description": "ARN of the Lambda alias",
+      "Value": {"Ref": "LambdaAlias"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-AliasArn"}
+      }
+    },
+    "LogGroupName": {
+      "Description": "CloudWatch Log Group name",
+      "Value": {"Ref": "LambdaLogGroup"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-LogGroupName"}
+      }
+    }
+  }
+}
