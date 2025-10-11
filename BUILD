@@ -36,44 +36,40 @@ docker_image(
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
-        # Install nginx and system dependencies
-        "RUN apt-get update && apt-get install -y nginx curl && rm -rf /var/lib/apt/lists/*",
+        # Copy AWS Lambda Web Adapter from public ECR
+        "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1 /lambda-adapter /opt/extensions/lambda-adapter",
+        # Install minimal system dependencies
+        "RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*",
         # Create non-root user
         "RUN useradd -m -u 1000 apiuser",
-        # Copy configurations
-        "COPY epistemix_platform/configs/nginx.conf /etc/nginx/nginx.conf",
+        # Copy gunicorn configuration
         "COPY epistemix_platform/configs/gunicorn.conf.py /app/configs/gunicorn.conf.py",
-        # Copy startup script
-        "COPY epistemix_platform/scripts/docker-entrypoint.sh /app/docker-entrypoint.sh",
-        "RUN chmod +x /app/docker-entrypoint.sh",
         # Copy PEX binary
         "COPY epistemix_platform/app.pex /app/app.pex",
         "RUN chmod +x /app/app.pex",
-        # Set environment - Add PEX bin to PATH so gunicorn is available
+        # Set environment variables
         "ENV PATH=/app/app.pex/bin:/app:$PATH",
-        "ENV PEX_MODULE=gunicorn",
         "ENV FLASK_ENV=production",
         "ENV DATABASE_URL=sqlite:////app/epistemix_jobs.db",
         "ENV PYTHONUNBUFFERED=1",
-        # Create necessary directories and set permissions
-        "RUN mkdir -p /var/log/nginx /var/cache/nginx /var/run /tmp /var/lib/nginx",
-        "RUN chown -R apiuser:apiuser /var/log/nginx /var/cache/nginx /var/run /tmp /app /var/lib/nginx",
+        # Lambda Web Adapter configuration
+        "ENV AWS_LAMBDA_EXEC_WRAPPER=/opt/extensions/lambda-adapter",
+        "ENV PORT=8080",
         # Create writeable database directory
         "RUN mkdir -p /app && chown -R apiuser:apiuser /app",
         # Switch to non-root user
         "USER apiuser",
         "WORKDIR /app",
-        # Expose port
-        "EXPOSE 5555",
+        # Expose port for Lambda Web Adapter
+        "EXPOSE 8080",
         # Health check
-        "HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:5555/health || exit 1",
-        # Start services
-        "CMD [\"/app/docker-entrypoint.sh\"]",
+        "HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/health || exit 1",
+        # Start gunicorn directly (Lambda Web Adapter handles the rest)
+        "CMD [\"sh\", \"-c\", \"PEX_MODULE=gunicorn /app/app.pex -c /app/configs/gunicorn.conf.py epistemix_platform.wsgi:application\"]",
     ],
     dependencies=[
         "epistemix_platform:app",
         "epistemix_platform:configs",
-        "epistemix_platform:scripts",
     ],
 )
 

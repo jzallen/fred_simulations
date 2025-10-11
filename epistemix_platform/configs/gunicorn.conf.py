@@ -1,12 +1,16 @@
 """Gunicorn configuration for production deployment."""
 
-# Server socket
-bind = "unix:/tmp/gunicorn.sock"
+import os
 
-# Worker processes
-workers = 4
-worker_class = "gthread"  # Use gthread instead of gevent to avoid SSL monkey patching issues
-threads = 4  # Number of threads per worker
+# Server socket - bind to TCP port for Lambda Web Adapter or traditional deployment
+# Lambda Web Adapter expects PORT environment variable
+bind = f"0.0.0.0:{os.environ.get('PORT', '8080')}"
+
+# Worker processes - Lambda handles concurrency, so we use minimal workers in Lambda
+# For traditional deployment, this can be overridden via environment variable
+workers = int(os.environ.get('GUNICORN_WORKERS', '1'))
+worker_class = "sync"  # Simple synchronous workers work well for Lambda
+threads = 1  # Single thread per worker for Lambda
 
 # Timeout settings
 timeout = 120
