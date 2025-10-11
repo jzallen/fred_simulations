@@ -21,6 +21,11 @@
       "Description": "Full URI of the ECR image (e.g., 123456789012.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner:latest)",
       "MinLength": 1
     },
+    "VPCId": {
+      "Type": "String",
+      "Description": "VPC ID for Lambda security group",
+      "MinLength": 1
+    },
     "VPCSubnetIds": {
       "Type": "CommaDelimitedList",
       "Description": "Comma-delimited list of private subnet IDs for Lambda function"
@@ -214,6 +219,7 @@
     "LambdaSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
+        "VpcId": {"Ref": "VPCId"},
         "GroupName": {
           "Fn::Sub": "${ServiceName}-lambda-sg-${Environment}"
         },

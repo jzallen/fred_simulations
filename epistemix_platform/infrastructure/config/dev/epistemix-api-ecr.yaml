@@ -1,0 +1,19 @@
+template:
+  type: file
+  path: ecr/epistemix-api-repository.json
+
+stack_name: epistemix-api-ecr-dev
+
+# No dependencies - ECR should be created first
+dependencies: []
+
+# Stack parameters
+parameters:
+  Environment: dev
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Development
+  Component: ECR
+  Service: EpistemixAPI
