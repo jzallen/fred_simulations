@@ -193,6 +193,32 @@
                 }
               ]
             }
+          },
+          {
+            "PolicyName": "ECRAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:BatchCheckLayerAvailability"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/epistemix-api"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:GetAuthorizationToken"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
           }
         ],
         "Tags": [
@@ -299,7 +325,6 @@
             "DB_USER": {"Ref": "DBUser"},
             "DB_PASSWORD": {"Ref": "DBPassword"},
             "S3_BUCKET_NAME": {"Ref": "S3BucketName"},
-            "AWS_REGION": {"Ref": "AWS::Region"},
             "ENVIRONMENT": {"Ref": "Environment"},
             "AWS_LWA_INVOKE_MODE": "buffered"
           }
