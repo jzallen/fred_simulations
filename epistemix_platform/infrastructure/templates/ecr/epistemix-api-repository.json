@@ -1,0 +1,98 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ECR repository for Epistemix API container images",
+
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Description": "Environment name",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "production"]
+    }
+  },
+
+  "Conditions": {
+    "IsProduction": {
+      "Fn::Equals": [{"Ref": "Environment"}, "production"]
+    }
+  },
+
+  "Resources": {
+    "ECRRepository": {
+      "Type": "AWS::ECR::Repository",
+      "DeletionPolicy": {
+        "Fn::If": ["IsProduction", "Retain", "Delete"]
+      },
+      "UpdateReplacePolicy": {
+        "Fn::If": ["IsProduction", "Retain", "Delete"]
+      },
+      "Properties": {
+        "RepositoryName": "epistemix-api",
+        "ImageTagMutability": "MUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        },
+        "LifecyclePolicy": {
+          "LifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Keep last 10 images\",\"selection\":{\"tagStatus\":\"any\",\"countType\":\"imageCountMoreThan\",\"countNumber\":10},\"action\":{\"type\":\"expire\"}}]}"
+        },
+        "RepositoryPolicyText": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "LambdaECRImageRetrievalPolicy",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ]
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": "EpistemixAPI"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs": {
+    "RepositoryName": {
+      "Description": "Name of the ECR repository",
+      "Value": {"Ref": "ECRRepository"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RepositoryName"}
+      }
+    },
+    "RepositoryArn": {
+      "Description": "ARN of the ECR repository",
+      "Value": {"Fn::GetAtt": ["ECRRepository", "Arn"]},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RepositoryArn"}
+      }
+    },
+    "RepositoryUri": {
+      "Description": "URI of the ECR repository",
+      "Value": {"Fn::GetAtt": ["ECRRepository", "RepositoryUri"]},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-RepositoryUri"}
+      }
+    }
+  }
+}

@@ -12,7 +12,7 @@ poetry_requirements(
     resolve="simulations_env",
 )
 
-files(
+resources(
     name="fred-files",
     sources=["**/*.fred"]
 )
@@ -35,4 +35,14 @@ python_tests(
         ":simulations-reqs#pact-python",
         ":simulations-reqs#epx",
     ],
+)
+
+pex_binary(
+    name="run-agent-info-job",
+    entry_point="run_agent_info_job.py",
+    dependencies=[
+        ":fred-files",
+        ":simulations-reqs#epx",
+    ],
+    resolve="simulations_env",
 )
