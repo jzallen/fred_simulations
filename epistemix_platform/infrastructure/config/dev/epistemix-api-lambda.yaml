@@ -31,7 +31,7 @@ parameters:
   MemorySize: 3008
   Timeout: 60
   # API Gateway ID for Lambda permission (leave empty for initial deployment, update after API Gateway is created)
-  ApiGatewayRestApiId: ""  # Update to: !stack_output epistemix-api-gateway-dev::RestApiId after API Gateway deployment
+  ApiGatewayRestApiId: "jxghhxhvvl"
 
 # Stack-specific tags
 tags:

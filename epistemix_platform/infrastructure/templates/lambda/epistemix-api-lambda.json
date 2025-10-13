@@ -112,7 +112,7 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
         ],
         "Policies": [
           {
@@ -176,25 +176,6 @@
             }
           },
           {
-            "PolicyName": "VPCNetworkPolicy",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "ec2:CreateNetworkInterface",
-                    "ec2:DescribeNetworkInterfaces",
-                    "ec2:DeleteNetworkInterface",
-                    "ec2:AssignPrivateIpAddresses",
-                    "ec2:UnassignPrivateIpAddresses"
-                  ],
-                  "Resource": "*"
-                }
-              ]
-            }
-          },
-          {
             "PolicyName": "ECRAccessPolicy",
             "PolicyDocument": {
               "Version": "2012-10-17",
@@ -242,53 +223,6 @@
       }
     },
 
-    "LambdaSecurityGroup": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "VpcId": {"Ref": "VPCId"},
-        "GroupName": {
-          "Fn::Sub": "${ServiceName}-lambda-sg-${Environment}"
-        },
-        "GroupDescription": "Security group for Epistemix API Lambda function",
-        "SecurityGroupEgress": [
-          {
-            "IpProtocol": "tcp",
-            "FromPort": 443,
-            "ToPort": 443,
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow HTTPS outbound for AWS services"
-          },
-          {
-            "IpProtocol": "tcp",
-            "FromPort": 5432,
-            "ToPort": 5432,
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow PostgreSQL outbound to RDS"
-          }
-        ],
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": {
-              "Fn::Sub": "${ServiceName}-lambda-sg-${Environment}"
-            }
-          },
-          {
-            "Key": "Environment",
-            "Value": {"Ref": "Environment"}
-          },
-          {
-            "Key": "Service",
-            "Value": {"Ref": "ServiceName"}
-          },
-          {
-            "Key": "ManagedBy",
-            "Value": "CloudFormation"
-          }
-        ]
-      }
-    },
-
     "LambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -306,12 +240,6 @@
         "Architectures": ["x86_64"],
         "MemorySize": {"Ref": "MemorySize"},
         "Timeout": {"Ref": "Timeout"},
-        "VpcConfig": {
-          "SecurityGroupIds": [
-            {"Ref": "LambdaSecurityGroup"}
-          ],
-          "SubnetIds": {"Ref": "VPCSubnetIds"}
-        },
         "Environment": {
           "Variables": {
             "FLASK_APP": "epistemix_platform.app",
@@ -324,7 +252,7 @@
             "DB_NAME": {"Ref": "DBName"},
             "DB_USER": {"Ref": "DBUser"},
             "DB_PASSWORD": {"Ref": "DBPassword"},
-            "S3_BUCKET_NAME": {"Ref": "S3BucketName"},
+            "S3_UPLOAD_BUCKET": {"Ref": "S3BucketName"},
             "ENVIRONMENT": {"Ref": "Environment"},
             "AWS_LWA_INVOKE_MODE": "buffered"
           }
@@ -431,13 +359,6 @@
       "Value": {"Ref": "LambdaFunction"},
       "Export": {
         "Name": {"Fn::Sub": "${AWS::StackName}-FunctionName"}
-      }
-    },
-    "SecurityGroupId": {
-      "Description": "Security group ID for Lambda function",
-      "Value": {"Ref": "LambdaSecurityGroup"},
-      "Export": {
-        "Name": {"Fn::Sub": "${AWS::StackName}-SecurityGroupId"}
       }
     },
     "AliasArn": {
