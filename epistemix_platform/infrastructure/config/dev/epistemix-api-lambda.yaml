@@ -27,10 +27,8 @@ parameters:
   DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
   # S3 bucket (from external stack: epistemix-uploads-dev-stack)
   S3BucketName: "epistemix-uploads-dev"
-  # Lambda configuration
   MemorySize: 3008
-  Timeout: 60
-  # API Gateway ID for Lambda permission (leave empty for initial deployment, update after API Gateway is created)
+  Timeout: 30
   ApiGatewayRestApiId: "jxghhxhvvl"
 
 # Stack-specific tags
