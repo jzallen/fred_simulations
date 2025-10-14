@@ -1,5 +1,5 @@
 template:
-  path: bastion/ssm-bastion.json
+  path: ec2/ssm-bastion.json
 
 parameters:
   # Network Configuration
