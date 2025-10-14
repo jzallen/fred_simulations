@@ -1,0 +1,195 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "SSM Bastion host for secure RDS access via Session Manager port forwarding",
+
+  "Parameters": {
+    "VPCId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Description": "VPC ID where the bastion will be deployed"
+    },
+    "SubnetId": {
+      "Type": "AWS::EC2::Subnet::Id",
+      "Description": "Private subnet ID for the bastion (should be same as RDS subnets)"
+    },
+    "RDSSecurityGroupId": {
+      "Type": "AWS::EC2::SecurityGroup::Id",
+      "Description": "Security group ID of the RDS instance to allow access from bastion"
+    },
+    "InstanceType": {
+      "Type": "String",
+      "Default": "t3.nano",
+      "Description": "EC2 instance type for bastion",
+      "AllowedValues": ["t3.nano", "t3.micro", "t3.small"]
+    }
+  },
+
+  "Resources": {
+    "BastionSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupName": {
+          "Fn::Sub": "${AWS::StackName}-bastion-sg"
+        },
+        "GroupDescription": "Security group for SSM bastion host",
+        "VpcId": { "Ref": "VPCId" },
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow HTTPS outbound for SSM agent communication"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-bastion-sg"
+            }
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SSM Bastion for RDS access"
+          }
+        ]
+      }
+    },
+
+    "BastionToRDSEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": { "Ref": "BastionSecurityGroup" },
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "DestinationSecurityGroupId": { "Ref": "RDSSecurityGroupId" },
+        "Description": "Allow PostgreSQL access to RDS"
+      }
+    },
+
+    "RDSFromBastionIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": { "Ref": "RDSSecurityGroupId" },
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "SourceSecurityGroupId": { "Ref": "BastionSecurityGroup" },
+        "Description": "Allow PostgreSQL access from SSM bastion"
+      }
+    },
+
+    "BastionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${AWS::StackName}-bastion-role"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-bastion-role"
+            }
+          }
+        ]
+      }
+    },
+
+    "BastionInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "InstanceProfileName": {
+          "Fn::Sub": "${AWS::StackName}-bastion-profile"
+        },
+        "Roles": [
+          { "Ref": "BastionRole" }
+        ]
+      }
+    },
+
+    "BastionInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "InstanceType": { "Ref": "InstanceType" },
+        "ImageId": "ami-0453ec754f44f9a4a",
+        "IamInstanceProfile": { "Ref": "BastionInstanceProfile" },
+        "SecurityGroupIds": [
+          { "Ref": "BastionSecurityGroup" }
+        ],
+        "SubnetId": { "Ref": "SubnetId" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-bastion"
+            }
+          },
+          {
+            "Key": "Purpose",
+            "Value": "SSM Bastion for RDS port forwarding"
+          },
+          {
+            "Key": "Environment",
+            "Value": "dev"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    }
+  },
+
+  "Outputs": {
+    "BastionInstanceId": {
+      "Description": "Instance ID of the SSM bastion",
+      "Value": { "Ref": "BastionInstance" },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-InstanceId" }
+      }
+    },
+    "BastionSecurityGroupId": {
+      "Description": "Security Group ID of the bastion",
+      "Value": { "Ref": "BastionSecurityGroup" },
+      "Export": {
+        "Name": { "Fn::Sub": "${AWS::StackName}-SecurityGroupId" }
+      }
+    },
+    "StartCommand": {
+      "Description": "Command to start the bastion instance",
+      "Value": {
+        "Fn::Sub": "aws ec2 start-instances --instance-ids ${BastionInstance}"
+      }
+    },
+    "StopCommand": {
+      "Description": "Command to stop the bastion instance",
+      "Value": {
+        "Fn::Sub": "aws ec2 stop-instances --instance-ids ${BastionInstance}"
+      }
+    },
+    "PortForwardCommand": {
+      "Description": "Command to start SSM port forwarding (run after starting instance)",
+      "Value": {
+        "Fn::Sub": "aws ssm start-session --target ${BastionInstance} --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters '{\"host\":[\"<RDS_ENDPOINT>\"],\"portNumber\":[\"5432\"],\"localPortNumber\":[\"5432\"]}'"
+      }
+    }
+  }
+}

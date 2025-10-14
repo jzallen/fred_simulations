@@ -16,7 +16,7 @@ parameters:
 
   # Security Settings
   PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible
-  DeveloperIP: ""  # Set to your IP/32 for direct access (e.g., "203.0.113.45/32")
+  DeveloperIP: !environment_variable DEVELOPER_IP
   EnableVPCAccess: "true"  # Allows access from VPC CIDR block
   LambdaSecurityGroupId: sg-05f10285a853e5085  # Lambda security group for RDS access
 
