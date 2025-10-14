@@ -1,0 +1,27 @@
+template:
+  path: rds/rds-postgres.json
+
+parameters:
+  # Network Configuration
+  # TODO: Update these values with actual staging VPC and subnet IDs
+  VPCId: vpc-00bb33feebfb59191  # Replace with staging VPC ID
+  PrivateSubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672  # Replace with staging private subnet IDs
+  VpcCidr: "172.31.0.0/16"  # Replace with staging VPC CIDR if different
+
+  # Database Configuration
+  DBName: epistemixdb
+  DBUsername: epistemixuser
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD_STAGING
+  DBInstanceClass: db.t3.small  # Slightly larger for staging
+  AllocatedStorage: 50  # More storage for staging data
+
+  # Security Settings
+  PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible
+  DeveloperIP: ""  # Set to your IP/32 for direct access if needed
+  EnableVPCAccess: "true"  # Allows access from VPC CIDR block
+  LambdaSecurityGroupId: ""  # TODO: Set staging Lambda security group ID
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: staging
+  ManagedBy: sceptre

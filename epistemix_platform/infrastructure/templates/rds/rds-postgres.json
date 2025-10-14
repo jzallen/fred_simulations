@@ -3,6 +3,14 @@
   "Description": "Simple RDS PostgreSQL instance for Epistemix Platform POC",
 
   "Parameters": {
+    "VPCId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Description": "VPC ID for the RDS security group and subnet group"
+    },
+    "PrivateSubnetIds": {
+      "Type": "List<AWS::EC2::Subnet::Id>",
+      "Description": "List of private subnet IDs for the RDS DB subnet group (minimum 2 in different AZs)"
+    },
     "DBName": {
       "Type": "String",
       "Default": "epistemixdb",
@@ -43,17 +51,29 @@
       "MinValue": "20",
       "MaxValue": "100"
     },
+    "PubliclyAccessible": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": ["true", "false"],
+      "Description": "Whether the RDS instance should be publicly accessible. Recommended: false for production"
+    },
     "DeveloperIP": {
       "Type": "String",
       "Default": "",
       "Description": "Developer IP address for direct database access (optional, e.g., 1.2.3.4/32)",
       "AllowedPattern": "^$|^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})$"
     },
+    "VpcCidr": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Optional VPC CIDR block for database access (e.g., 10.0.0.0/16). Leave empty to disable CIDR-based access.",
+      "AllowedPattern": "^$|^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})$"
+    },
     "EnableVPCAccess": {
       "Type": "String",
-      "Default": "true",
+      "Default": "false",
       "AllowedValues": ["true", "false"],
-      "Description": "Allow access from default VPC CIDR (172.31.0.0/16)"
+      "Description": "Allow access from VPC CIDR block (requires VpcCidr parameter)"
     },
     "LambdaSecurityGroupId": {
       "Type": "String",
@@ -73,15 +93,45 @@
         { "Fn::Equals": [{ "Ref": "DeveloperIP" }, ""] }
       ]
     },
+    "HasVpcCidr": {
+      "Fn::Not": [
+        { "Fn::Equals": [{ "Ref": "VpcCidr" }, ""] }
+      ]
+    },
     "AllowVPCAccess": {
-      "Fn::Equals": [{ "Ref": "EnableVPCAccess" }, "true"]
+      "Fn::And": [
+        { "Fn::Equals": [{ "Ref": "EnableVPCAccess" }, "true"] },
+        { "Condition": "HasVpcCidr" }
+      ]
     }
   },
 
   "Resources": {
+    "DBSubnetGroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupName": {
+          "Fn::Sub": "epistemix-db-subnet-group-${AWS::StackName}"
+        },
+        "DBSubnetGroupDescription": "Subnet group for Epistemix RDS PostgreSQL instance",
+        "SubnetIds": { "Ref": "PrivateSubnetIds" },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "epistemix-db-subnet-group"
+          },
+          {
+            "Key": "Project",
+            "Value": "epistemix-platform"
+          }
+        ]
+      }
+    },
+
     "DBSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
+        "VpcId": { "Ref": "VPCId" },
         "GroupDescription": "Security group for RDS PostgreSQL instance with controlled access",
         "Tags": [
           {
@@ -104,8 +154,8 @@
         "IpProtocol": "tcp",
         "FromPort": 5432,
         "ToPort": 5432,
-        "CidrIp": "172.31.0.0/16",
-        "Description": "Allow PostgreSQL access from default VPC (for K8s and internal resources)"
+        "CidrIp": { "Ref": "VpcCidr" },
+        "Description": "Allow PostgreSQL access from VPC CIDR block"
       }
     },
 
@@ -138,9 +188,6 @@
     "DBInstance": {
       "Type": "AWS::RDS::DBInstance",
       "Properties": {
-        "DBInstanceIdentifier": {
-          "Fn::Sub": "epistemix-postgres-${AWS::StackName}"
-        },
         "DBName": { "Ref": "DBName" },
         "AllocatedStorage": { "Ref": "AllocatedStorage" },
         "DBInstanceClass": { "Ref": "DBInstanceClass" },
@@ -148,10 +195,11 @@
         "EngineVersion": "15",
         "MasterUsername": { "Ref": "DBUsername" },
         "MasterUserPassword": { "Ref": "DBPassword" },
+        "DBSubnetGroupName": { "Ref": "DBSubnetGroup" },
         "VPCSecurityGroups": [
           { "Fn::GetAtt": ["DBSecurityGroup", "GroupId"] }
         ],
-        "PubliclyAccessible": true,
+        "PubliclyAccessible": { "Ref": "PubliclyAccessible" },
         "BackupRetentionPeriod": 7,
         "PreferredBackupWindow": "03:00-04:00",
         "PreferredMaintenanceWindow": "sun:04:00-sun:05:00",

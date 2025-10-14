@@ -2,14 +2,23 @@ template:
   path: rds/rds-postgres.json
 
 parameters:
+  # Network Configuration
+  VPCId: vpc-00bb33feebfb59191
+  PrivateSubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
+  VpcCidr: "172.31.0.0/16"  # Default VPC CIDR
+
+  # Database Configuration
   DBName: epistemixdb
   DBUsername: epistemixuser
   DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
   DBInstanceClass: db.t3.micro
   AllocatedStorage: 20
-  # Security settings - update DeveloperIP with your actual IP (run: curl ifconfig.me)
+
+  # Security Settings
+  PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible
   DeveloperIP: ""  # Set to your IP/32 for direct access (e.g., "203.0.113.45/32")
-  EnableVPCAccess: "true"  # Allows access from default VPC (172.31.0.0/16) for K8s
+  EnableVPCAccess: "true"  # Allows access from VPC CIDR block
+  LambdaSecurityGroupId: sg-05f10285a853e5085  # Lambda security group for RDS access
 
 stack_tags:
   Project: epistemix-platform
