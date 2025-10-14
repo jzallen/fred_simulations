@@ -20,6 +20,12 @@
       "Default": "t3.nano",
       "Description": "EC2 instance type for bastion",
       "AllowedValues": ["t3.nano", "t3.micro", "t3.small"]
+    },
+    "Environment": {
+      "Type": "String",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "prod"],
+      "Description": "Environment name for tagging"
     }
   },
 
@@ -128,8 +134,12 @@
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "InstanceType": { "Ref": "InstanceType" },
-        "ImageId": "ami-0453ec754f44f9a4a",
+        "ImageId": "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}",
         "IamInstanceProfile": { "Ref": "BastionInstanceProfile" },
+        "MetadataOptions": {
+          "HttpTokens": "required",
+          "HttpEndpoint": "enabled"
+        },
         "SecurityGroupIds": [
           { "Ref": "BastionSecurityGroup" }
         ],
@@ -147,7 +157,7 @@
           },
           {
             "Key": "Environment",
-            "Value": "dev"
+            "Value": { "Ref": "Environment" }
           },
           {
             "Key": "ManagedBy",

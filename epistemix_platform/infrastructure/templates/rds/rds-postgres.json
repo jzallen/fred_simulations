@@ -79,6 +79,12 @@
       "Type": "String",
       "Default": "",
       "Description": "Optional security group ID for Lambda function to allow RDS access"
+    },
+    "Environment": {
+      "Type": "String",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "prod"],
+      "Description": "Environment name for tagging"
     }
   },
 
@@ -217,7 +223,7 @@
           },
           {
             "Key": "Environment",
-            "Value": "dev"
+            "Value": { "Ref": "Environment" }
           }
         ]
       },

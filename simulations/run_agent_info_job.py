@@ -27,7 +27,7 @@ def main():
         print(f"Job completed successfully! Status: {info_job.status}")
         return 0
     except Exception as e:
-        print(f"Job execution failed: {e}", file=sys.stderr)
+        print(f"Job execution failed ({type(e).__name__}): {e}", file=sys.stderr)
         return 1
 
 if __name__ == "__main__":

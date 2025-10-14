@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RDS security group now accepts connections from:
   - Lambda security group (for API operations)
   - SSM bastion security group (for admin access)
-  - VPC CIDR block (172.31.0.0/16)
+  - VPC CIDR block (configurable via VpcCidr parameter)
   - Optional developer IP (via DeveloperIP parameter)
 
 ### Security
