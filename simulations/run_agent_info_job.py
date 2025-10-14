@@ -16,11 +16,8 @@ def main():
 
     from agent_info_demo.agent_info_job import info_job
 
-    # Set the API endpoint to our dockerized API
-    os.environ["EPISTEMIX_API_URL"] = "http://localhost:5555"
-
     print("Starting agent_info_job execution...")
-    print(f"API URL: {os.environ.get('EPISTEMIX_API_URL', 'Not set')}")
+    print(f"API URL: {os.environ.get('EPISTEMIX_API_URL', 'Using ~/.epx/config')}")
     print(f"Job tags: {info_job.tags}")
     print(f"FRED files: {info_job.fred_files}")
 
