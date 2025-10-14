@@ -7,10 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-10-14]
+
 ### Added
-- Added comprehensive descriptions to all CloudFormation resource definitions
-- Created README.md with detailed Sceptre deployment instructions
-- Generated CHANGELOG.md to track infrastructure changes
+- **FRED-30**: Secured RDS database by removing public accessibility
+  - RDS instance now deployed in private subnets only (PubliclyAccessible: false)
+  - Added DBSubnetGroup resource for multi-AZ private subnet deployment
+  - Parameterized VPC configuration (VPCId, PrivateSubnetIds, VpcCidr)
+  - Lambda security group integration for API database access
+- SSM bastion infrastructure for secure administrative database access
+  - EC2 t3.nano instance with SSM Session Manager agent
+  - Port forwarding support for local database tools (psql, pgAdmin)
+  - No SSH keys or public IPs required
+- Staging environment infrastructure configuration
+
+### Changed
+- RDS security group now accepts connections from:
+  - Lambda security group (for API operations)
+  - SSM bastion security group (for admin access)
+  - VPC CIDR block (172.31.0.0/16)
+  - Optional developer IP (via DeveloperIP parameter)
+
+### Security
+- Database is no longer publicly accessible (critical security improvement)
+- SSL/TLS encryption required for all database connections
+- SSM Session Manager provides audited administrative access
+- Removed public internet access (0.0.0.0/0) from security groups
 
 ## [2025-09-24]
 
