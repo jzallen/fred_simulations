@@ -20,7 +20,7 @@ parameters:
   VPCId: "vpc-00bb33feebfb59191"
   VPCSubnetIds: "subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672"
   # RDS connection parameters (from external stack: fred-simulations-dev-rds-postgres)
-  DBHost: "epistemix-postgres-fred-simulations-dev-rds-postgres.c2tsguye2mmq.us-east-1.rds.amazonaws.com"
+  DBHost: "fred-simulations-dev-rds-postgres-dbinstance-8bu9adm1kzju.c2tsguye2mmq.us-east-1.rds.amazonaws.com"
   DBPort: "5432"
   DBName: "epistemixdb"
   DBUser: "epistemixuser"

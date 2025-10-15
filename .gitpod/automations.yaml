@@ -1,7 +1,18 @@
 tasks:
-    setup_fred_environment:
-        name: Setup FRED Environment
-        description: Install dependencies and build FRED framework
+    setup_fred:
+        name: Setup FRED
+        description: Build FRED framework
+        command: |
+            set -e
+            echo "Building FRED framework..."
+            cd /workspaces/fred_simulations/fred-framework/src && make
+            cd /workspaces/fred_simulations
+            echo "FRED framework build complete!"
+        triggeredBy: ['manual']
+
+    setup_dev_environment:
+        name: Setup Dev Environment
+        description: Install dependencies and development tools
         command: |
             set -e
             # Update package lists and install system dependencies
@@ -15,10 +26,6 @@ tasks:
             which npm || { echo "npm not found after installation"; exit 1; }
             npm --version
 
-            # Build FRED framework
-            cd /workspaces/fred_simulations/fred-framework/src && make
-            cd /workspaces/fred_simulations
-
             # Install AWS CLI v2
             cd /tmp
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -28,11 +35,10 @@ tasks:
             aws --version
             cd /workspaces/fred_simulations
 
-            # Install Poetry
+            # Install Poetry (used for Sceptre in infrastructure/ directory)
             curl -sSL https://install.python-poetry.org | python3 -
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
             export PATH="$HOME/.local/bin:$PATH"
-            poetry install --no-root
 
             # Install Pants build system
             curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash

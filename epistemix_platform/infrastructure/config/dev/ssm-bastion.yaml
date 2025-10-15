@@ -1,0 +1,19 @@
+template:
+  path: ec2/ssm-bastion.json
+
+parameters:
+  # Network Configuration
+  VPCId: vpc-00bb33feebfb59191
+  SubnetId: subnet-0c6dc4a43d6d2269c  # Use first private subnet
+
+  # RDS Security Group (to allow bastion access)
+  RDSSecurityGroupId: sg-0069600bba8b18cf5
+
+  # Instance Configuration
+  InstanceType: t3.nano  # Cost-optimized, can be stopped when not in use
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: dev
+  ManagedBy: sceptre
+  Purpose: SSM Bastion for RDS Access

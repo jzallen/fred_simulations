@@ -1,0 +1,9 @@
+project_code: fred-simulations-staging
+region: us-east-1
+
+# Default tags applied to all staging stacks
+stack_tags:
+  Project: FREDSimulations
+  Environment: staging
+  ManagedBy: Sceptre
+  CreatedWith: InfrastructureAsCode

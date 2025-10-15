@@ -3,24 +3,25 @@ template:
 
 parameters:
   # Network Configuration
+  # TODO: Update these values with actual staging VPC and subnet IDs
   VPCId: vpc-00bb33feebfb59191
   PrivateSubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
-  VpcCidr: "172.31.0.0/16"  # Default VPC CIDR
+  VpcCidr: "172.31.0.0/16"
 
   # Database Configuration
   DBName: epistemixdb
   DBUsername: epistemixuser
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
-  DBInstanceClass: db.t3.micro
-  AllocatedStorage: 20
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD_STAGING
+  DBInstanceClass: db.t3.small  # Slightly larger for staging
+  AllocatedStorage: 50  # More storage for staging data
 
   # Security Settings
   PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible
-  DeveloperIP: !environment_variable DEVELOPER_IP
+  DeveloperIP: ""  # Set to your IP/32 for direct access if needed
   EnableVPCAccess: "true"  # Allows access from VPC CIDR block
-  LambdaSecurityGroupId: sg-05f10285a853e5085  # Lambda security group for RDS access
+  LambdaSecurityGroupId: ""  # TODO: Set staging Lambda security group ID
 
 stack_tags:
   Project: epistemix-platform
-  Environment: dev
+  Environment: staging
   ManagedBy: sceptre
