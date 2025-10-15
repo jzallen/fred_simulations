@@ -1,0 +1,18 @@
+template:
+  type: file
+  path: s3/s3-upload-bucket.json
+
+stack_name: epistemix-uploads-staging-stack
+
+# Stack parameters for staging environment
+parameters:
+  BucketName: epistemix-uploads-staging
+  Environment: staging
+  AllowedOrigins: "https://staging.epistemix.io"
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Staging
+  Component: S3
+  Service: FileUploads

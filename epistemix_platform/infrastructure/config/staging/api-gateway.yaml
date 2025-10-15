@@ -1,0 +1,28 @@
+template:
+  type: file
+  path: api-gateway/epistemix-api-gateway.json
+
+stack_name: epistemix-api-gateway-staging
+
+# Dependencies - Deploy Lambda first, then API Gateway
+dependencies: []
+
+# Stack parameters for staging environment
+parameters:
+  Environment: staging
+  ServiceName: epistemix-api
+  # Lambda function ARN (will be resolved from stack: epistemix-api-lambda-staging)
+  LambdaFunctionArn: !stack_output_external epistemix-api-lambda-staging::FunctionArn
+  # CORS origins for staging
+  AllowedOrigins: "https://staging.epistemix.io"
+  # Stage configuration
+  StageName: v1
+  ThrottlingBurstLimit: 200
+  ThrottlingRateLimit: 100
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Staging
+  Component: APIGateway
+  Service: EpistemixAPI
