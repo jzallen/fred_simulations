@@ -15,18 +15,37 @@ files(
     sources=["./fred-framework/bin/FRED"],
 )
 
+files(
+    name="simulation-scripts",
+    sources=["epistemix_platform/scripts/run-simulation.sh"],
+)
+
 docker_image(
     name="simulation-runner",
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
+        # Copy epistemix-cli PEX binary
         "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
+        # Copy FRED binary
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
+        # Copy simulation runner entrypoint script
+        "COPY epistemix_platform/scripts/run-simulation.sh /usr/local/bin/run-simulation.sh",
+        "RUN chmod +x /usr/local/bin/run-simulation.sh",
+        # Create workspace directory for job downloads
+        "RUN mkdir -p /workspace",
+        # Set environment variables
+        "ENV PYTHONUNBUFFERED=1",
+        # Set entrypoint to simulation runner script
+        "ENTRYPOINT [\"/usr/local/bin/run-simulation.sh\"]",
+        # Default command shows help
+        "CMD [\"--help\"]",
     ],
     dependencies=[
         ":fred-binary",
+        ":simulation-scripts",
         "epistemix_platform:epistemix-cli",
     ],
 )

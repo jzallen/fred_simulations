@@ -93,6 +93,48 @@ python run_server.py
 poetry run python epistemix_platform/run_server.py
 ```
 
+### Docker Images
+```bash
+# Build Docker images using Pants
+pants package //:simulation-runner  # FRED simulation runner
+pants package //:epistemix-api       # API server
+pants package //:migration-runner    # Database migrations
+
+# Run simulation-runner container
+# (Downloads job uploads and prepares for FRED simulation)
+docker run \
+  -e EPISTEMIX_API_URL=http://host.docker.internal:5000 \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_ACCESS_KEY_ID=your_key \
+  -e AWS_SECRET_ACCESS_KEY=your_secret \
+  simulation-runner:latest <JOB_ID>
+
+# Show simulation-runner help
+docker run simulation-runner:latest --help
+
+# Example: Download uploads for job 123
+docker run \
+  -e EPISTEMIX_API_URL=http://localhost:5000 \
+  simulation-runner:latest 123
+
+# Use epistemix-cli directly in the container (override entrypoint)
+# List available jobs to see which ones you can run
+docker run --rm --entrypoint epistemix-cli \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  simulation-runner:latest jobs list
+
+# Get detailed info about a specific job
+docker run --rm --entrypoint epistemix-cli \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  simulation-runner:latest jobs info --job-id 123
+
+# List uploads for a job
+docker run --rm --entrypoint epistemix-cli \
+  -e EPISTEMIX_API_URL=http://host.docker.internal:5000 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  simulation-runner:latest jobs uploads list --job-id 123
+```
+
 ## High-Level Architecture
 
 ### Build System - Pants
