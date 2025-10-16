@@ -11,8 +11,8 @@ dependencies: []
 parameters:
   Environment: staging
   ServiceName: epistemix-api
-  # ECR image URI - TODO: Update after pushing image to staging ECR
-  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api:staging"
+  # ECR image URI - Updated to staging-latest with S3 encryption fix
+  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api:staging-latest"
   # VPC configuration (same VPC as dev for now)
   VPCId: "vpc-00bb33feebfb59191"
   VPCSubnetIds: "subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672"
