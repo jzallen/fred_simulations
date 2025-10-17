@@ -93,20 +93,13 @@ docker_image(
         "RUN pip install --no-cache-dir alembic==1.13.0 psycopg2-binary==2.9.9 sqlalchemy==2.0.41 boto3==1.40.1 pydantic==2.11.7 returns==0.25.0",
         # Create mount point directory
         "RUN mkdir -p /fred_simulations",
-        # Copy migration entrypoint script
-        "COPY epistemix_platform/scripts/migration-entrypoint.sh /entrypoint.sh",
-        "RUN chmod +x /entrypoint.sh",
         # Set working directory to match mount point
         "WORKDIR /fred_simulations",
         # Default environment for local development
         "ENV DATABASE_URL=postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db",
         "ENV PYTHONUNBUFFERED=1",
-        # Use entrypoint script
-        "ENTRYPOINT [\"/entrypoint.sh\"]",
-        # Default command shows migration status
-        "CMD [\"alembic\", \"current\"]",
-    ],
-    dependencies=[
-        "epistemix_platform:scripts",
+        # No entrypoint - just run commands directly
+        # Default command shows help for psql
+        "CMD [\"psql\", \"--help\"]",
     ],
 )
