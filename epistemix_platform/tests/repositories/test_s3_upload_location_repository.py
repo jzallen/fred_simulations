@@ -70,8 +70,9 @@ class TestS3UploadLocationRepository:
         # assert
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
-        # We expect 4 parameters: AWSAccessKeyId, Signature, Expires, x-amz-server-side-encryption
-        assert len(params) == 4
+        # We expect 3 parameters: AWSAccessKeyId, Signature, Expires
+        # ServerSideEncryption is NOT included as it's handled by bucket default encryption
+        assert len(params) == 3
         assert isinstance(result, UploadLocation)
         assert (
             url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_input.zip"
@@ -83,10 +84,11 @@ class TestS3UploadLocationRepository:
         assert "Signature" in param_dict
         assert param_dict.get("Expires") == str(expected_expires_timestamp)
 
-        # Verify that generate_presigned_url was called with ServerSideEncryption parameter
+        # Verify that generate_presigned_url was called without ServerSideEncryption parameter
+        # (encryption is handled by bucket default settings)
         s3_client.generate_presigned_url.assert_called_once()
         call_args = s3_client.generate_presigned_url.call_args
-        assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256"
+        assert "ServerSideEncryption" not in call_args[1]["Params"]
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_job_and_upload_type_config__returns_json_upload_location(
@@ -110,8 +112,8 @@ class TestS3UploadLocationRepository:
         # assert
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
-        # We expect 4 parameters: AWSAccessKeyId, Signature, Expires, x-amz-server-side-encryption
-        assert len(params) == 4
+        # We expect 3 parameters: AWSAccessKeyId, Signature, Expires
+        assert len(params) == 3
         assert isinstance(result, UploadLocation)
         assert (
             url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_config.json"
@@ -123,10 +125,10 @@ class TestS3UploadLocationRepository:
         assert "Signature" in param_dict
         assert param_dict.get("Expires") == str(expected_expires_timestamp)
 
-        # Verify that generate_presigned_url was called with ServerSideEncryption parameter
+        # Verify that generate_presigned_url was called without ServerSideEncryption parameter
         s3_client.generate_presigned_url.assert_called_once()
         call_args = s3_client.generate_presigned_url.call_args
-        assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256"
+        assert "ServerSideEncryption" not in call_args[1]["Params"]
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_run_and_upload_type_config__returns_json_upload_location(
@@ -150,8 +152,8 @@ class TestS3UploadLocationRepository:
         # assert
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
-        # We expect 4 parameters: AWSAccessKeyId, Signature, Expires, x-amz-server-side-encryption
-        assert len(params) == 4
+        # We expect 3 parameters: AWSAccessKeyId, Signature, Expires
+        assert len(params) == 3
         assert isinstance(result, UploadLocation)
         assert (
             url
@@ -164,10 +166,10 @@ class TestS3UploadLocationRepository:
         assert "Signature" in param_dict
         assert param_dict.get("Expires") == str(expected_expires_timestamp)
 
-        # Verify that generate_presigned_url was called with ServerSideEncryption parameter
+        # Verify that generate_presigned_url was called without ServerSideEncryption parameter
         s3_client.generate_presigned_url.assert_called_once()
         call_args = s3_client.generate_presigned_url.call_args
-        assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256"
+        assert "ServerSideEncryption" not in call_args[1]["Params"]
 
     def test_get_upload_location__empty_resource_name__raises_value_error(self, repository):
         with pytest.raises(ValueError, match="JobUpload cannot be None"):
@@ -186,13 +188,14 @@ class TestS3UploadLocationRepository:
             repository.get_upload_location(job_upload)
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_get_upload_location__presigned_url_includes_server_side_encryption_parameter(
+    def test_get_upload_location__presigned_url_does_not_include_server_side_encryption(
         self, repository, s3_stubber
     ):
         # Arrange
         s3_client, _ = s3_stubber
-        # Mock generate_presigned_url to capture the call and return a test URL
-        s3_client.generate_presigned_url = Mock(return_value="https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_input.zip?AWSAccessKeyId=test&Signature=test&Expires=123456789&ServerSideEncryption=AES256")
+        # Mock generate_presigned_url to capture the call
+        original_generate_presigned_url = s3_client.generate_presigned_url
+        s3_client.generate_presigned_url = Mock(wraps=original_generate_presigned_url)
         job_upload = JobUpload(context="job", upload_type="input", job_id=123)
 
         # Act
@@ -202,10 +205,11 @@ class TestS3UploadLocationRepository:
         s3_client.generate_presigned_url.assert_called_once()
         call_args = s3_client.generate_presigned_url.call_args
 
-        # Verify that generate_presigned_url was called with ServerSideEncryption parameter
-        assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256", (
-            "Expected presigned URL to include ServerSideEncryption=AES256 parameter "
-            "to comply with S3 bucket policy requiring encryption headers"
+        # Verify that generate_presigned_url was NOT called with ServerSideEncryption parameter
+        # Encryption is handled by S3 bucket default encryption settings
+        assert "ServerSideEncryption" not in call_args[1]["Params"], (
+            "ServerSideEncryption should NOT be in presigned URL params. "
+            "It's handled by bucket default encryption to avoid requiring clients to send headers."
         )
         assert isinstance(result, UploadLocation)
 

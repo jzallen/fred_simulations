@@ -8,7 +8,7 @@ stack_name: epistemix-uploads-staging-stack
 parameters:
   BucketName: epistemix-uploads-staging
   Environment: staging
-  AllowedOrigins: "https://staging.epistemix.io"
+  AllowedOrigins: "*"
 
 # Stack-specific tags
 tags:

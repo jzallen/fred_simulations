@@ -105,12 +105,15 @@ class S3UploadLocationRepository:
 
         try:
             # Generate pre-signed URL for PUT operation
+            # Note: ServerSideEncryption is handled by bucket default encryption
+            # and should NOT be included in presigned URL Params as it would require
+            # the client to send the x-amz-server-side-encryption header, which
+            # standard HTTP clients (like epx) don't do.
             presigned_url = self.s3_client.generate_presigned_url(
                 "put_object",
                 Params={
                     "Bucket": self.bucket_name,
                     "Key": object_key,
-                    "ServerSideEncryption": "AES256"
                 },
                 ExpiresIn=self.expiration_seconds,
                 HttpMethod="PUT",

@@ -11,8 +11,8 @@ dependencies: []
 parameters:
   Environment: staging
   ServiceName: epistemix-api
-  # ECR image URI - Updated to staging-latest with S3 encryption fix
-  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api:staging-latest"
+  # ECR image URI - Using explicit digest to force Lambda to pull new image
+  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api@sha256:d949867ee4aaf39bd6a1398eed4946b534dbd0ad30e95c08f595acf1cbf0af51"
   # VPC configuration (same VPC as dev for now)
   VPCId: "vpc-00bb33feebfb59191"
   VPCSubnetIds: "subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672"
