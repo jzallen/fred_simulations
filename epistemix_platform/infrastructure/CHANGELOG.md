@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **FRED-27**: Staging environment infrastructure deployment
+  - API Gateway REST API with /v1 stage deployment
+  - Lambda function with VPC configuration for RDS access
+  - ECR repository for epistemix-api Docker images
+  - S3 upload bucket with CORS and lifecycle policies
+  - SSM bastion for secure database access via port forwarding
+
+### Changed
+- Lambda security group integration for database connectivity
+  - Added DBSecurityGroupId parameter to Lambda CloudFormation template
+  - LambdaSecurityGroup resource with egress to RDS
+  - RDS security group ingress rule from Lambda
+  - VPC configuration (subnet IDs and security groups)
+  - AWSLambdaVPCAccessExecutionRole added to execution role
+- S3 bucket policy updates
+  - Removed server-side encryption from presigned URL parameters
+  - Retained HTTPS-only access enforcement
+  - Fixed compatibility with staging S3 upload requirements
+
+### Fixed
+- SSM bastion security group references now use CloudFormation exports
+  - Replaced hard-coded RDS security group IDs with stack exports
+  - Improved cross-stack resource references
+
 ## [2025-10-14]
 
 ### Added
