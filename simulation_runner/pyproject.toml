@@ -28,7 +28,7 @@ readme = "README.md"
 packages = [{include = "simulation_runner", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.12"
 click = "^8.1.0"
 
 [tool.poetry.group.dev.dependencies]
