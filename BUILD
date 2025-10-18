@@ -22,7 +22,7 @@ files(
 
 files(
     name="simulation-scripts",
-    sources=["epistemix_platform/scripts/run-simulation.sh"],
+    sources=["simulation_runner/scripts/run-simulation.sh"],
 )
 
 files(
@@ -38,23 +38,26 @@ docker_image(
         # Copy epistemix-cli PEX binary
         "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
+        # Copy simulation-runner Python CLI
+        "COPY simulation_runner/simulation-runner-cli.pex /usr/local/bin/simulation-runner",
+        "RUN chmod +x /usr/local/bin/simulation-runner",
         # Copy FRED binary and data
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
         "COPY fred-framework/data /fred-framework/data",
-        # Copy prepare_fred_config.py utility script
+        # Copy bash wrapper for backward compatibility
+        "COPY simulation_runner/scripts/run-simulation.sh /usr/local/bin/run-simulation.sh",
+        "RUN chmod +x /usr/local/bin/run-simulation.sh",
+        # Copy legacy prepare_fred_config.py (deprecated)
         "COPY scripts/prepare_fred_config.py /usr/local/bin/prepare_fred_config.py",
         "RUN chmod +x /usr/local/bin/prepare_fred_config.py",
-        # Copy simulation runner entrypoint script
-        "COPY epistemix_platform/scripts/run-simulation.sh /usr/local/bin/run-simulation.sh",
-        "RUN chmod +x /usr/local/bin/run-simulation.sh",
         # Create workspace directory for job downloads
         "RUN mkdir -p /workspace",
         # Set environment variables
         "ENV PYTHONUNBUFFERED=1",
         "ENV FRED_HOME=/fred-framework",
-        # Set entrypoint to simulation runner script
-        "ENTRYPOINT [\"/usr/local/bin/run-simulation.sh\"]",
+        # Use Python CLI by default (more features, better error handling)
+        "ENTRYPOINT [\"/usr/local/bin/simulation-runner\"]",
         # Default command shows help
         "CMD [\"--help\"]",
     ],
@@ -64,6 +67,7 @@ docker_image(
         ":prepare-fred-config-script",
         ":simulation-scripts",
         "epistemix_platform:epistemix-cli",
+        "simulation_runner:simulation-runner-cli",
     ],
 )
 

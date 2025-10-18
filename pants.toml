@@ -19,6 +19,7 @@ root_patterns = [
     "/",
     "simulations",
     "epistemix_platform/src",
+    "simulation_runner/src",
     "tcr/src",
 ]
 
