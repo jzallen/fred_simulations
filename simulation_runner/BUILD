@@ -2,7 +2,7 @@
 
 python_requirements(
     name="reqs",
-    source="requirements.txt",
+    source="pyproject.toml",
     resolve="simulation_runner_env",
 )
 
