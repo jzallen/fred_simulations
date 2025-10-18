@@ -9,10 +9,10 @@ FRED 11+ format (CLI arguments) to FRED 10 format (in-file parameters).
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from simulation_runner.exceptions import FREDConfigError
 from simulation_runner.utils.date_converter import convert_date_to_fred10_format
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +49,15 @@ class FREDConfigBuilder:
             If input_fred_path does not exist
         """
         if not input_fred_path.exists():
-            raise FREDConfigError(
-                f"Input FRED file not found: {input_fred_path}"
-            )
+            raise FREDConfigError(f"Input FRED file not found: {input_fred_path}")
 
         self.input_fred_path = input_fred_path
-        self._start_date: Optional[str] = None
-        self._end_date: Optional[str] = None
+        self._start_date: str | None = None
+        self._end_date: str | None = None
         self._locations: list[str] = []
-        self._seed: Optional[int] = None
+        self._seed: int | None = None
 
-    def with_dates(
-        self, start_date: str, end_date: Optional[str] = None
-    ) -> "FREDConfigBuilder":
+    def with_dates(self, start_date: str, end_date: str | None = None) -> "FREDConfigBuilder":
         """
         Add simulation dates to the configuration.
 
@@ -129,9 +125,7 @@ class FREDConfigBuilder:
         return self
 
     @classmethod
-    def from_run_config(
-        cls, run_config_path: Path, input_fred_path: Path
-    ) -> "FREDConfigBuilder":
+    def from_run_config(cls, run_config_path: Path, input_fred_path: Path) -> "FREDConfigBuilder":
         """
         Create builder from EPX run config JSON file.
 
@@ -167,9 +161,7 @@ class FREDConfigBuilder:
             with open(run_config_path, encoding="utf-8") as f:
                 run_config = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            raise FREDConfigError(
-                f"Failed to load run config from {run_config_path}: {e}"
-            ) from e
+            raise FREDConfigError(f"Failed to load run config from {run_config_path}: {e}") from e
 
         # Extract parameters
         params = run_config.get("params", {})
@@ -237,7 +229,7 @@ class FREDConfigBuilder:
             # Read original fred file
             with open(self.input_fred_path, encoding="utf-8") as f:
                 original_content = f.read()
-        except IOError as e:
+        except OSError as e:
             raise FREDConfigError(
                 f"Failed to read input FRED file {self.input_fred_path}: {e}"
             ) from e
@@ -301,7 +293,7 @@ class FREDConfigBuilder:
 
             return output_fred_path
 
-        except IOError as e:
+        except OSError as e:
             raise FREDConfigError(
                 f"Failed to write output FRED file {output_fred_path}: {e}"
             ) from e

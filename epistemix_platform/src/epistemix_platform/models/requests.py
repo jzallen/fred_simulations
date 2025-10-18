@@ -2,8 +2,6 @@
 Pydantic models for API request validation.
 """
 
-from typing import List, Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -16,7 +14,7 @@ class RegisterJobRequest(BaseModel):
     )
 
     userId: int = Field(default_factory=int, description="User ID for the job registration")
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the job"
     )
 
@@ -34,7 +32,7 @@ class SubmitJobRequest(BaseModel):
     jobId: int = Field(description="ID of the job to submit")
     context: str = Field(default="job", description="Context for the job submission")
     uploadType: str = Field(alias="type", default="input", description="Type of the job submission")
-    runId: Optional[int] = Field(
+    runId: int | None = Field(
         default=None, description="ID of the run associated with the job submission"
     )
 
@@ -54,7 +52,7 @@ class Population(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     version: str = Field(description="Population version (e.g., 'US_2010.v5')")
-    locations: List[str] = Field(description="List of location names")
+    locations: list[str] = Field(description="List of location names")
 
 
 class RunRequest(BaseModel):
@@ -82,8 +80,8 @@ class RunRequest(BaseModel):
     size: str = Field(description="Size configuration for the run (e.g., 'hot')")
     fredVersion: str = Field(description="Version of FRED to use")
     population: Population = Field(description="Population configuration")
-    fredArgs: List[FredArg] = Field(description="FRED command line arguments")
-    fredFiles: List[str] = Field(description="List of FRED configuration files")
+    fredArgs: list[FredArg] = Field(description="FRED command line arguments")
+    fredFiles: list[str] = Field(description="List of FRED configuration files")
 
 
 class SubmitRunsRequest(BaseModel):
@@ -113,4 +111,4 @@ class SubmitRunsRequest(BaseModel):
         },
     )
 
-    runRequests: List[RunRequest] = Field(description="List of run requests to submit")
+    runRequests: list[RunRequest] = Field(description="List of run requests to submit")

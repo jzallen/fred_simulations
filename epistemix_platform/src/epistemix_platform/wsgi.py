@@ -5,22 +5,27 @@ This module provides the WSGI application object that Gunicorn will use
 to serve the Epistemix API in production environments.
 """
 
+import logging
 import os
 import sys
-import logging
-from urllib.parse import urlsplit, urlunsplit
+
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from epistemix_platform.app import app
 from epistemix_platform.config import config
 
+
 # Configure logging for production with level-based stream separation
 class _MaxLevelFilter(logging.Filter):
     """Filter to limit handler to messages below a certain level."""
+
     def __init__(self, level):
         super().__init__()
         self.level = level
+
     def filter(self, record):
         return record.levelno < self.level
+
 
 # Reset root logger and attach filtered handlers
 root = logging.getLogger()
@@ -29,7 +34,7 @@ for h in list(root.handlers):
 root.setLevel(logging.INFO)
 
 # Create formatter for consistent log format
-fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 # stdout handler for INFO, WARNING (but not ERROR)
 stdout_h = logging.StreamHandler(sys.stdout)
@@ -59,7 +64,7 @@ logger.info(f"Loading configuration for environment: {config_name}")
 app.config.from_object(config.get(config_name, config["default"]))
 
 # Additional production configurations
-app.config['PROPAGATE_EXCEPTIONS'] = True
+app.config["PROPAGATE_EXCEPTIONS"] = True
 
 # Log startup information
 logger.info(f"Epistemix API WSGI application initialized for {config_name} environment")
@@ -68,5 +73,4 @@ logger.info(f"Epistemix API WSGI application initialized for {config_name} envir
 application = app
 
 # Optional: Add middleware for production (e.g., ProxyFix for reverse proxy)
-from werkzeug.middleware.proxy_fix import ProxyFix
 application = ProxyFix(application, x_for=1, x_proto=1, x_host=1, x_prefix=1)

@@ -21,6 +21,7 @@ from simulation_runner.exceptions import (
 )
 from simulation_runner.fred_config_builder import FREDConfigBuilder
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -113,9 +114,7 @@ class SimulationWorkflow:
             # Verify files were downloaded
             downloaded_files = list(self.workspace_dir.iterdir())
             if not downloaded_files:
-                raise DownloadError(
-                    f"No files downloaded for job {self.job_id}"
-                )
+                raise DownloadError(f"No files downloaded for job {self.job_id}")
 
             logger.info(
                 "Files downloaded",
@@ -128,18 +127,13 @@ class SimulationWorkflow:
             return self.workspace_dir
 
         except subprocess.TimeoutExpired as e:
-            raise DownloadError(
-                f"Download timed out after 5 minutes for job {self.job_id}"
-            ) from e
+            raise DownloadError(f"Download timed out after 5 minutes for job {self.job_id}") from e
         except subprocess.CalledProcessError as e:
             raise DownloadError(
-                f"Failed to download uploads for job {self.job_id}: "
-                f"{e.stderr}"
+                f"Failed to download uploads for job {self.job_id}: " f"{e.stderr}"
             ) from e
         except Exception as e:
-            raise DownloadError(
-                f"Unexpected error downloading job {self.job_id}: {e}"
-            ) from e
+            raise DownloadError(f"Unexpected error downloading job {self.job_id}: {e}") from e
 
     def extract_archives(self) -> Path:
         """
@@ -184,13 +178,9 @@ class SimulationWorkflow:
             return self.workspace_dir
 
         except zipfile.BadZipFile as e:
-            raise ExtractionError(
-                f"Invalid zip file: {job_input_zip}"
-            ) from e
+            raise ExtractionError(f"Invalid zip file: {job_input_zip}") from e
         except Exception as e:
-            raise ExtractionError(
-                f"Failed to extract {job_input_zip}: {e}"
-            ) from e
+            raise ExtractionError(f"Failed to extract {job_input_zip}: {e}") from e
 
     def prepare_configs(self) -> list[dict]:
         """
@@ -211,20 +201,14 @@ class SimulationWorkflow:
             # Specific run requested
             run_config_path = self.workspace_dir / f"run_{self.run_id}_config.json"
             if not run_config_path.exists():
-                raise FREDConfigError(
-                    f"Run config not found: {run_config_path}"
-                )
+                raise FREDConfigError(f"Run config not found: {run_config_path}")
             run_configs = [run_config_path]
         else:
             # Process all runs
-            run_configs = sorted(
-                self.workspace_dir.glob("run_*_config.json")
-            )
+            run_configs = sorted(self.workspace_dir.glob("run_*_config.json"))
 
         if not run_configs:
-            raise FREDConfigError(
-                f"No run config files found in {self.workspace_dir}"
-            )
+            raise FREDConfigError(f"No run config files found in {self.workspace_dir}")
 
         logger.info(
             "Preparing FRED configs",
@@ -237,9 +221,7 @@ class SimulationWorkflow:
         # Check for main.fred
         main_fred = self.workspace_dir / "main.fred"
         if not main_fred.exists():
-            raise FREDConfigError(
-                f"main.fred not found in {self.workspace_dir}"
-            )
+            raise FREDConfigError(f"main.fred not found in {self.workspace_dir}")
 
         prepared_runs = []
 
@@ -249,20 +231,20 @@ class SimulationWorkflow:
 
             try:
                 # Build prepared config using builder
-                builder = FREDConfigBuilder.from_run_config(
-                    run_config_path, main_fred
-                )
+                builder = FREDConfigBuilder.from_run_config(run_config_path, main_fred)
 
                 prepared_fred = self.workspace_dir / f"run_{run_id}_prepared.fred"
                 builder.build(prepared_fred)
 
                 run_number = builder.get_run_number()
 
-                prepared_runs.append({
-                    "run_id": run_id,
-                    "config_path": prepared_fred,
-                    "run_number": run_number,
-                })
+                prepared_runs.append(
+                    {
+                        "run_id": run_id,
+                        "config_path": prepared_fred,
+                        "run_number": run_number,
+                    }
+                )
 
                 logger.info(
                     "Prepared config",
@@ -274,9 +256,7 @@ class SimulationWorkflow:
                 )
 
             except Exception as e:
-                raise FREDConfigError(
-                    f"Failed to prepare config for run {run_id}: {e}"
-                ) from e
+                raise FREDConfigError(f"Failed to prepare config for run {run_id}: {e}") from e
 
         return prepared_runs
 
@@ -364,9 +344,7 @@ class SimulationWorkflow:
                     f"See {validation_log} for details."
                 ) from e
             except subprocess.TimeoutExpired as e:
-                raise ValidationError(
-                    f"FRED validation timed out for run {run_id}"
-                ) from e
+                raise ValidationError(f"FRED validation timed out for run {run_id}") from e
 
         return prepared_runs
 
@@ -477,8 +455,7 @@ class SimulationWorkflow:
                 ) from e
             except subprocess.TimeoutExpired as e:
                 raise SimulationError(
-                    f"FRED simulation timed out for run {run_id} "
-                    f"(exceeded 1 hour)"
+                    f"FRED simulation timed out for run {run_id} " f"(exceeded 1 hour)"
                 ) from e
 
         return prepared_runs
@@ -523,9 +500,7 @@ class SimulationWorkflow:
             # Validate configuration
             errors = self.config.validate()
             if errors:
-                raise WorkflowError(
-                    f"Configuration validation failed: {'; '.join(errors)}"
-                )
+                raise WorkflowError(f"Configuration validation failed: {'; '.join(errors)}")
 
             # Execute pipeline stages
             self.download_uploads()

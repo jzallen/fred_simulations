@@ -8,6 +8,7 @@ import os
 import sys
 from pathlib import Path
 
+
 def main():
     """Main function to execute the agent info job."""
     # Ensure relative FRED assets resolve regardless of invocation location
@@ -29,6 +30,7 @@ def main():
     except Exception as e:
         print(f"Job execution failed ({type(e).__name__}): {e}", file=sys.stderr)
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -10,6 +10,7 @@ from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+
 if TYPE_CHECKING:
     from epistemix_platform.config import Config
 
@@ -124,7 +125,7 @@ def create_sqlite_engine(database_url: str) -> Engine:
     return create_engine(
         database_url,
         echo=False,
-        connect_args={"check_same_thread": False}  # Required for SQLite in multi-threaded apps
+        connect_args={"check_same_thread": False},  # Required for SQLite in multi-threaded apps
     )
 
 
@@ -141,6 +142,7 @@ def create_engine_from_config(config: "Config" = None, database_url: str = None)
     """
     if config is None:
         from epistemix_platform.config import Config
+
         config = Config
 
     if database_url is None:

@@ -61,9 +61,9 @@ make run-and-analyze
 make clean
 ```
 
-### Python Development (using Poetry for local development)
+### Python Development
 ```bash
-# Install dependencies
+# Install dependencies (for local development)
 poetry install --no-root
 
 # Run tests for epistemix_platform (in parallel)
@@ -74,16 +74,17 @@ poetry run pytest epistemix_platform/ -n auto
 # Run specific test file
 poetry run pytest epistemix_platform/tests/test_pact_compliance.py -v
 
-# Code Quality Commands
-make format       # Format code with black and isort
-make lint         # Run all linters (black, flake8, pylint)
-make lint-fix     # Auto-fix formatting and show remaining issues
-make pre-commit   # Run pre-commit hooks on all files
+# Code Quality Commands (using Pants + Ruff - 10-100x faster!)
+pants fmt ::                    # Format all Python files with Ruff
+pants fmt epistemix_platform::  # Format specific component
+pants fmt --changed-since=HEAD  # Format only changed files
 
-# Or use Poetry directly:
-poetry run black epistemix_platform/ simulations/ *.py
-poetry run flake8 epistemix_platform/ simulations/ *.py
-poetry run pylint epistemix_platform/ simulations/ *.py
+pants lint ::                   # Lint all Python files with Ruff
+pants lint epistemix_platform:: # Lint specific component
+pants lint --changed-since=HEAD # Lint only changed files
+
+# Format and lint together
+pants fmt lint ::
 ```
 
 ### Epistemix API Server
@@ -220,10 +221,11 @@ This project follows the **Conventional Commits** standard (https://www.conventi
 - **Pact compliance**: `test_pact_compliance.py` validates API contract
 - **Integration tests**: Test database repositories and API endpoints
 - **Code Quality Enforcement**:
-  - **Pre-commit hooks**: Automatically run black, isort, flake8, and pylint on commit
-  - **Pre-push hooks**: Run all epistemix_platform tests in parallel before push
-  - **Linting**: PEP8 compliance via black (formatting) and flake8 (style checks)
-  - **Static analysis**: pylint configured with project-specific rules in `.pylintrc`
+  - **Pre-commit hooks**: Automatically run `pants fmt lint --changed-since=HEAD` on commit
+  - **Pre-push hooks**: Run epistemix_platform tests and `pants fmt lint ::` before push
+  - **Linting**: Ruff via Pants (10-100x faster than pre-commit framework)
+  - **Formatting**: Ruff formatter (Black-compatible) via Pants
+  - **Import sorting**: Ruff isort rules (Black-compatible) via Pants
 
 ## Important Notes
 - FRED_HOME environment variable should point to `/workspaces/fred_simulations/fred-framework`

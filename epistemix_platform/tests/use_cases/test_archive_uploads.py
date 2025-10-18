@@ -13,7 +13,6 @@ from epistemix_platform.use_cases.archive_uploads import archive_uploads
 
 
 class TestArchiveUploadsUseCase:
-
     @pytest.fixture
     def mock_repository(self):
         repo = Mock()  # Don't use spec since archive methods aren't in the interface yet

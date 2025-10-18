@@ -5,7 +5,7 @@ This module implements the core business logic for run submission operations.
 
 import logging
 import re
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import PodPhase, Run, RunStatus
@@ -24,7 +24,7 @@ class PopulationDict(TypedDict):
     """Type definition for population configuration."""
 
     version: str
-    locations: List[str]
+    locations: list[str]
 
 
 class RunRequestDict(TypedDict):
@@ -35,8 +35,8 @@ class RunRequestDict(TypedDict):
     size: str
     fredVersion: str
     population: PopulationDict
-    fredArgs: List[FredArgDict]
-    fredFiles: List[str]
+    fredArgs: list[FredArgDict]
+    fredFiles: list[str]
 
 
 logger = logging.getLogger(__name__)
@@ -45,38 +45,38 @@ logger = logging.getLogger(__name__)
 def _parse_client_version(epx_version: str) -> str:
     """
     Parse and validate client version from user agent string.
-    
+
     Extracts version number from strings like 'epx_client_1.2.2' or similar formats.
     Returns a valid semantic version or defaults to '1.2.2' if parsing fails.
-    
+
     Args:
         epx_version: The client version string to parse
-        
+
     Returns:
         Validated semantic version string (e.g., '1.2.2')
     """
     if not epx_version:
         logger.warning("Empty epx_version provided, using default 1.2.2")
         return "1.2.2"
-    
+
     # Match semantic version pattern (major.minor.patch with optional additional parts)
-    version_pattern = r'(\d+\.\d+\.\d+(?:\.\d+)*)'
+    version_pattern = r"(\d+\.\d+\.\d+(?:\.\d+)*)"
     match = re.search(version_pattern, epx_version)
-    
+
     if match:
         version = match.group(1)
         logger.debug(f"Extracted client version '{version}' from '{epx_version}'")
         return version
-    
+
     # Fallback: try to extract version from common patterns like 'epx_client_1.2.2'
     parts = epx_version.split("_")
     if len(parts) >= 2:
         potential_version = parts[-1]
         # Validate it looks like a version number
-        if re.match(r'^\d+\.\d+\.\d+', potential_version):
+        if re.match(r"^\d+\.\d+\.\d+", potential_version):
             logger.debug(f"Extracted fallback version '{potential_version}' from '{epx_version}'")
             return potential_version
-    
+
     logger.warning(f"Could not parse version from '{epx_version}', using default 1.2.2")
     return "1.2.2"
 
@@ -84,10 +84,10 @@ def _parse_client_version(epx_version: str) -> str:
 def submit_runs(
     run_repository: IRunRepository,
     upload_location_repository: IUploadLocationRepository,
-    run_requests: List[RunRequestDict],
+    run_requests: list[RunRequestDict],
     user_token_value: str,
     epx_version: str = "epx_client_1.2.2",
-) -> List[Run]:
+) -> list[Run]:
     """
     Submit multiple run requests for processing.
 
@@ -149,11 +149,11 @@ def submit_runs(
 # Legacy functions for backward compatibility
 # These will be removed once all code is migrated to use the repository pattern
 
-runs_storage: Dict[int, Dict[str, Any]] = {}
+runs_storage: dict[int, dict[str, Any]] = {}
 next_run_id = 978
 
 
-def get_runs_storage() -> Dict[int, Dict[str, Any]]:
+def get_runs_storage() -> dict[int, dict[str, Any]]:
     """
     Get the runs storage dictionary for external access.
 

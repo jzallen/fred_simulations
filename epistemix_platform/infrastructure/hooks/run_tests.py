@@ -7,22 +7,22 @@ This hook can be configured to run tests before or after stack operations.
 import subprocess
 from pathlib import Path
 
-from sceptre.hooks import Hook
 from sceptre.exceptions import SceptreException
+from sceptre.hooks import Hook
 
 
 class RunTests(Hook):
     """
     Hook to run infrastructure tests using pytest.
-    
+
     This hook can be configured to run specific test files or all tests
     in the infrastructure test directory.
     """
-    
+
     def __init__(self, *args, **kwargs):
         """Initialize the hook."""
         super().__init__(*args, **kwargs)
-    
+
     def run(self) -> None:
         """
         Execute infrastructure tests.
@@ -45,18 +45,18 @@ class RunTests(Hook):
             SceptreException: If any tests fail or if path traversal is attempted.
         """
         # Get test files from hook arguments
-        test_files = self.argument.get('test_files', []) if self.argument else []
-        
+        test_files = self.argument.get("test_files", []) if self.argument else []
+
         # Build pytest command
         test_dir = Path(self.stack.project_path) / "tests"
-        
+
         if not test_dir.exists():
             self.logger.warning(f"Test directory not found: {test_dir}")
             return
-        
+
         # Construct pytest command
         cmd = ["poetry", "run", "pytest"]
-        
+
         if test_files:
             # Run specific test files
             for test_file in test_files:
@@ -69,8 +69,12 @@ class RunTests(Hook):
                     test_path.relative_to(test_dir.resolve())
                 except ValueError:
                     # Path is outside test directory - potential security issue
-                    self.logger.error(f"Invalid test file path (outside test directory): {test_file}")
-                    raise SceptreException(f"Test file path traversal attempt detected: {test_file}")
+                    self.logger.error(
+                        f"Invalid test file path (outside test directory): {test_file}"
+                    )
+                    raise SceptreException(
+                        f"Test file path traversal attempt detected: {test_file}"
+                    )
 
                 if test_path.exists():
                     cmd.append(str(test_path))
@@ -79,13 +83,13 @@ class RunTests(Hook):
         else:
             # Run all tests in the test directory
             cmd.append(str(test_dir))
-        
+
         # Add pytest options
         cmd.extend(["-v", "--tb=short"])
-        
+
         # Run tests
         self.logger.info(f"Running tests: {' '.join(cmd)}")
-        
+
         try:
             result = subprocess.run(
                 cmd,
@@ -93,7 +97,7 @@ class RunTests(Hook):
                 text=True,
                 check=True,  # Automatically raise CalledProcessError on non-zero exit
                 timeout=300,  # 5-minute timeout for test execution
-                cwd=Path(self.stack.project_path).parent.parent  # Go up to project root for Poetry
+                cwd=Path(self.stack.project_path).parent.parent,  # Go up to project root for Poetry
             )
 
             # Log output

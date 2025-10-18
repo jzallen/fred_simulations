@@ -6,7 +6,7 @@ Contains the core business logic and rules for job entities.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class JobStatus(Enum):
@@ -44,10 +44,10 @@ class Job:
 
     # Required fields
     user_id: int
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
     # Repository-managed field (None until persisted)
-    id: Optional[int] = None
+    id: int | None = None
 
     # Optional fields with defaults
     status: JobStatus = JobStatus.CREATED
@@ -55,10 +55,10 @@ class Job:
     updated_at: datetime = field(default_factory=lambda: datetime.utcnow())
 
     # Upload locations (S3 URLs)
-    input_location: Optional[str] = None
-    config_location: Optional[str] = None
+    input_location: str | None = None
+    config_location: str | None = None
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Post-initialization validation and setup."""
@@ -132,7 +132,7 @@ class Job:
         """Check if the job has a specific tag."""
         return tag in self.tags
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the job to a dictionary for API responses."""
 
         return {
@@ -146,7 +146,7 @@ class Job:
         }
 
     @classmethod
-    def create_new(cls, user_id: int, tags: List[str] = None) -> "Job":
+    def create_new(cls, user_id: int, tags: list[str] = None) -> "Job":
         """
         Factory method to create a new unpersisted job.
 
@@ -177,13 +177,13 @@ class Job:
         cls,
         job_id: int,
         user_id: int,
-        tags: List[str] = None,
+        tags: list[str] = None,
         status: JobStatus = JobStatus.CREATED,
         created_at: datetime = None,
         updated_at: datetime = None,
-        input_location: Optional[str] = None,
-        config_location: Optional[str] = None,
-        metadata: Dict[str, Any] = None,
+        input_location: str | None = None,
+        config_location: str | None = None,
+        metadata: dict[str, Any] = None,
     ) -> "Job":
         """
         Factory method to create a job with an existing ID (for loading from repository).
