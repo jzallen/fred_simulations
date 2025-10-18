@@ -15,7 +15,7 @@ python_sources(
 pex_binary(
     name="simulation-runner-cli",
     entry_point="simulation_runner.cli:cli",
-    dependencies=["./src/simulation_runner:lib"],
+    dependencies=[":simulation_runner"],
     resolve="simulation_runner_env",
     execution_mode="venv",
 )
@@ -25,7 +25,7 @@ python_test_utils(
     sources=["tests/conftest.py"],
     resolve="simulation_runner_env",
     dependencies=[
-        "./src/simulation_runner:lib",
+        ":simulation_runner",
     ],
 )
 
@@ -34,14 +34,9 @@ python_tests(
     sources=["tests/**/test_*.py"],
     resolve="simulation_runner_env",
     dependencies=[
-        "./src/simulation_runner:lib",
+        ":simulation_runner",
         ":test_utils",
     ],
-)
-
-files(
-    name="scripts",
-    sources=["scripts/**/*.sh"],
 )
 
 files(
