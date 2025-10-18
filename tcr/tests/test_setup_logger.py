@@ -3,7 +3,6 @@
 import logging
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
@@ -21,25 +20,27 @@ class TestSetupLogger:
 
     def test_setup_logger__creates_log_file_at_specified_path(self, temp_home_dir):
         """Test that setup_logger creates log file at the specified path."""
-        log_file = temp_home_dir / 'test_logs' / 'tcr.log'
+        log_file = temp_home_dir / "test_logs" / "tcr.log"
 
         logger = setup_logger(log_file)
 
         # Logger should be configured
-        assert logger.name == 'tcr'
+        assert logger.name == "tcr"
         assert logger.level == logging.DEBUG
 
         # Log directory should be created
         assert log_file.parent.exists()
 
         # File handler should be pointing to the specified log file
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         assert len(file_handlers) == 1
         assert Path(file_handlers[0].baseFilename) == log_file
 
     def test_setup_logger__creates_parent_directories_if_not_exist(self, temp_home_dir):
         """Test that setup_logger creates parent directories if they don't exist."""
-        log_file = temp_home_dir / 'deep' / 'nested' / 'path' / 'tcr.log'
+        log_file = temp_home_dir / "deep" / "nested" / "path" / "tcr.log"
 
         # Ensure directories don't exist initially
         assert not log_file.parent.exists()
@@ -50,20 +51,22 @@ class TestSetupLogger:
         assert log_file.parent.exists()
 
         # File handler should be created
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         assert len(file_handlers) == 1
         assert Path(file_handlers[0].baseFilename) == log_file
 
     def test_setup_logger__clears_existing_handlers(self, temp_home_dir):
         """Test that setup_logger clears existing handlers before adding new ones."""
-        log_file = temp_home_dir / 'tcr.log'
+        log_file = temp_home_dir / "tcr.log"
 
         # Get the logger and add some existing handlers
-        tcr_logger = logging.getLogger('tcr')
+        tcr_logger = logging.getLogger("tcr")
         # Clear any existing handlers first
         tcr_logger.handlers.clear()
         tcr_logger.addHandler(logging.StreamHandler())
-        tcr_logger.addHandler(logging.FileHandler(str(temp_home_dir / 'old.log')))
+        tcr_logger.addHandler(logging.FileHandler(str(temp_home_dir / "old.log")))
         assert len(tcr_logger.handlers) == 2
 
         # Call setup_logger
@@ -75,19 +78,26 @@ class TestSetupLogger:
 
     def test_setup_logger__maintains_proper_logger_configuration(self, temp_home_dir):
         """Test that setup_logger maintains proper logger configuration."""
-        log_file = temp_home_dir / 'tcr.log'
+        log_file = temp_home_dir / "tcr.log"
 
         logger = setup_logger(log_file)
 
         # Logger should have proper configuration
-        assert logger.name == 'tcr'
+        assert logger.name == "tcr"
         assert logger.level == logging.DEBUG
 
         # Should have both console and file handlers
         assert len(logger.handlers) == 2
 
-        console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.handlers.RotatingFileHandler)]
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        console_handlers = [
+            h
+            for h in logger.handlers
+            if isinstance(h, logging.StreamHandler)
+            and not isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
 
         assert len(console_handlers) == 1
         assert len(file_handlers) == 1
@@ -100,12 +110,14 @@ class TestSetupLogger:
 
     def test_setup_logger__configures_rotating_file_handler(self, temp_home_dir):
         """Test that file handler is configured with rotation settings."""
-        log_file = temp_home_dir / 'tcr.log'
+        log_file = temp_home_dir / "tcr.log"
 
         logger = setup_logger(log_file)
 
         # Get the rotating file handler
-        file_handlers = [h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        file_handlers = [
+            h for h in logger.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
         assert len(file_handlers) == 1
 
         handler = file_handlers[0]

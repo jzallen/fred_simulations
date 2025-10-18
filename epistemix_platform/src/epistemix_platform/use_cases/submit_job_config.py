@@ -9,6 +9,7 @@ from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IJobRepository, IUploadLocationRepository
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -32,6 +32,7 @@ from epistemix_platform.use_cases.get_job import get_job
 from epistemix_platform.use_cases.get_runs import get_runs_by_job_id
 from epistemix_platform.use_cases.list_jobs import list_jobs
 
+
 # Load configuration from ~/.epistemix/cli.env if it exists
 CONFIG_PATH = Path.home() / ".epistemix" / "cli.env"
 if CONFIG_PATH.exists():

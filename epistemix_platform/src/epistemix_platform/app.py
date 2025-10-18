@@ -19,7 +19,11 @@ from returns.pipeline import is_successful
 from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
-from epistemix_platform.models.requests import RegisterJobRequest, SubmitJobRequest, SubmitRunsRequest
+from epistemix_platform.models.requests import (
+    RegisterJobRequest,
+    SubmitJobRequest,
+    SubmitRunsRequest,
+)
 from epistemix_platform.repositories.database import get_database_manager
 from epistemix_platform.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_platform.repositories.run_repository import SQLAlchemyRunRepository
@@ -27,17 +31,18 @@ from epistemix_platform.repositories.s3_upload_location_repository import (
     create_upload_location_repository,
 )
 
+
 app = Flask(__name__)
 CORS(app)
 
 # Configure logging to stdout for Docker
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout)  # Use stdout for all logs
     ],
-    force=True
+    force=True,
 )
 logger = logging.getLogger(__name__)
 
@@ -53,11 +58,13 @@ app.config["DATABASE_URL"] = database_url
 @app.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint for container monitoring."""
-    return jsonify({
-        "status": "healthy",
-        "service": "epistemix-api",
-        "timestamp": datetime.utcnow().isoformat()
-    }), 200
+    return jsonify(
+        {
+            "status": "healthy",
+            "service": "epistemix-api",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    ), 200
 
 
 @app.errorhandler(ValidationError)
@@ -140,7 +147,7 @@ def get_job_controller():
     # Create mapper instances
     job_mapper = JobMapper()
     run_mapper = RunMapper()
-    
+
     # Create repository instances with injected mappers
     job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
     run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
@@ -351,8 +358,6 @@ def get_job_results():
     ]
 
     return jsonify({"urls": urls}), 200
-
-
 
 
 @app.route("/", methods=["GET"])

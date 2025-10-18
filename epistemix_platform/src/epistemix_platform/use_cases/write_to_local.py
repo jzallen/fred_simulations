@@ -10,6 +10,7 @@ from pathlib import Path
 
 from epistemix_platform.models.upload_content import ContentType, UploadContent
 
+
 logger = logging.getLogger(__name__)
 
 

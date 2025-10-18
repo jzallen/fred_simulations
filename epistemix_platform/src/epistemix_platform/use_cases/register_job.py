@@ -10,6 +10,7 @@ from epistemix_platform.models.job import Job, JobTag
 from epistemix_platform.models.user import UserToken
 from epistemix_platform.repositories.interfaces import IJobRepository
 
+
 logger = logging.getLogger(__name__)
 
 

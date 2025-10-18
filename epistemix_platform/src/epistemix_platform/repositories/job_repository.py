@@ -5,7 +5,7 @@ This is a concrete implementation of the IJobRepository interface using SQLite.
 
 import logging
 from contextlib import contextmanager
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from epistemix_platform.models.job import Job, JobStatus
 from epistemix_platform.repositories.database import JobRecord, JobStatusEnum, get_db_session
 from epistemix_platform.repositories.interfaces import IJobRepository
+
 
 if TYPE_CHECKING:
     from epistemix_platform.mappers.job_mapper import JobMapper
@@ -29,13 +30,11 @@ class SQLAlchemyJobRepository:
     """
 
     def __init__(
-        self,
-        job_mapper: 'JobMapper',
-        get_db_session_fn: Callable[[], Session] = get_db_session
+        self, job_mapper: "JobMapper", get_db_session_fn: Callable[[], Session] = get_db_session
     ):
         """
         Initialize the repository with mapper dependency injection.
-        
+
         Args:
             job_mapper: The JobMapper instance for converting between domain and database models
             get_db_session_fn: Factory function for creating database sessions

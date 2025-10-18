@@ -18,23 +18,24 @@ from epistemix_platform.models.requests import RunRequest
 from epistemix_platform.models.run import Run
 from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
-from epistemix_platform.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 from epistemix_platform.use_cases import archive_uploads as archive_uploads_use_case
 from epistemix_platform.use_cases import (
     get_job_uploads,
+    read_upload_content,
+    write_to_local,
 )
 from epistemix_platform.use_cases import get_runs_by_job_id as get_runs_by_job_id_use_case
-from epistemix_platform.use_cases import (
-    read_upload_content,
-)
 from epistemix_platform.use_cases import register_job as register_job_use_case
 from epistemix_platform.use_cases import submit_job as submit_job_use_case
 from epistemix_platform.use_cases import submit_job_config as submit_job_config_use_case
 from epistemix_platform.use_cases import submit_run_config as submit_run_config_use_case
 from epistemix_platform.use_cases import submit_runs as submit_runs_use_case
-from epistemix_platform.use_cases import (
-    write_to_local,
-)
+
 
 logger = logging.getLogger(__name__)
 

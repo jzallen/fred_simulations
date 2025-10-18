@@ -9,6 +9,7 @@ from typing import List, Optional
 from epistemix_platform.models.job import Job
 from epistemix_platform.repositories.interfaces import IJobRepository
 
+
 logger = logging.getLogger(__name__)
 
 

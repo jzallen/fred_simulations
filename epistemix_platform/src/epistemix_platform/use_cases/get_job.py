@@ -9,6 +9,7 @@ from typing import Optional
 from ..models.job import Job
 from ..repositories.interfaces import IJobRepository
 
+
 logger = logging.getLogger(__name__)
 
 

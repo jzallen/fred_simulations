@@ -29,10 +29,10 @@ select = ["E", "F", "I"]  # E=errors, F=pyflakes, I=isort
 
 # Ignore rules that conflict with Black or are too strict
 # E203: whitespace before ':' (conflicts with Black)
-# W503: line break before binary operator (conflicts with Black)
-ignore = ["E203", "W503"]
+# E501: line too long (intentionally ignored for now, will be addressed in future cleanup)
+ignore = ["E203", "E501"]
 
 [tool.ruff.lint.isort]
-# Match existing isort settings
-profile = "black"
-line-length = 100
+# Match existing isort settings (Black-compatible)
+# Ruff's isort is Black-compatible by default
+lines-after-imports = 2

@@ -7,7 +7,7 @@ Sceptre-managed CloudFormation templates and deployed resources.
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 from unittest.mock import Mock
 
 import pytest
@@ -29,7 +29,7 @@ def infrastructure_root() -> Path:
     return infrastructure_dir
 
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 def templates_dir(infrastructure_root: Path) -> Path:
     """Return the path to the templates directory."""
     return infrastructure_root / "templates"
@@ -62,44 +62,46 @@ def template_files(templates_dir: Path) -> Dict[str, Path]:
 @pytest.fixture(scope="session")
 def load_template():
     """Factory function to load a CloudFormation template from JSON."""
+
     def _load_template(template_path: Path) -> Dict[str, Any]:
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, "r", encoding="utf-8") as f:
             return json.load(f)
+
     return _load_template
 
 
 @pytest.fixture(scope="session")
 def load_config():
     """Factory function to load a Sceptre config file."""
+
     def _load_config(config_path: Path) -> Dict[str, Any]:
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
     return _load_config
 
 
 @pytest.fixture(scope="session")
 def sceptre_context():
     """Factory function to create SceptreContext for different environments."""
+
     def _create_context(environment: str) -> SceptreContext:
         project_path = Path(__file__).parent.parent
         command_path = environment
-        return SceptreContext(
-            project_path=str(project_path),
-            command_path=command_path
-        )
+        return SceptreContext(project_path=str(project_path), command_path=command_path)
+
     return _create_context
 
 
 @pytest.fixture(scope="session")
 def config_reader():
     """Factory function to create ConfigReader for different environments."""
+
     def _create_reader(environment: str) -> ConfigReader:
         project_path = Path(__file__).parent.parent
-        context = SceptreContext(
-            project_path=str(project_path),
-            command_path=environment
-        )
+        context = SceptreContext(project_path=str(project_path), command_path=environment)
         return ConfigReader(context)
+
     return _create_reader
 
 
@@ -112,66 +114,73 @@ def expected_tags() -> Dict[str, Dict[str, str]]:
             "Project": "FREDSimulations",
             "ManagedBy": "Sceptre",
             "CreatedWith": "InfrastructureAsCode",
-            "CostCenter": "Development"
+            "CostCenter": "Development",
         },
         "staging": {
             "Environment": "staging",
-            "Project": "FREDSimulations", 
+            "Project": "FREDSimulations",
             "ManagedBy": "Sceptre",
             "CreatedWith": "InfrastructureAsCode",
-            "CostCenter": "Staging"
+            "CostCenter": "Staging",
         },
         "production": {
             "Environment": "production",
             "Project": "FREDSimulations",
-            "ManagedBy": "Sceptre", 
+            "ManagedBy": "Sceptre",
             "CreatedWith": "InfrastructureAsCode",
-            "CostCenter": "Production"
-        }
+            "CostCenter": "Production",
+        },
     }
 
 
 # Helper functions
-def create_mock_stack(stack_name: str, template: Dict[str, Any], parameters: Dict[str, str] = None) -> Mock:
+def create_mock_stack(
+    stack_name: str, template: Dict[str, Any], parameters: Dict[str, str] = None
+) -> Mock:
     """Create a mock CloudFormation stack for testing."""
     mock_stack = Mock()
     mock_stack.stack_name = stack_name
     mock_stack.template_body = json.dumps(template)
     mock_stack.parameters = [
-        {"ParameterKey": k, "ParameterValue": v} 
-        for k, v in (parameters or {}).items()
+        {"ParameterKey": k, "ParameterValue": v} for k, v in (parameters or {}).items()
     ]
     mock_stack.stack_status = "CREATE_COMPLETE"
     mock_stack.tags = []
     return mock_stack
 
 
-def extract_resource_properties(template: Dict[str, Any], resource_type: str) -> List[Dict[str, Any]]:
+def extract_resource_properties(
+    template: Dict[str, Any], resource_type: str
+) -> List[Dict[str, Any]]:
     """Extract properties of resources of a specific type from a template."""
     resources = []
     for resource_name, resource_def in template.get("Resources", {}).items():
         if resource_def.get("Type") == resource_type:
-            resources.append({
-                "name": resource_name,
-                "properties": resource_def.get("Properties", {}),
-                "type": resource_type
-            })
+            resources.append(
+                {
+                    "name": resource_name,
+                    "properties": resource_def.get("Properties", {}),
+                    "type": resource_type,
+                }
+            )
     return resources
 
 
-def validate_parameter_constraints(template: Dict[str, Any], parameter_name: str, value: str) -> bool:
+def validate_parameter_constraints(
+    template: Dict[str, Any], parameter_name: str, value: str
+) -> bool:
     """Validate a parameter value against template constraints."""
     parameters = template.get("Parameters", {})
     if parameter_name not in parameters:
         return False
-    
+
     param_def = parameters[parameter_name]
-    
+
     # Check AllowedValues
     allowed_values = param_def.get("AllowedValues")
     if allowed_values and value not in allowed_values:
         return False
-    
+
     # Check MinLength/MaxLength for strings
     min_length = param_def.get("MinLength")
     max_length = param_def.get("MaxLength")
@@ -179,11 +188,12 @@ def validate_parameter_constraints(template: Dict[str, Any], parameter_name: str
         return False
     if max_length and len(value) > max_length:
         return False
-    
+
     # Check AllowedPattern
     import re
+
     pattern = param_def.get("AllowedPattern")
     if pattern and not re.match(pattern, value):
         return False
-    
+
     return True

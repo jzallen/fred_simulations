@@ -4,10 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from agent_info_demo.agent_info_job import info_job
 from pact import Consumer, Provider
 from pact.matchers import EachLike, Like
 
-from agent_info_demo.agent_info_job import info_job
 
 os.environ["PACT_VERIFIER_LOG_LEVEL"] = "DEBUG"
 

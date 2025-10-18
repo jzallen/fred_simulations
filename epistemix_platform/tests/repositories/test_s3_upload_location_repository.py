@@ -23,7 +23,6 @@ from epistemix_platform.repositories.s3_upload_location_repository import (
 
 
 class TestS3UploadLocationRepository:
-
     @pytest.fixture
     def s3_stubber(self):
         os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"

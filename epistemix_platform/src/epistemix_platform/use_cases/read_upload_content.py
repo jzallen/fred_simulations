@@ -9,6 +9,7 @@ from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IUploadLocationRepository
 
+
 logger = logging.getLogger(__name__)
 
 

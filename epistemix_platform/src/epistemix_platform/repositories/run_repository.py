@@ -2,12 +2,13 @@
 SQLAlchemy implementation of the Run repository.
 """
 
-from typing import Callable, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from sqlalchemy.orm import Session
 
 from epistemix_platform.models.run import Run, RunStatus
 from epistemix_platform.repositories.database import RunRecord, get_db_session
+
 
 if TYPE_CHECKING:
     from epistemix_platform.mappers.run_mapper import RunMapper
@@ -17,9 +18,7 @@ class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
 
     def __init__(
-        self,
-        run_mapper: 'RunMapper',
-        get_db_session_fn: Callable[[], Session] = get_db_session
+        self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session] = get_db_session
     ):
         """
         Initialize the repository with mapper dependency injection.

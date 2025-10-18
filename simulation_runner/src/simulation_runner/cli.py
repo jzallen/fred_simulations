@@ -29,10 +29,10 @@ from simulation_runner.exceptions import (
 from simulation_runner.fred_config_builder import FREDConfigBuilder
 from simulation_runner.workflow import SimulationWorkflow
 
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
     default="INFO",
-    help="Set logging level"
+    help="Set logging level",
 )
 def cli(log_level: str):
     """FRED Simulation Runner CLI.
@@ -77,7 +77,9 @@ def run(job_id: int, run_id: Optional[int]):
         # Validate configuration
         errors = config.validate()
         if errors:
-            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {error}" for error in errors)
+            error_msg = "Configuration validation failed:\n" + "\n".join(
+                f"  - {error}" for error in errors
+            )
             raise click.ClickException(error_msg)
 
         # Execute workflow
@@ -179,12 +181,7 @@ def validate(job_id: int, run_id: Optional[int]):
 @click.argument("input_fred", type=click.Path(exists=True, path_type=Path))
 @click.argument("output_fred", type=click.Path(path_type=Path))
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def prepare(
-    run_config: Path,
-    input_fred: Path,
-    output_fred: Path,
-    verbose: bool
-):
+def prepare(run_config: Path, input_fred: Path, output_fred: Path, verbose: bool):
     """
     Prepare FRED 10 configuration from EPX run config.
 
