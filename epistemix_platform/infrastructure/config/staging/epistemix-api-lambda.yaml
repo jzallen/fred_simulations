@@ -1,0 +1,37 @@
+template:
+  type: file
+  path: lambda/epistemix-api-lambda.json
+
+stack_name: epistemix-api-lambda-staging
+
+# Dependencies - External stacks (ECR, RDS, S3) must exist before deploying
+dependencies: []
+
+# Stack parameters for staging environment
+parameters:
+  Environment: staging
+  ServiceName: epistemix-api
+  # ECR image URI - Using explicit digest to force Lambda to pull new image
+  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api@sha256:d949867ee4aaf39bd6a1398eed4946b534dbd0ad30e95c08f595acf1cbf0af51"
+  # VPC configuration (same VPC as dev for now)
+  VPCId: "vpc-00bb33feebfb59191"
+  VPCSubnetIds: "subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672"
+  # RDS connection parameters (from staging RDS stack)
+  DBSecurityGroupId: "sg-08ef2a3729b9b0e98"
+  DBHost: "fred-simulations-staging-staging-rds-po-dbinstance-4paswgqpoauy.c2tsguye2mmq.us-east-1.rds.amazonaws.com"
+  DBPort: "5432"
+  DBName: "epistemixdb"
+  DBUser: "epistemixuser"
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD_STAGING
+  # S3 bucket
+  S3BucketName: "epistemix-uploads-staging"
+  MemorySize: 3008
+  Timeout: 60
+  ApiGatewayRestApiId: ""  # TODO: Set after API Gateway deployment
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Staging
+  Component: Lambda
+  Service: EpistemixAPI

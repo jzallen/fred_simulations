@@ -1,0 +1,62 @@
+[project]
+name = "simulation-runner"
+version = "1.0.0"
+description = "FRED Simulation Runner - orchestrates epidemiological simulations"
+authors = [{name = "FRED Simulations Team"}]
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "click>=8.1.0,<9.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0,<8.0.0",
+    "pytest-cov>=4.0.0,<5.0.0",
+    "black>=23.0.0,<24.0.0",
+    "isort>=5.12.0,<6.0.0",
+    "flake8>=6.0.0,<7.0.0",
+    "pylint>=2.17.0,<3.0.0",
+]
+
+[tool.poetry]
+name = "simulation-runner"
+version = "1.0.0"
+description = "FRED Simulation Runner - orchestrates epidemiological simulations"
+authors = ["FRED Simulations Team"]
+readme = "README.md"
+packages = [{include = "simulation_runner", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+click = "^8.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+pylint = "^2.17.0"
+
+[tool.poetry.scripts]
+simulation-runner = "simulation_runner.cli:cli"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=simulation_runner --cov-report=term-missing"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

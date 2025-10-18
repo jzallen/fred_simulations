@@ -1,0 +1,17 @@
+template:
+  type: file
+  path: ecr/simulation-runner-repository.json
+
+# Stack parameters
+parameters:
+  RepositoryName: fred-simulation-runner
+  Environment: staging
+  EnableVulnerabilityScanning: "true"
+  EnableCloudWatchLogs: "true"
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Staging
+  Component: ECR
+  Service: SimulationRunner

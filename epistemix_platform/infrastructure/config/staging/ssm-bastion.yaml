@@ -6,15 +6,15 @@ parameters:
   VPCId: vpc-00bb33feebfb59191
   SubnetId: subnet-0c6dc4a43d6d2269c  # Use first private subnet
 
-  # RDS Security Group (from dev RDS stack)
+  # RDS Security Group (from staging RDS stack)
   # Uses CloudFormation export from the RDS stack
-  RDSSecurityGroupId: !stack_output dev/rds-postgres.yaml::SecurityGroupId
+  RDSSecurityGroupId: !stack_output staging/rds-postgres.yaml::SecurityGroupId
 
   # Instance Configuration
   InstanceType: t3.nano  # Cost-optimized, can be stopped when not in use
 
 stack_tags:
   Project: epistemix-platform
-  Environment: dev
+  Environment: staging
   ManagedBy: sceptre
   Purpose: SSM Bastion for RDS Access

@@ -30,6 +30,11 @@
       "Type": "CommaDelimitedList",
       "Description": "Comma-delimited list of private subnet IDs for Lambda function"
     },
+    "DBSecurityGroupId": {
+      "Type": "String",
+      "Description": "Security group ID of the RDS database to allow inbound connections from Lambda",
+      "MinLength": 1
+    },
     "DBHost": {
       "Type": "String",
       "Description": "RDS database endpoint hostname",
@@ -92,6 +97,60 @@
   },
 
   "Resources": {
+    "LambdaSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupName": {
+          "Fn::Sub": "${ServiceName}-lambda-vpc-sg-${Environment}"
+        },
+        "GroupDescription": {
+          "Fn::Sub": "Security group for ${ServiceName} Lambda function in ${Environment}"
+        },
+        "VpcId": {"Ref": "VPCId"},
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${ServiceName}-lambda-vpc-sg-${Environment}"
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {"Ref": "Environment"}
+          },
+          {
+            "Key": "Service",
+            "Value": {"Ref": "ServiceName"}
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CloudFormation"
+          }
+        ]
+      }
+    },
+
+    "RDSSecurityGroupIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {"Ref": "DBSecurityGroupId"},
+        "IpProtocol": "tcp",
+        "FromPort": {"Ref": "DBPort"},
+        "ToPort": {"Ref": "DBPort"},
+        "SourceSecurityGroupId": {"Ref": "LambdaSecurityGroup"},
+        "Description": {
+          "Fn::Sub": "Allow inbound PostgreSQL from ${ServiceName} Lambda in ${Environment}"
+        }
+      }
+    },
+
     "LambdaExecutionRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -112,7 +171,8 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
         ],
         "Policies": [
           {
@@ -240,6 +300,10 @@
         "Architectures": ["x86_64"],
         "MemorySize": {"Ref": "MemorySize"},
         "Timeout": {"Ref": "Timeout"},
+        "VpcConfig": {
+          "SecurityGroupIds": [{"Ref": "LambdaSecurityGroup"}],
+          "SubnetIds": {"Ref": "VPCSubnetIds"}
+        },
         "Environment": {
           "Variables": {
             "FLASK_APP": "epistemix_platform.app",
@@ -302,7 +366,8 @@
         "FunctionName": {"Ref": "LambdaFunction"},
         "Description": {
           "Fn::Sub": "Version created on ${AWS::StackName} deployment"
-        }
+        },
+        "CodeSha256": "d949867ee4aaf39bd6a1398eed4946b534dbd0ad30e95c08f595acf1cbf0af51"
       }
     },
 
@@ -373,6 +438,13 @@
       "Value": {"Ref": "LambdaLogGroup"},
       "Export": {
         "Name": {"Fn::Sub": "${AWS::StackName}-LogGroupName"}
+      }
+    },
+    "SecurityGroupId": {
+      "Description": "Security group ID for Lambda function",
+      "Value": {"Ref": "LambdaSecurityGroup"},
+      "Export": {
+        "Name": {"Fn::Sub": "${AWS::StackName}-SecurityGroupId"}
       }
     }
   }

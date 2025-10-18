@@ -9,8 +9,9 @@ This is a FRED (Framework for Reconstructing Epidemiological Dynamics) simulatio
 1. **fred-framework/**: Core FRED simulation engine (C++ source)
 2. **epistemix_platform/**: Flask-based mock API server implementing Epistemix API with clean architecture
    - Also includes AWS infrastructure templates (CloudFormation/Sceptre) in `infrastructure/` subdirectory
-3. **simulations/**: Agent-based simulation configurations and scripts
-4. **tcr/**: Test && Commit || Revert (TCR) development tool
+3. **simulation_runner/**: FRED simulation orchestration component (Python CLI with clean architecture)
+4. **simulations/**: Agent-based simulation configurations and scripts
+5. **tcr/**: Test && Commit || Revert (TCR) development tool
 
 ## Common Development Commands
 
@@ -25,12 +26,14 @@ pants export --resolve=epistemix_platform_env
 
 # Build PEX binaries
 pants package epistemix_platform:epistemix-cli
+pants package simulation_runner:simulation-runner-cli
 pants package tcr:tcr-cli
 pants package epistemix_platform:epistemix_platform_test_runner
 
 # Run tests with Pants
 pants test ::  # Run all tests
 pants test epistemix_platform::  # Run epistemix_platform tests
+pants test simulation_runner::  # Run simulation_runner tests
 pants test tcr::  # Run TCR tests
 ```
 
@@ -93,6 +96,63 @@ python run_server.py
 poetry run python epistemix_platform/run_server.py
 ```
 
+### Simulation Runner (NEW Python CLI)
+```bash
+# Build simulation-runner CLI
+pants package simulation_runner:simulation-runner-cli
+
+# Run complete simulation workflow
+./dist/simulation_runner/simulation-runner-cli.pex run --job-id 12
+./dist/simulation_runner/simulation-runner-cli.pex run --job-id 12 --run-id 4
+
+# Validate configs without running simulations
+./dist/simulation_runner/simulation-runner-cli.pex validate --job-id 12
+
+# Download job uploads only
+./dist/simulation_runner/simulation-runner-cli.pex download --job-id 12
+
+# Prepare FRED config from run config
+./dist/simulation_runner/simulation-runner-cli.pex prepare run_4_config.json main.fred prepared.fred
+
+# Show configuration
+./dist/simulation_runner/simulation-runner-cli.pex config
+
+# Show version
+./dist/simulation_runner/simulation-runner-cli.pex version
+```
+
+### Docker Images
+```bash
+# Build Docker images using Pants
+pants package //:simulation-runner  # FRED simulation runner
+pants package //:epistemix-api       # API server
+pants package //:migration-runner    # Database migrations
+
+# Run simulation-runner container (Python CLI - default)
+docker run \
+  -e FRED_HOME=/fred-framework \
+  -e EPISTEMIX_API_URL=http://host.docker.internal:5000 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_ACCESS_KEY_ID=your_key \
+  -e AWS_SECRET_ACCESS_KEY=your_secret \
+  simulation-runner:latest run --job-id 12
+
+# Show simulation-runner help
+docker run simulation-runner:latest --help
+
+# Validate configs only
+docker run \
+  -e FRED_HOME=/fred-framework \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  simulation-runner:latest validate --job-id 12
+
+# Use epistemix-cli directly in the container
+docker run --rm --entrypoint epistemix-cli \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  simulation-runner:latest jobs list
+```
+
 ## High-Level Architecture
 
 ### Build System - Pants
@@ -111,6 +171,7 @@ This project uses **Pants** as the primary build system for Python components:
 Each major component has its own README.md with detailed documentation:
 - **fred-framework/**: C++ epidemiological simulation engine
 - **epistemix_platform/**: Flask API server with clean architecture and AWS infrastructure templates
+- **simulation_runner/**: FRED simulation orchestration with Python CLI, clean architecture, and workflow management
 - **simulations/**: FRED simulation configurations and analysis scripts
 - **tcr/**: Development workflow tool for rapid feedback cycles
 

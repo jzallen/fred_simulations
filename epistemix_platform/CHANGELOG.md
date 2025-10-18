@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **FRED-27**: S3 presigned URL generation for staging compliance
+  - Removed ServerSideEncryption parameter from presigned URLs
+  - Fixed compatibility with S3 buckets requiring server-side encryption
+  - Added clarifying comments in s3_upload_location_repository.py
+  - Updated test suite to validate presigned URL parameters
+
 ## [0.1.0] - 2025-09-23
 
 ### Changed

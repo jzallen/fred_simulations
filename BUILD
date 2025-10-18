@@ -8,6 +8,7 @@ run_shell_command(
     command="make",
     execution_dependencies=[":fred-framework"],
     workdir="fred-framework",
+    # Output files are captured by fred-binary and fred-data targets
 )
 
 files(
@@ -15,19 +16,41 @@ files(
     sources=["./fred-framework/bin/FRED"],
 )
 
+files(
+    name="fred-data",
+    sources=["fred-framework/data/**"],
+)
+
 docker_image(
     name="simulation-runner",
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
+        # Copy epistemix-cli PEX binary
         "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
+        # Copy simulation-runner Python CLI
+        "COPY simulation_runner/simulation-runner-cli.pex /usr/local/bin/simulation-runner",
+        "RUN chmod +x /usr/local/bin/simulation-runner",
+        # Copy FRED binary and data (built by build-fred target)
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
+        "COPY fred-framework/data /fred-framework/data",
+        # Create workspace directory for job downloads
+        "RUN mkdir -p /workspace",
+        # Set environment variables
+        "ENV PYTHONUNBUFFERED=1",
+        "ENV FRED_HOME=/fred-framework",
+        # Use Python CLI as entrypoint
+        "ENTRYPOINT [\"/usr/local/bin/simulation-runner\"]",
+        # Default command shows help
+        "CMD [\"--help\"]",
     ],
     dependencies=[
         ":fred-binary",
+        ":fred-data",
         "epistemix_platform:epistemix-cli",
+        "simulation_runner:simulation-runner-cli",
     ],
 )
 
@@ -74,20 +97,13 @@ docker_image(
         "RUN pip install --no-cache-dir alembic==1.13.0 psycopg2-binary==2.9.9 sqlalchemy==2.0.41 boto3==1.40.1 pydantic==2.11.7 returns==0.25.0",
         # Create mount point directory
         "RUN mkdir -p /fred_simulations",
-        # Copy migration entrypoint script
-        "COPY epistemix_platform/scripts/migration-entrypoint.sh /entrypoint.sh",
-        "RUN chmod +x /entrypoint.sh",
         # Set working directory to match mount point
         "WORKDIR /fred_simulations",
         # Default environment for local development
         "ENV DATABASE_URL=postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db",
         "ENV PYTHONUNBUFFERED=1",
-        # Use entrypoint script
-        "ENTRYPOINT [\"/entrypoint.sh\"]",
-        # Default command shows migration status
-        "CMD [\"alembic\", \"current\"]",
-    ],
-    dependencies=[
-        "epistemix_platform:scripts",
+        # No entrypoint - just run commands directly
+        # Default command shows help for psql
+        "CMD [\"psql\", \"--help\"]",
     ],
 )
