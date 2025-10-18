@@ -20,16 +20,6 @@ files(
     sources=["fred-framework/data/**"],
 )
 
-files(
-    name="simulation-scripts",
-    sources=["simulation_runner/scripts/run-simulation.sh"],
-)
-
-files(
-    name="prepare-fred-config-script",
-    sources=["scripts/prepare_fred_config.py"],
-)
-
 docker_image(
     name="simulation-runner",
     image_tags=["latest"],
@@ -45,18 +35,12 @@ docker_image(
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
         "COPY fred-framework/data /fred-framework/data",
-        # Copy bash wrapper for backward compatibility
-        "COPY simulation_runner/scripts/run-simulation.sh /usr/local/bin/run-simulation.sh",
-        "RUN chmod +x /usr/local/bin/run-simulation.sh",
-        # Copy legacy prepare_fred_config.py (deprecated)
-        "COPY scripts/prepare_fred_config.py /usr/local/bin/prepare_fred_config.py",
-        "RUN chmod +x /usr/local/bin/prepare_fred_config.py",
         # Create workspace directory for job downloads
         "RUN mkdir -p /workspace",
         # Set environment variables
         "ENV PYTHONUNBUFFERED=1",
         "ENV FRED_HOME=/fred-framework",
-        # Use Python CLI by default (more features, better error handling)
+        # Use Python CLI as entrypoint
         "ENTRYPOINT [\"/usr/local/bin/simulation-runner\"]",
         # Default command shows help
         "CMD [\"--help\"]",
@@ -64,8 +48,6 @@ docker_image(
     dependencies=[
         ":fred-binary",
         ":fred-data",
-        ":prepare-fred-config-script",
-        ":simulation-scripts",
         "epistemix_platform:epistemix-cli",
         "simulation_runner:simulation-runner-cli",
     ],

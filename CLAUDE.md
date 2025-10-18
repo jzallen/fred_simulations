@@ -147,12 +147,6 @@ docker run \
   -e DATABASE_URL=postgresql://user:pass@host:5432/db \
   simulation-runner:latest validate --job-id 12
 
-# Use bash script (backward compatibility)
-docker run --entrypoint /usr/local/bin/run-simulation.sh \
-  -e EPISTEMIX_API_URL=http://localhost:5000 \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
-  simulation-runner:latest 12 4
-
 # Use epistemix-cli directly in the container
 docker run --rm --entrypoint epistemix-cli \
   -e DATABASE_URL=postgresql://user:pass@host:5432/db \
