@@ -4,7 +4,6 @@ This module implements the core business logic for job registration operations.
 """
 
 import logging
-from typing import List
 
 from epistemix_platform.models.job import Job, JobTag
 from epistemix_platform.models.user import UserToken
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_job(
-    job_repository: IJobRepository, user_token_value: str, tags: List[str] = None
+    job_repository: IJobRepository, user_token_value: str, tags: list[str] = None
 ) -> Job:
     """
     Register a new job for a user.
@@ -60,7 +59,7 @@ def register_job(
     return saved_job
 
 
-def validate_tags(tags: List[str]) -> None:
+def validate_tags(tags: list[str]) -> None:
     """
     Validate tags according to business rules.
 

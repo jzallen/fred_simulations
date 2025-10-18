@@ -7,7 +7,7 @@ Sceptre-managed CloudFormation templates and deployed resources.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -42,13 +42,13 @@ def config_dir(infrastructure_root: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def environments() -> List[str]:
+def environments() -> list[str]:
     """Return list of available environments."""
     return ["dev", "staging", "production"]
 
 
 @pytest.fixture(scope="session")
-def template_files(templates_dir: Path) -> Dict[str, Path]:
+def template_files(templates_dir: Path) -> dict[str, Path]:
     """Return dictionary mapping template names to their file paths."""
     templates = {}
     for template_dir in templates_dir.iterdir():
@@ -63,8 +63,8 @@ def template_files(templates_dir: Path) -> Dict[str, Path]:
 def load_template():
     """Factory function to load a CloudFormation template from JSON."""
 
-    def _load_template(template_path: Path) -> Dict[str, Any]:
-        with open(template_path, "r", encoding="utf-8") as f:
+    def _load_template(template_path: Path) -> dict[str, Any]:
+        with open(template_path, encoding="utf-8") as f:
             return json.load(f)
 
     return _load_template
@@ -74,8 +74,8 @@ def load_template():
 def load_config():
     """Factory function to load a Sceptre config file."""
 
-    def _load_config(config_path: Path) -> Dict[str, Any]:
-        with open(config_path, "r", encoding="utf-8") as f:
+    def _load_config(config_path: Path) -> dict[str, Any]:
+        with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f)
 
     return _load_config
@@ -106,7 +106,7 @@ def config_reader():
 
 
 @pytest.fixture
-def expected_tags() -> Dict[str, Dict[str, str]]:
+def expected_tags() -> dict[str, dict[str, str]]:
     """Expected tags for different environments."""
     return {
         "dev": {
@@ -135,7 +135,7 @@ def expected_tags() -> Dict[str, Dict[str, str]]:
 
 # Helper functions
 def create_mock_stack(
-    stack_name: str, template: Dict[str, Any], parameters: Dict[str, str] = None
+    stack_name: str, template: dict[str, Any], parameters: dict[str, str] = None
 ) -> Mock:
     """Create a mock CloudFormation stack for testing."""
     mock_stack = Mock()
@@ -150,8 +150,8 @@ def create_mock_stack(
 
 
 def extract_resource_properties(
-    template: Dict[str, Any], resource_type: str
-) -> List[Dict[str, Any]]:
+    template: dict[str, Any], resource_type: str
+) -> list[dict[str, Any]]:
     """Extract properties of resources of a specific type from a template."""
     resources = []
     for resource_name, resource_def in template.get("Resources", {}).items():
@@ -167,7 +167,7 @@ def extract_resource_properties(
 
 
 def validate_parameter_constraints(
-    template: Dict[str, Any], parameter_name: str, value: str
+    template: dict[str, Any], parameter_name: str, value: str
 ) -> bool:
     """Validate a parameter value against template constraints."""
     parameters = template.get("Parameters", {})

@@ -13,7 +13,6 @@ Usage:
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -55,7 +54,7 @@ def cli(log_level: str):
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to process")
 @click.option("--run-id", type=int, help="Specific run ID to process (optional)")
-def run(job_id: int, run_id: Optional[int]):
+def run(job_id: int, run_id: int | None):
     """
     Run complete simulation workflow.
 
@@ -125,7 +124,7 @@ def run(job_id: int, run_id: Optional[int]):
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to validate")
 @click.option("--run-id", type=int, help="Specific run ID to validate (optional)")
-def validate(job_id: int, run_id: Optional[int]):
+def validate(job_id: int, run_id: int | None):
     """
     Validate FRED configurations without running simulations.
 
@@ -219,7 +218,7 @@ def prepare(run_config: Path, input_fred: Path, output_fred: Path, verbose: bool
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to download")
 @click.option("--output-dir", type=click.Path(path_type=Path), help="Output directory")
-def download(job_id: int, output_dir: Optional[Path]):
+def download(job_id: int, output_dir: Path | None):
     """
     Download job uploads without processing.
 

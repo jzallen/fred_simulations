@@ -6,8 +6,8 @@ This is a concrete implementation of the IUploadLocationRepository interface usi
 import io
 import logging
 import zipfile
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, List, Optional
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import boto3
@@ -41,9 +41,9 @@ class S3UploadLocationRepository:
     def __init__(
         self,
         bucket_name: str,
-        region_name: Optional[str] = None,
+        region_name: str | None = None,
         expiration_seconds: int = 3600,
-        s3_client: Optional[Any] = None,  # Allow injection for testing
+        s3_client: Any | None = None,  # Allow injection for testing
     ):
         """
         Initialize the S3 upload location repository.
@@ -172,7 +172,7 @@ class S3UploadLocationRepository:
             extension = ".log"
 
         # Generate timestamp in UTC
-        timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d/%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y/%m/%d/%H%M%S")
 
         # Build the S3 key (no leading slash per S3 best practices)
         key = f"jobs/{job_upload.job_id}/{timestamp}/{filename}{extension}"
@@ -227,7 +227,7 @@ class S3UploadLocationRepository:
                     filename = "_".join(parts[2:])
 
         # Generate timestamp in UTC
-        timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d/%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y/%m/%d/%H%M%S")
 
         # Build the new key structure (no leading slash per S3 best practices)
         if job_id:
@@ -283,7 +283,7 @@ class S3UploadLocationRepository:
             logger.error(error_message)
             raise ValueError(error_message)
 
-    def _extract_s3_key_from_url(self, url: str) -> Optional[str]:
+    def _extract_s3_key_from_url(self, url: str) -> str | None:
         """
         Extract the S3 key from a URL using pattern matching.
 
@@ -443,8 +443,8 @@ class S3UploadLocationRepository:
         )
 
     def filter_by_age(
-        self, upload_locations: List["UploadLocation"], age_threshold: Optional[datetime]
-    ) -> List["UploadLocation"]:
+        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None
+    ) -> list["UploadLocation"]:
         """
         Filter upload locations by age threshold.
 
@@ -490,8 +490,8 @@ class S3UploadLocationRepository:
         return filtered
 
     def archive_uploads(
-        self, upload_locations: List["UploadLocation"], age_threshold: Optional[datetime] = None
-    ) -> List["UploadLocation"]:
+        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None = None
+    ) -> list["UploadLocation"]:
         """
         Archive uploads by transitioning them to Glacier storage class.
 
@@ -598,8 +598,8 @@ class DummyS3UploadLocationRepository:
         return UploadContent.create_text(dummy_content)
 
     def filter_by_age(
-        self, upload_locations: List["UploadLocation"], age_threshold: Optional[datetime]
-    ) -> List["UploadLocation"]:
+        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None
+    ) -> list["UploadLocation"]:
         """
         Dummy implementation - returns all locations for testing.
 
@@ -614,8 +614,8 @@ class DummyS3UploadLocationRepository:
         return upload_locations
 
     def archive_uploads(
-        self, upload_locations: List["UploadLocation"], age_threshold: Optional[datetime] = None
-    ) -> List["UploadLocation"]:
+        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None = None
+    ) -> list["UploadLocation"]:
         """
         Dummy implementation - simulates archiving for testing.
 
@@ -633,7 +633,7 @@ class DummyS3UploadLocationRepository:
 
 
 def create_upload_location_repository(
-    env: str, bucket_name: Optional[str] = None, region_name: Optional[str] = None, **kwargs
+    env: str, bucket_name: str | None = None, region_name: str | None = None, **kwargs
 ) -> "IUploadLocationRepository":
     """
     Factory method to create the appropriate upload location repository based on environment.

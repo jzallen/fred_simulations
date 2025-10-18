@@ -9,7 +9,6 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 import setproctitle
 import yaml
@@ -19,7 +18,7 @@ from watchdog.observers import Observer
 from tcr.logging_config import LoggerType, logger_factory
 
 
-def get_or_generate_session_id(session_id: Optional[str]) -> str:
+def get_or_generate_session_id(session_id: str | None) -> str:
     """Get session_id or generate a random one if not provided.
 
     Args:
@@ -54,13 +53,13 @@ class TCRConfig:
     """Configuration for TCR behavior."""
 
     enabled: bool = True
-    watch_paths: List[str] = field(default_factory=lambda: ["."])
+    watch_paths: list[str] = field(default_factory=lambda: ["."])
     test_command: str = "poetry run pytest -xvs"
     test_timeout: int = 30
     commit_prefix: str = "TCR"
     revert_on_failure: bool = True
     debounce_seconds: float = 2.0
-    log_file: Optional[str] = None
+    log_file: str | None = None
 
     def __post_init__(self):
         """Ensure watch_paths is never empty."""
@@ -68,7 +67,7 @@ class TCRConfig:
             self.watch_paths = ["."]
 
     @classmethod
-    def from_yaml(cls, config_path: Optional[Path] = None) -> "TCRConfig":
+    def from_yaml(cls, config_path: Path | None = None) -> "TCRConfig":
         """Load configuration from YAML file or use defaults.
 
         Args:
@@ -81,7 +80,7 @@ class TCRConfig:
             config_path = Path.home() / "tcr.yaml"
 
         if config_path.exists():
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 data = yaml.safe_load(f)
                 if data and "tcr" in data:
                     config_dict = data["tcr"]

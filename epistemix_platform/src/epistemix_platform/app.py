@@ -8,7 +8,6 @@ import os
 import sys
 from datetime import datetime
 from functools import wraps
-from typing import List
 
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
@@ -158,7 +157,7 @@ def get_job_controller():
     )
 
 
-def validate_headers(required_headers: List[str]) -> bool:
+def validate_headers(required_headers: list[str]) -> bool:
     """Validate that required headers are present in the request."""
     for header in required_headers:
         if header not in request.headers:

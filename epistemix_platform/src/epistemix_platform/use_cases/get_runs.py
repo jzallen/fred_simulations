@@ -4,7 +4,6 @@ This module implements the core business logic for retrieving runs.
 """
 
 import logging
-from typing import List
 
 from epistemix_platform.models.run import Run
 from epistemix_platform.repositories.interfaces import IRunRepository
@@ -13,7 +12,7 @@ from epistemix_platform.repositories.interfaces import IRunRepository
 logger = logging.getLogger(__name__)
 
 
-def get_runs_by_job_id(run_repository: IRunRepository, job_id: int) -> List[Run]:
+def get_runs_by_job_id(run_repository: IRunRepository, job_id: int) -> list[Run]:
     """
     Get all runs for a specific job.
 

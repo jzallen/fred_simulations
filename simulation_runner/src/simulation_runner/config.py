@@ -8,7 +8,6 @@ settings from environment variables with sensible defaults.
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from simulation_runner.exceptions import ConfigurationError
 
@@ -42,7 +41,7 @@ class SimulationConfig:
     """
 
     job_id: int
-    run_id: Optional[int]
+    run_id: int | None
     fred_home: Path
     workspace_dir: Path
     api_url: str
@@ -51,7 +50,7 @@ class SimulationConfig:
     database_url: str
 
     @classmethod
-    def from_env(cls, job_id: int, run_id: Optional[int] = None) -> "SimulationConfig":
+    def from_env(cls, job_id: int, run_id: int | None = None) -> "SimulationConfig":
         """
         Load configuration from environment variables.
 

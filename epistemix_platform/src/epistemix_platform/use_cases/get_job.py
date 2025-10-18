@@ -4,7 +4,6 @@ This module implements the core business logic for job retrieval operations.
 """
 
 import logging
-from typing import Optional
 
 from ..models.job import Job
 from ..repositories.interfaces import IJobRepository
@@ -13,7 +12,7 @@ from ..repositories.interfaces import IJobRepository
 logger = logging.getLogger(__name__)
 
 
-def get_job(job_repository: IJobRepository, job_id: int) -> Optional[Job]:
+def get_job(job_repository: IJobRepository, job_id: int) -> Job | None:
     """
     Retrieve a job by ID.
 

@@ -152,10 +152,8 @@ class TestAgentInfoJob(unittest.TestCase):
                             },
                             "fredArgs": EachLike({"flag": Like("-p"), "value": Like("main.fred")}),
                             "fredFiles": EachLike(
-                                (
-                                    "/workspaces/fred_simulations/simulations/agent_info_demo/"
-                                    "agent_info.fred"
-                                )
+                                "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                "agent_info.fred"
                             ),
                         }
                     )
@@ -183,10 +181,8 @@ class TestAgentInfoJob(unittest.TestCase):
                                     {"flag": Like("-p"), "value": Like("main.fred")}
                                 ),
                                 "fredFiles": EachLike(
-                                    (
-                                        "/workspaces/fred_simulations/simulations/agent_info_demo/"
-                                        "agent_info.fred"
-                                    )
+                                    "/workspaces/fred_simulations/simulations/agent_info_demo/"
+                                    "agent_info.fred"
                                 ),
                             },
                         }

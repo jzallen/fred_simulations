@@ -5,7 +5,7 @@ Contains the core business logic for upload content entities.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ContentType(Enum):
@@ -24,9 +24,9 @@ class ZipFileEntry:
     name: str
     size: int
     compressed_size: int
-    preview: Optional[str] = None  # Preview for text files
+    preview: str | None = None  # Preview for text files
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         result = {"name": self.name, "size": self.size, "compressedSize": self.compressed_size}
         if self.preview:
@@ -46,8 +46,8 @@ class UploadContent:
     content_type: ContentType
     raw_content: str  # Text representation of the content (or base64 for ZIP)
     encoding: str = "utf-8"
-    zip_entries: Optional[List[ZipFileEntry]] = None  # For ZIP archives
-    summary: Optional[str] = None  # Human-readable summary for ZIP archives
+    zip_entries: list[ZipFileEntry] | None = None  # For ZIP archives
+    summary: str | None = None  # Human-readable summary for ZIP archives
 
     def __post_init__(self):
         """Post-initialization validation."""
@@ -76,7 +76,7 @@ class UploadContent:
         """Get the size of the content in bytes."""
         return len(self.raw_content.encode(self.encoding))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the content to a dictionary for API responses."""
         # For ZIP archives, show the summary instead of raw base64 content
         display_content = self.summary if self.summary else self.raw_content
@@ -106,7 +106,7 @@ class UploadContent:
 
     @classmethod
     def create_zip_archive(
-        cls, binary_content: bytes, entries: List[ZipFileEntry], summary: str
+        cls, binary_content: bytes, entries: list[ZipFileEntry], summary: str
     ) -> "UploadContent":
         """Factory method for creating ZIP archive content.
 

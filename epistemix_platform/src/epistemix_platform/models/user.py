@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class UserRole(Enum):
@@ -130,7 +130,7 @@ class UserToken:
                 raise ValueError("Token contains invalid user_id or scopes_hash values")
             raise
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the token to a dictionary representation."""
         return {"user_id": self.user_id, "scopes_hash": self.scopes_hash}
 
@@ -152,14 +152,14 @@ class User:
     id: int
 
     # Optional fields with defaults
-    username: Optional[str] = None
-    email: Optional[str] = None
+    username: str | None = None
+    email: str | None = None
     role: UserRole = UserRole.USER
     status: UserStatus = UserStatus.ACTIVE
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    last_login: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Post-initialization validation and setup."""
@@ -234,7 +234,7 @@ class User:
         """Check if the user can manage other users."""
         return self.is_active() and self.role == UserRole.ADMIN
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the user to a dictionary representation."""
         return {
             "id": self.id,

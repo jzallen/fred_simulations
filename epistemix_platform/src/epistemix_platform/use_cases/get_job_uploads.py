@@ -4,7 +4,6 @@ This module retrieves upload metadata associated with a job.
 """
 
 import logging
-from typing import List
 
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def get_job_uploads(
     job_repository: IJobRepository, run_repository: IRunRepository, job_id: int
-) -> List[JobUpload]:
+) -> list[JobUpload]:
     """
     Get all upload metadata associated with a job and its runs.
 

@@ -4,8 +4,9 @@ This is a concrete implementation of the IJobRepository interface using SQLite.
 """
 
 import logging
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -92,7 +93,7 @@ class SQLAlchemyJobRepository:
 
         return persisted_job
 
-    def find_by_id(self, job_id: int) -> Optional[Job]:
+    def find_by_id(self, job_id: int) -> Job | None:
         try:
             with self._get_session() as session:
                 job_record = session.get(JobRecord, job_id)
@@ -103,7 +104,7 @@ class SQLAlchemyJobRepository:
             logger.error(f"Database error finding job {job_id}: {e}")
             raise
 
-    def find_by_user_id(self, user_id: int) -> List[Job]:
+    def find_by_user_id(self, user_id: int) -> list[Job]:
         """Find all jobs for a specific user."""
         try:
             with self._get_session() as session:
@@ -113,7 +114,7 @@ class SQLAlchemyJobRepository:
             logger.error(f"Database error finding jobs for user {user_id}: {e}")
             raise
 
-    def find_by_status(self, status: JobStatus) -> List[Job]:
+    def find_by_status(self, status: JobStatus) -> list[Job]:
         """Find all jobs with a specific status."""
         try:
             with self._get_session() as session:
@@ -134,7 +135,7 @@ class SQLAlchemyJobRepository:
             logger.error(f"Database error finding jobs with status {status}: {e}")
             raise
 
-    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+    def find_all(self, limit: int | None = None, offset: int = 0) -> list[Job]:
         """Find all jobs in the repository."""
         try:
             with self._get_session() as session:
@@ -191,9 +192,8 @@ class InMemoryJobRepository(IJobRepository):
         Args:
             starting_id: The starting ID for job generation (defaults to Pact contract value)
         """
-        from typing import Dict
 
-        self._jobs: Dict[int, Job] = {}
+        self._jobs: dict[int, Job] = {}
         self._next_id = starting_id
 
     def save(self, job: Job) -> Job:
@@ -206,19 +206,19 @@ class InMemoryJobRepository(IJobRepository):
         logger.info(f"Job {job.id} saved to in-memory repository")
         return job
 
-    def find_by_id(self, job_id: int) -> Optional[Job]:
+    def find_by_id(self, job_id: int) -> Job | None:
         """Find a job by its ID."""
         return self._jobs.get(job_id)
 
-    def find_by_user_id(self, user_id: int) -> List[Job]:
+    def find_by_user_id(self, user_id: int) -> list[Job]:
         """Find all jobs for a specific user."""
         return [job for job in self._jobs.values() if job.user_id == user_id]
 
-    def find_by_status(self, status: JobStatus) -> List[Job]:
+    def find_by_status(self, status: JobStatus) -> list[Job]:
         """Find all jobs with a specific status."""
         return [job for job in self._jobs.values() if job.status == status]
 
-    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+    def find_all(self, limit: int | None = None, offset: int = 0) -> list[Job]:
         """Find all jobs in the repository."""
         all_jobs = sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
 
