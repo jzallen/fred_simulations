@@ -16,8 +16,18 @@ files(
 )
 
 files(
+    name="fred-data",
+    sources=["fred-framework/data/**"],
+)
+
+files(
     name="simulation-scripts",
     sources=["epistemix_platform/scripts/run-simulation.sh"],
+)
+
+files(
+    name="prepare-fred-config-script",
+    sources=["scripts/prepare_fred_config.py"],
 )
 
 docker_image(
@@ -28,9 +38,13 @@ docker_image(
         # Copy epistemix-cli PEX binary
         "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
-        # Copy FRED binary
+        # Copy FRED binary and data
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
+        "COPY fred-framework/data /fred-framework/data",
+        # Copy prepare_fred_config.py utility script
+        "COPY scripts/prepare_fred_config.py /usr/local/bin/prepare_fred_config.py",
+        "RUN chmod +x /usr/local/bin/prepare_fred_config.py",
         # Copy simulation runner entrypoint script
         "COPY epistemix_platform/scripts/run-simulation.sh /usr/local/bin/run-simulation.sh",
         "RUN chmod +x /usr/local/bin/run-simulation.sh",
@@ -38,6 +52,7 @@ docker_image(
         "RUN mkdir -p /workspace",
         # Set environment variables
         "ENV PYTHONUNBUFFERED=1",
+        "ENV FRED_HOME=/fred-framework",
         # Set entrypoint to simulation runner script
         "ENTRYPOINT [\"/usr/local/bin/run-simulation.sh\"]",
         # Default command shows help
@@ -45,6 +60,8 @@ docker_image(
     ],
     dependencies=[
         ":fred-binary",
+        ":fred-data",
+        ":prepare-fred-config-script",
         ":simulation-scripts",
         "epistemix_platform:epistemix-cli",
     ],
