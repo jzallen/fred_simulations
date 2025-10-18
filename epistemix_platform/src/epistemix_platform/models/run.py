@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class RunStatus(Enum):
@@ -52,31 +52,31 @@ class Run:
     user_id: int
     created_at: datetime
     updated_at: datetime
-    request: Dict[str, Any]  # Full run request data
+    request: dict[str, Any]  # Full run request data
 
     # Repository-managed field (None until persisted)
-    id: Optional[int] = None
+    id: int | None = None
 
     # Optional fields with defaults
     pod_phase: PodPhase = PodPhase.RUNNING
-    container_status: Optional[str] = None
+    container_status: str | None = None
     status: RunStatus = RunStatus.SUBMITTED
     user_deleted: bool = False
     epx_client_version: str = "1.2.2"
-    config_url: Optional[str] = None  # Presigned URL for run configuration
+    config_url: str | None = None  # Presigned URL for run configuration
 
     @classmethod
     def create_unpersisted(
         cls,
         job_id: int,
         user_id: int,
-        request: Dict[str, Any],
+        request: dict[str, Any],
         pod_phase: PodPhase = PodPhase.RUNNING,
-        container_status: Optional[str] = None,
+        container_status: str | None = None,
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        config_url: Optional[str] = None,
+        config_url: str | None = None,
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -117,13 +117,13 @@ class Run:
         user_id: int,
         created_at: datetime,
         updated_at: datetime,
-        request: Dict[str, Any],
+        request: dict[str, Any],
         pod_phase: PodPhase = PodPhase.RUNNING,
-        container_status: Optional[str] = None,
+        container_status: str | None = None,
         status: RunStatus = RunStatus.SUBMITTED,
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
-        config_url: Optional[str] = None,
+        config_url: str | None = None,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -173,7 +173,7 @@ class Run:
 
     # TODO: See if field from dataclass lets you alias names, if so asdict can be used which
     # supports serializing nested dataclasses and enums automatically.
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the run to a dictionary representation.
 
@@ -209,7 +209,7 @@ class Run:
             "config_url": self.config_url,
         }
 
-    def to_run_response_dict(self) -> Dict[str, Any]:
+    def to_run_response_dict(self) -> dict[str, Any]:
         """
         Convert the run to a run response dictionary format.
 

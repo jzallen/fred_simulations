@@ -23,13 +23,22 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint]
-# Enable pycodestyle (E) and Pyflakes (F) rules by default
-# These replace flake8
-select = ["E", "F", "I"]  # E=errors, F=pyflakes, I=isort
+# Enable pycodestyle (E), Pyflakes (F), isort (I), and additional quality rules
+# E: pycodestyle errors
+# F: Pyflakes (unused imports, undefined names)
+# I: isort (import sorting)
+# UP: pyupgrade (modernize Python code)
+# B: flake8-bugbear (detect likely bugs)
+# C4: flake8-comprehensions (better list/dict comprehensions)
+# SIM: flake8-simplify (simplify code)
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
 
 # Ignore rules that conflict with Black or are too strict
 # E203: whitespace before ':' (conflicts with Black)
-ignore = ["E203"]
+# E501: line too long (intentionally ignored for now, will be addressed in future cleanup)
+# B904: exception chaining (requires careful review to avoid behavior changes)
+# SIM103, SIM105, SIM110, SIM117: simplify patterns (requires manual review for correctness)
+ignore = ["E203", "E501", "B904", "SIM103", "SIM105", "SIM110", "SIM117"]
 
 [tool.ruff.lint.isort]
 # Match existing isort settings (Black-compatible)

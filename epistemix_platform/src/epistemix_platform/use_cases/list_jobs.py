@@ -4,20 +4,20 @@ This module implements the core business logic for listing all jobs.
 """
 
 import logging
-from typing import List, Optional
 
 from epistemix_platform.models.job import Job
 from epistemix_platform.repositories.interfaces import IJobRepository
+
 
 logger = logging.getLogger(__name__)
 
 
 def list_jobs(
     job_repository: IJobRepository,
-    limit: Optional[int] = None,
+    limit: int | None = None,
     offset: int = 0,
-    user_id: Optional[int] = None,
-) -> List[Job]:
+    user_id: int | None = None,
+) -> list[Job]:
     """
     List jobs from the repository.
 

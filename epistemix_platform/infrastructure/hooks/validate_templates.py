@@ -7,51 +7,51 @@ This hook runs before stack creation/update to ensure templates are valid.
 import subprocess
 from pathlib import Path
 
-from sceptre.hooks import Hook
 from sceptre.exceptions import SceptreException
+from sceptre.hooks import Hook
 
 
 class ValidateTemplate(Hook):
     """
     Hook to validate CloudFormation templates using cfn-lint.
-    
+
     This hook runs cfn-lint on the template before deployment to catch
     syntax errors and AWS CloudFormation best practice violations.
     """
-    
+
     def __init__(self, *args, **kwargs):
         """Initialize the hook."""
         super().__init__(*args, **kwargs)
-    
+
     def run(self) -> None:
         """
         Execute template validation.
-        
+
         Raises:
             HookFailed: If template validation fails.
         """
         # Get the template path from the stack config
         template_config = self.stack.template
-        
+
         if isinstance(template_config, dict):
-            template_path = template_config.get('path')
+            template_path = template_config.get("path")
         else:
             # Legacy format support
             template_path = template_config
-        
+
         if not template_path:
             raise SceptreException(f"No template path found for stack {self.stack.name}")
-        
+
         # Construct full template path
         template_dir = Path(self.stack.project_path) / "templates"
         full_template_path = template_dir / template_path
-        
+
         if not full_template_path.exists():
             raise SceptreException(f"Template file not found: {full_template_path}")
-        
+
         # Run cfn-lint validation
         self.logger.info(f"Validating template: {full_template_path}")
-        
+
         try:
             result = subprocess.run(
                 ["poetry", "run", "cfn-lint", str(full_template_path)],
@@ -59,7 +59,7 @@ class ValidateTemplate(Hook):
                 text=True,
                 check=True,  # Automatically raise CalledProcessError on non-zero exit
                 timeout=300,  # 5-minute timeout for validation
-                cwd=Path(self.stack.project_path).parent.parent  # Go up to project root for Poetry
+                cwd=Path(self.stack.project_path).parent.parent,  # Go up to project root for Poetry
             )
 
             # Log output (cfn-lint may provide useful info even on success)

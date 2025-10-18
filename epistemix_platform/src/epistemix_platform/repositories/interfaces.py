@@ -4,7 +4,7 @@ Defines contracts for data persistence using Protocol for type safety.
 """
 
 from datetime import datetime
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from epistemix_platform.models.job import Job, JobStatus
 from epistemix_platform.models.job_upload import JobUpload
@@ -37,7 +37,7 @@ class IJobRepository(Protocol):
         """
         ...
 
-    def find_by_id(self, job_id: int) -> Optional[Job]:
+    def find_by_id(self, job_id: int) -> Job | None:
         """
         Find a job by its ID.
 
@@ -49,7 +49,7 @@ class IJobRepository(Protocol):
         """
         ...
 
-    def find_by_user_id(self, user_id: int) -> List[Job]:
+    def find_by_user_id(self, user_id: int) -> list[Job]:
         """
         Find all jobs for a specific user.
 
@@ -61,7 +61,7 @@ class IJobRepository(Protocol):
         """
         ...
 
-    def find_by_status(self, status: JobStatus) -> List[Job]:
+    def find_by_status(self, status: JobStatus) -> list[Job]:
         """
         Find all jobs with a specific status.
 
@@ -73,7 +73,7 @@ class IJobRepository(Protocol):
         """
         ...
 
-    def find_all(self, limit: Optional[int] = None, offset: int = 0) -> List[Job]:
+    def find_all(self, limit: int | None = None, offset: int = 0) -> list[Job]:
         """
         Find all jobs in the repository.
 
@@ -135,7 +135,7 @@ class IRunRepository(Protocol):
         """
         ...
 
-    def find_by_id(self, run_id: int) -> Optional[Run]:
+    def find_by_id(self, run_id: int) -> Run | None:
         """
         Find a run by its ID.
 
@@ -147,7 +147,7 @@ class IRunRepository(Protocol):
         """
         ...
 
-    def find_by_job_id(self, job_id: int) -> List[Run]:
+    def find_by_job_id(self, job_id: int) -> list[Run]:
         """
         Find all runs for a specific job.
 
@@ -159,7 +159,7 @@ class IRunRepository(Protocol):
         """
         ...
 
-    def find_by_user_id(self, user_id: int) -> List[Run]:
+    def find_by_user_id(self, user_id: int) -> list[Run]:
         """
         Find all runs for a specific user.
 
@@ -171,7 +171,7 @@ class IRunRepository(Protocol):
         """
         ...
 
-    def find_by_status(self, status: RunStatus) -> List[Run]:
+    def find_by_status(self, status: RunStatus) -> list[Run]:
         """
         Find all runs with a specific status.
 
@@ -251,8 +251,8 @@ class IUploadLocationRepository(Protocol):
         ...
 
     def filter_by_age(
-        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
-    ) -> List[UploadLocation]:
+        self, upload_locations: list[UploadLocation], age_threshold: datetime | None
+    ) -> list[UploadLocation]:
         """
         Filter upload locations by age threshold, preserving order.
 
@@ -267,8 +267,8 @@ class IUploadLocationRepository(Protocol):
         ...
 
     def archive_uploads(
-        self, upload_locations: List[UploadLocation], age_threshold: Optional[datetime]
-    ) -> List[UploadLocation]:
+        self, upload_locations: list[UploadLocation], age_threshold: datetime | None
+    ) -> list[UploadLocation]:
         """
         Archive uploads by transitioning them to long-term storage.
 

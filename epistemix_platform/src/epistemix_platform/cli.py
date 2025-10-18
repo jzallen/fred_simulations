@@ -13,7 +13,6 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional
 
 import click
 from dotenv import load_dotenv
@@ -32,6 +31,7 @@ from epistemix_platform.use_cases.get_job import get_job
 from epistemix_platform.use_cases.get_runs import get_runs_by_job_id
 from epistemix_platform.use_cases.list_jobs import list_jobs
 
+
 # Load configuration from ~/.epistemix/cli.env if it exists
 CONFIG_PATH = Path.home() / ".epistemix" / "cli.env"
 if CONFIG_PATH.exists():
@@ -48,7 +48,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_default_config() -> Dict[str, str]:
+def get_default_config() -> dict[str, str]:
     """Get default configuration from environment variables."""
     config = {
         "env": os.getenv("EPISTEMIX_ENV", "PRODUCTION"),
@@ -264,7 +264,7 @@ def jobs():
 @click.option("--offset", type=int, default=0, help="Number of jobs to skip (for pagination)")
 @click.option("--user-id", type=int, help="Filter jobs by user ID")
 @click.option("--json-output", is_flag=True, help="Output as JSON")
-def list_all_jobs(limit: Optional[int], offset: int, user_id: Optional[int], json_output: bool):
+def list_all_jobs(limit: int | None, offset: int, user_id: int | None, json_output: bool):
     """List all jobs in the database."""
     try:
         # Get database session
@@ -482,7 +482,7 @@ def list_job_uploads(job_id: int, json_output: bool):
 @click.option("--hours-since-create", type=int, help="Archive uploads older than specified hours")
 @click.option("--dry-run", is_flag=True, help="Show what would be archived without making changes")
 def archive_uploads(
-    job_id: int, days_since_create: Optional[int], hours_since_create: Optional[int], dry_run: bool
+    job_id: int, days_since_create: int | None, hours_since_create: int | None, dry_run: bool
 ):
     """Archive uploads for a job to reduce storage costs."""
     try:
@@ -556,7 +556,7 @@ def archive_uploads(
 @click.option("--job-id", required=True, type=int, help="Job ID to download uploads for")
 @click.option("--output-dir", help="Directory to download files to (defaults to temp directory)")
 @click.option("-f", "--force", is_flag=True, help="Force overwrite existing files")
-def download_job_uploads(job_id: int, output_dir: Optional[str], force: bool):
+def download_job_uploads(job_id: int, output_dir: str | None, force: bool):
     """Download all uploads for a job to a local directory."""
     try:
         # Get configuration from environment/config file

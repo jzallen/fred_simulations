@@ -9,6 +9,7 @@ from pathlib import Path
 
 class LoggerType(Enum):
     """Enum for different logger types."""
+
     DEFAULT = "default"
     NULL = "null"
     CONSOLE = "console"
@@ -26,7 +27,7 @@ def setup_logger(log_file: Path) -> logging.Logger:
     # Ensure parent directory exists
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    logger = logging.getLogger('tcr')
+    logger = logging.getLogger("tcr")
     logger.setLevel(logging.DEBUG)
 
     # Remove existing handlers to avoid duplicates
@@ -35,17 +36,17 @@ def setup_logger(log_file: Path) -> logging.Logger:
     # Console handler with INFO level
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    console_format = logging.Formatter('%(message)s')
+    console_format = logging.Formatter("%(message)s")
     console_handler.setFormatter(console_format)
 
     # File handler with DEBUG level and rotation
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
     )
     file_handler.setLevel(logging.DEBUG)
-    file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_format)
 
     logger.addHandler(console_handler)
@@ -60,7 +61,7 @@ def create_null_logger() -> logging.Logger:
     Returns:
         Logger with NullHandler
     """
-    logger = logging.getLogger('tcr.null')
+    logger = logging.getLogger("tcr.null")
     logger.handlers.clear()
     logger.addHandler(logging.NullHandler())
     return logger
@@ -72,7 +73,7 @@ def create_console_logger() -> logging.Logger:
     Returns:
         Logger with console handler for INFO level messages
     """
-    logger = logging.getLogger('tcr.console')
+    logger = logging.getLogger("tcr.console")
     logger.setLevel(logging.INFO)
 
     # Remove existing handlers to avoid duplicates
@@ -81,14 +82,16 @@ def create_console_logger() -> logging.Logger:
     # Console handler with INFO level
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    console_format = logging.Formatter('%(message)s')
+    console_format = logging.Formatter("%(message)s")
     console_handler.setFormatter(console_format)
 
     logger.addHandler(console_handler)
     return logger
 
 
-def logger_factory(logger_type: LoggerType = LoggerType.DEFAULT, log_file: Path = None) -> logging.Logger:
+def logger_factory(
+    logger_type: LoggerType = LoggerType.DEFAULT, log_file: Path = None
+) -> logging.Logger:
     """Factory function to create different types of loggers.
 
     Args:

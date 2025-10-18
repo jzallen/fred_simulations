@@ -7,8 +7,9 @@ the web layer and domain models.
 # TODO: Clean up imports - consolidate multiple imports from same module
 import functools
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Self
+from typing import Any, Self
 
 from returns.result import Failure, Result, Success
 
@@ -18,23 +19,24 @@ from epistemix_platform.models.requests import RunRequest
 from epistemix_platform.models.run import Run
 from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
-from epistemix_platform.repositories import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 from epistemix_platform.use_cases import archive_uploads as archive_uploads_use_case
 from epistemix_platform.use_cases import (
     get_job_uploads,
+    read_upload_content,
+    write_to_local,
 )
 from epistemix_platform.use_cases import get_runs_by_job_id as get_runs_by_job_id_use_case
-from epistemix_platform.use_cases import (
-    read_upload_content,
-)
 from epistemix_platform.use_cases import register_job as register_job_use_case
 from epistemix_platform.use_cases import submit_job as submit_job_use_case
 from epistemix_platform.use_cases import submit_job_config as submit_job_config_use_case
 from epistemix_platform.use_cases import submit_run_config as submit_run_config_use_case
 from epistemix_platform.use_cases import submit_runs as submit_runs_use_case
-from epistemix_platform.use_cases import (
-    write_to_local,
-)
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +51,16 @@ class JobControllerDependencies:
 
     def __init__(
         self,
-        register_job_fn: Callable[[str, List[str]], Job],
+        register_job_fn: Callable[[str, list[str]], Job],
         submit_job_fn: Callable[[int, str, str], UploadLocation],
         submit_job_config_fn: Callable[[int, str, str], UploadLocation],
-        submit_runs_fn: Callable[[List[Dict[str, Any]], str, str], List[Run]],
-        submit_run_config_fn: Callable[[int, str, str, Optional[int]], UploadLocation],
-        get_runs_by_job_id_fn: Callable[[int], Optional[Run]],
-        get_job_uploads_fn: Callable[[int], List[JobUpload]],
+        submit_runs_fn: Callable[[list[dict[str, Any]], str, str], list[Run]],
+        submit_run_config_fn: Callable[[int, str, str, int | None], UploadLocation],
+        get_runs_by_job_id_fn: Callable[[int], Run | None],
+        get_job_uploads_fn: Callable[[int], list[JobUpload]],
         read_upload_content_fn: Callable[[UploadLocation], UploadContent],
         write_to_local_fn: Callable[[Path, UploadContent, bool], None],
-        archive_uploads_fn: Optional[Callable] = None,
+        archive_uploads_fn: Callable | None = None,
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -151,8 +153,8 @@ class JobController:
         return service
 
     def register_job(
-        self, user_token_value: str, tags: List[str] = None
-    ) -> Result[Dict[str, Any], str]:
+        self, user_token_value: str, tags: list[str] = None
+    ) -> Result[dict[str, Any], str]:
         """
         Register a new job for a user.
 
@@ -182,8 +184,8 @@ class JobController:
         job_id: int,
         context: str = "job",
         job_type: str = "input",
-        run_id: Optional[int] = None,
-    ) -> Result[Dict[str, str], str]:
+        run_id: int | None = None,
+    ) -> Result[dict[str, str], str]:
         """
         Submit a job for processing.
 
@@ -226,9 +228,9 @@ class JobController:
     def submit_runs(
         self,
         user_token_value: str,
-        run_requests: List[RunRequest],
+        run_requests: list[RunRequest],
         epx_version: str = "epx_client_1.2.2",
-    ) -> Result[Dict[str, List[Dict[str, Any]]], str]:
+    ) -> Result[dict[str, list[dict[str, Any]]], str]:
         """
         Submit multiple run requests for processing.
 
@@ -259,7 +261,7 @@ class JobController:
             logger.exception(f"Unexpected error in submit_runs: {e}")
             return Failure("An unexpected error occurred while submitting the runs")
 
-    def get_runs(self, job_id: int) -> Result[List[Dict[str, Any]], str]:
+    def get_runs(self, job_id: int) -> Result[list[dict[str, Any]], str]:
         """
         Get all runs for a specific job.
 
@@ -285,7 +287,7 @@ class JobController:
 
     def get_job_uploads(
         self, job_id: int, include_content: bool = True
-    ) -> Result[List[Dict[str, Any]], str]:
+    ) -> Result[list[dict[str, Any]], str]:
         """
         Get all uploads associated with a job, optionally with their contents.
 
@@ -448,10 +450,10 @@ class JobController:
     def archive_job_uploads(
         self,
         job_id: int,
-        days_since_create: Optional[int] = None,
-        hours_since_create: Optional[int] = None,
+        days_since_create: int | None = None,
+        hours_since_create: int | None = None,
         dry_run: bool = False,
-    ) -> Result[List[Dict[str, str]], str]:
+    ) -> Result[list[dict[str, str]], str]:
         """
         Archive uploads for a specific job.
 

@@ -4,7 +4,6 @@ Contains the unified model for handling presigned URLs for various upload scenar
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -17,13 +16,13 @@ class UploadLocation:
     """
 
     url: str
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to dictionary representation."""
         return {"url": self.url}
 
-    def to_sanitized_dict(self) -> Dict[str, str]:
+    def to_sanitized_dict(self) -> dict[str, str]:
         """Convert to dictionary representation with sanitized URL as the url value."""
         return {"url": self.get_sanitized_url()}
 
@@ -40,7 +39,7 @@ class UploadLocation:
         """String representation for debugging."""
         return f"UploadLocation(url={self.url})"
 
-    def extract_filename(self) -> Optional[str]:
+    def extract_filename(self) -> str | None:
         """
         Extract filename from the URL.
 

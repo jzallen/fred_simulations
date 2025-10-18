@@ -4,7 +4,7 @@ Contains the core business logic for job upload entities.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from epistemix_platform.models.upload_location import UploadLocation
 
@@ -22,8 +22,8 @@ class JobUpload:
     context: str  # "job" or "run"
     upload_type: str  # "config", "input", "output", "results", "logs"
     job_id: int
-    location: Optional[UploadLocation] = None
-    run_id: Optional[int] = None
+    location: UploadLocation | None = None
+    run_id: int | None = None
 
     def __post_init__(self):
         """Post-initialization validation."""
@@ -76,7 +76,7 @@ class JobUpload:
         """Check if this is a run-level upload."""
         return self.context == "run"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the upload to a dictionary for API responses."""
         result = {
             "context": self.context,
@@ -88,7 +88,7 @@ class JobUpload:
             result["location"] = self.location.to_dict()
         return result
 
-    def to_sanitized_dict(self) -> Dict[str, Any]:
+    def to_sanitized_dict(self) -> dict[str, Any]:
         """Serialize the upload to a dictionary with sanitized location URL."""
         result = {
             "context": self.context,

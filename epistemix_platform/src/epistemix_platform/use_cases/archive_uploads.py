@@ -5,21 +5,21 @@ This module handles archiving uploads for manual intervention or job lifecycle m
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
 
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IUploadLocationRepository
+
 
 logger = logging.getLogger(__name__)
 
 
 def archive_uploads(
     upload_repository: IUploadLocationRepository,
-    upload_locations: List[UploadLocation],
-    days_since_create: Optional[int] = None,
-    hours_since_create: Optional[int] = None,
+    upload_locations: list[UploadLocation],
+    days_since_create: int | None = None,
+    hours_since_create: int | None = None,
     dry_run: bool = False,
-) -> List[UploadLocation]:
+) -> list[UploadLocation]:
     """
     Archive a list of upload locations.
 

@@ -2,6 +2,7 @@ from pathlib import Path
 
 from epx import FREDJob, FREDModelConfig, SynthPop
 
+
 # Update path to reference the local Influenza.fred file
 INFLUENZA_FRED_FILE = (Path(__file__).parent / "Influenza.fred").resolve()
 

@@ -2,12 +2,14 @@
 SQLAlchemy implementation of the Run repository.
 """
 
-from typing import Callable, List, Optional, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
 from epistemix_platform.models.run import Run, RunStatus
 from epistemix_platform.repositories.database import RunRecord, get_db_session
+
 
 if TYPE_CHECKING:
     from epistemix_platform.mappers.run_mapper import RunMapper
@@ -17,9 +19,7 @@ class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
 
     def __init__(
-        self,
-        run_mapper: 'RunMapper',
-        get_db_session_fn: Callable[[], Session] = get_db_session
+        self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session] = get_db_session
     ):
         """
         Initialize the repository with mapper dependency injection.
@@ -52,7 +52,7 @@ class SQLAlchemyRunRepository:
 
         return run
 
-    def find_by_id(self, run_id: int) -> Optional[Run]:
+    def find_by_id(self, run_id: int) -> Run | None:
         """Find a run by its ID."""
         session = self.session_factory()
         run_record = session.query(RunRecord).filter_by(id=run_id).first()
@@ -61,21 +61,21 @@ class SQLAlchemyRunRepository:
             return self._run_mapper.record_to_domain(run_record)
         return None
 
-    def find_by_job_id(self, job_id: int) -> List[Run]:
+    def find_by_job_id(self, job_id: int) -> list[Run]:
         """Find all runs for a specific job."""
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(job_id=job_id).all()
 
         return [self._run_mapper.record_to_domain(record) for record in run_records]
 
-    def find_by_user_id(self, user_id: int) -> List[Run]:
+    def find_by_user_id(self, user_id: int) -> list[Run]:
         """Find all runs for a specific user."""
         session = self.session_factory()
         run_records = session.query(RunRecord).filter_by(user_id=user_id).all()
 
         return [self._run_mapper.record_to_domain(record) for record in run_records]
 
-    def find_by_status(self, status: RunStatus) -> List[Run]:
+    def find_by_status(self, status: RunStatus) -> list[Run]:
         """Find all runs with a specific status."""
         session = self.session_factory()
         status_enum = self._run_mapper._run_status_to_enum(status)

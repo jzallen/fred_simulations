@@ -13,7 +13,6 @@ Usage:
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -29,10 +28,10 @@ from simulation_runner.exceptions import (
 from simulation_runner.fred_config_builder import FREDConfigBuilder
 from simulation_runner.workflow import SimulationWorkflow
 
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ logger = logging.getLogger(__name__)
     "--log-level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
     default="INFO",
-    help="Set logging level"
+    help="Set logging level",
 )
 def cli(log_level: str):
     """FRED Simulation Runner CLI.
@@ -55,7 +54,7 @@ def cli(log_level: str):
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to process")
 @click.option("--run-id", type=int, help="Specific run ID to process (optional)")
-def run(job_id: int, run_id: Optional[int]):
+def run(job_id: int, run_id: int | None):
     """
     Run complete simulation workflow.
 
@@ -77,7 +76,9 @@ def run(job_id: int, run_id: Optional[int]):
         # Validate configuration
         errors = config.validate()
         if errors:
-            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {error}" for error in errors)
+            error_msg = "Configuration validation failed:\n" + "\n".join(
+                f"  - {error}" for error in errors
+            )
             raise click.ClickException(error_msg)
 
         # Execute workflow
@@ -123,7 +124,7 @@ def run(job_id: int, run_id: Optional[int]):
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to validate")
 @click.option("--run-id", type=int, help="Specific run ID to validate (optional)")
-def validate(job_id: int, run_id: Optional[int]):
+def validate(job_id: int, run_id: int | None):
     """
     Validate FRED configurations without running simulations.
 
@@ -179,12 +180,7 @@ def validate(job_id: int, run_id: Optional[int]):
 @click.argument("input_fred", type=click.Path(exists=True, path_type=Path))
 @click.argument("output_fred", type=click.Path(path_type=Path))
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def prepare(
-    run_config: Path,
-    input_fred: Path,
-    output_fred: Path,
-    verbose: bool
-):
+def prepare(run_config: Path, input_fred: Path, output_fred: Path, verbose: bool):
     """
     Prepare FRED 10 configuration from EPX run config.
 
@@ -222,7 +218,7 @@ def prepare(
 @cli.command()
 @click.option("--job-id", required=True, type=int, help="Job ID to download")
 @click.option("--output-dir", type=click.Path(path_type=Path), help="Output directory")
-def download(job_id: int, output_dir: Optional[Path]):
+def download(job_id: int, output_dir: Path | None):
     """
     Download job uploads without processing.
 

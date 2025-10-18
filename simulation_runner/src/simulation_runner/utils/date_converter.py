@@ -11,10 +11,7 @@ from datetime import datetime
 
 
 # Month number to abbreviation mapping for FRED 10
-MONTH_ABBR = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-]
+MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
 def convert_date_to_fred10_format(date_str: str) -> str:
@@ -85,9 +82,7 @@ def convert_date_from_fred10_format(date_str: str) -> str:
     # Parse FRED 10 format manually since strptime doesn't support custom month names easily
     parts = date_str.split("-")
     if len(parts) != 3:
-        raise ValueError(
-            f"Invalid FRED 10 date format: {date_str}. Expected YYYY-Mon-DD"
-        )
+        raise ValueError(f"Invalid FRED 10 date format: {date_str}. Expected YYYY-Mon-DD")
 
     year_str, month_str, day_str = parts
 
@@ -111,8 +106,6 @@ def convert_date_from_fred10_format(date_str: str) -> str:
     try:
         datetime(year, month, day)
     except ValueError as e:
-        raise ValueError(
-            f"Invalid date: {date_str} ({year}-{month:02d}-{day:02d})"
-        ) from e
+        raise ValueError(f"Invalid date: {date_str} ({year}-{month:02d}-{day:02d})") from e
 
     return f"{year}-{month:02d}-{day:02d}"

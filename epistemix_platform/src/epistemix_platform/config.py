@@ -3,7 +3,7 @@ Configuration settings for the Epistemix API Flask app.
 """
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 
 class Config:
@@ -80,7 +80,7 @@ class ProductionConfig(Config):
 
 
 # Configuration mapping
-config: Dict[str, Any] = {
+config: dict[str, Any] = {
     "development": DevelopmentConfig,
     "testing": TestingConfig,
     "production": ProductionConfig,

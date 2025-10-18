@@ -8,7 +8,6 @@ settings from environment variables with sensible defaults.
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from simulation_runner.exceptions import ConfigurationError
 
@@ -42,7 +41,7 @@ class SimulationConfig:
     """
 
     job_id: int
-    run_id: Optional[int]
+    run_id: int | None
     fred_home: Path
     workspace_dir: Path
     api_url: str
@@ -51,7 +50,7 @@ class SimulationConfig:
     database_url: str
 
     @classmethod
-    def from_env(cls, job_id: int, run_id: Optional[int] = None) -> "SimulationConfig":
+    def from_env(cls, job_id: int, run_id: int | None = None) -> "SimulationConfig":
         """
         Load configuration from environment variables.
 
@@ -81,15 +80,11 @@ class SimulationConfig:
         # Get FRED_HOME (required)
         fred_home_str = os.getenv("FRED_HOME")
         if not fred_home_str:
-            raise ConfigurationError(
-                "FRED_HOME environment variable is required"
-            )
+            raise ConfigurationError("FRED_HOME environment variable is required")
         fred_home = Path(fred_home_str)
 
         # Get workspace directory (defaults to /workspace/job_{job_id})
-        workspace_str = os.getenv(
-            "WORKSPACE_DIR", f"/workspace/job_{job_id}"
-        )
+        workspace_str = os.getenv("WORKSPACE_DIR", f"/workspace/job_{job_id}")
         workspace_dir = Path(workspace_str)
 
         # Get API URL (optional, falls back to config file or defaults)
@@ -145,9 +140,7 @@ class SimulationConfig:
         fred_binary = self.fred_home / "bin" / "FRED"
         fred_binary_fallback = Path("/usr/local/bin/FRED")
         if not fred_binary.exists() and not fred_binary_fallback.exists():
-            errors.append(
-                f"FRED binary not found at {fred_binary} or {fred_binary_fallback}"
-            )
+            errors.append(f"FRED binary not found at {fred_binary} or {fred_binary_fallback}")
 
         # Validate FRED data directory exists
         fred_data = self.fred_home / "data"

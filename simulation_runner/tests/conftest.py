@@ -2,7 +2,6 @@
 Pytest configuration and fixtures for simulation_runner tests.
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -44,13 +43,10 @@ def sample_run_config(tmp_path):
         "params": {
             "start_date": "2020-01-01",
             "end_date": "2020-03-31",
-            "synth_pop": {
-                "version": "US_2010.v5",
-                "locations": ["Allegheny_County_PA"]
-            },
-            "seed": 12345
+            "synth_pop": {"version": "US_2010.v5", "locations": ["Allegheny_County_PA"]},
+            "seed": 12345,
         },
-        "fred_version": "latest"
+        "fred_version": "latest",
     }
     run_config.write_text(json.dumps(config_data, indent=2))
     return run_config
@@ -67,5 +63,5 @@ def test_config(temp_workspace):
         api_url="http://localhost:5000",
         s3_bucket="test-bucket",
         aws_region="us-east-1",
-        database_url="sqlite:///test.db"
+        database_url="sqlite:///test.db",
     )

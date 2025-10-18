@@ -81,7 +81,6 @@ class TestFREDConfigBuilder:
     def test_builder_build_preserves_original_content(self, sample_fred_file, tmp_path):
         """Test that build preserves original file content."""
         output = tmp_path / "output.fred"
-        original_content = sample_fred_file.read_text()
 
         builder = FREDConfigBuilder(sample_fred_file)
         builder.with_dates("2020-01-01")
@@ -93,9 +92,7 @@ class TestFREDConfigBuilder:
 
     def test_builder_from_run_config(self, sample_run_config, sample_fred_file):
         """Test creating builder from run config JSON."""
-        builder = FREDConfigBuilder.from_run_config(
-            sample_run_config, sample_fred_file
-        )
+        builder = FREDConfigBuilder.from_run_config(sample_run_config, sample_fred_file)
 
         assert builder._start_date == "2020-Jan-01"
         assert builder._end_date == "2020-Mar-31"
