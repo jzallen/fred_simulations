@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 FRED Simulation Runner CLI.
 
@@ -13,7 +12,6 @@ Usage:
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -79,10 +77,8 @@ def run(job_id: int, run_id: Optional[int]):
         # Validate configuration
         errors = config.validate()
         if errors:
-            click.echo("Configuration validation failed:", err=True)
-            for error in errors:
-                click.echo(f"  - {error}", err=True)
-            sys.exit(1)
+            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {error}" for error in errors)
+            raise click.ClickException(error_msg)
 
         # Execute workflow
         workflow = SimulationWorkflow(config)
@@ -114,18 +110,14 @@ def run(job_id: int, run_id: Optional[int]):
         click.echo("=" * 60)
 
     except ConfigurationError as e:
-        click.echo(f"Configuration error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Configuration error: {e}")
     except WorkflowError as e:
-        click.echo(f"Workflow error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Workflow error: {e}")
     except SimulationRunnerError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Error: {e}")
     except Exception as e:
         logger.exception("Unexpected error")
-        click.echo(f"Unexpected error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 @cli.command()
@@ -172,18 +164,14 @@ def validate(job_id: int, run_id: Optional[int]):
         click.echo("=" * 60)
 
     except ConfigurationError as e:
-        click.echo(f"Configuration error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Configuration error: {e}")
     except ValidationError as e:
-        click.echo(f"Validation failed: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Validation failed: {e}")
     except SimulationRunnerError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Error: {e}")
     except Exception as e:
         logger.exception("Unexpected error")
-        click.echo(f"Unexpected error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 @cli.command()
@@ -221,16 +209,14 @@ def prepare(
         click.echo(f"✓ Successfully prepared FRED configuration: {result}")
         click.echo()
         click.echo("To run FRED with this configuration:")
-        click.echo(f"  export FRED_HOME=/workspaces/fred_simulations/fred-framework")
+        click.echo("  export FRED_HOME=/workspaces/fred_simulations/fred-framework")
         click.echo(f"  FRED -p {result} -r {run_number} -d OUT")
 
     except FREDConfigError as e:
-        click.echo(f"Failed to prepare configuration: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Failed to prepare configuration: {e}")
     except Exception as e:
         logger.exception("Unexpected error")
-        click.echo(f"Unexpected error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 @cli.command()
@@ -270,12 +256,10 @@ def download(job_id: int, output_dir: Optional[Path]):
                 click.echo(f"  - {file.name} ({size_kb:.1f} KB)")
 
     except SimulationRunnerError as e:
-        click.echo(f"Download failed: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Download failed: {e}")
     except Exception as e:
         logger.exception("Unexpected error")
-        click.echo(f"Unexpected error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Unexpected error: {e}")
 
 
 @cli.command()
@@ -315,9 +299,8 @@ def config():
             click.echo("✓ Configuration is valid")
 
     except ConfigurationError as e:
-        click.echo(f"Configuration error: {e}", err=True)
-        sys.exit(1)
+        raise click.ClickException(f"Configuration error: {e}")
 
 
 if __name__ == "__main__":
-    cli()
+    cli()  # pylint: disable=no-value-for-parameter

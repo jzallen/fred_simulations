@@ -34,6 +34,7 @@ epistemix_platform_env = "epistemix_platform/epistemix_platform_env.lock"
 infrastructure_env = "epistemix_platform/infrastructure/infrastructure_env.lock"
 tcr_env = "tcr/tcr_env.lock"
 simulations_env = "simulations/simulations_env.lock"
+simulation_runner_env = "simulation_runner/simulation_runner_env.lock"
 
 [python-infer]
 imports = true

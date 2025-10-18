@@ -5,12 +5,10 @@ This module provides the main SimulationWorkflow class that coordinates
 the entire simulation pipeline from download to execution.
 """
 
-import json
 import logging
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Optional
 
 from simulation_runner.config import SimulationConfig
 from simulation_runner.exceptions import (
@@ -355,7 +353,7 @@ class SimulationWorkflow:
             except subprocess.CalledProcessError as e:
                 # Write error log
                 with open(validation_log, "w") as f:
-                    f.write(f"VALIDATION FAILED\n\n")
+                    f.write("VALIDATION FAILED\n\n")
                     f.write(e.stdout)
                     if e.stderr:
                         f.write("\n\n=== STDERR ===\n")
@@ -467,7 +465,7 @@ class SimulationWorkflow:
             except subprocess.CalledProcessError as e:
                 # Write error log
                 with open(simulation_log, "w") as f:
-                    f.write(f"SIMULATION FAILED\n\n")
+                    f.write("SIMULATION FAILED\n\n")
                     f.write(e.stdout)
                     if e.stderr:
                         f.write("\n\n=== STDERR ===\n")
@@ -554,7 +552,7 @@ class SimulationWorkflow:
             ValidationError,
             SimulationError,
         ) as e:
-            logger.error(
+            logger.exception(
                 "Workflow failed",
                 extra={
                     "job_id": self.job_id,

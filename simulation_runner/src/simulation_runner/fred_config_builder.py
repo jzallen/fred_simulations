@@ -164,7 +164,7 @@ class FREDConfigBuilder:
         >>> builder.build(Path("prepared.fred"))
         """
         try:
-            with open(run_config_path) as f:
+            with open(run_config_path, encoding="utf-8") as f:
                 run_config = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError) as e:
             raise FREDConfigError(
@@ -235,7 +235,7 @@ class FREDConfigBuilder:
         """
         try:
             # Read original fred file
-            with open(self.input_fred_path) as f:
+            with open(self.input_fred_path, encoding="utf-8") as f:
                 original_content = f.read()
         except IOError as e:
             raise FREDConfigError(
@@ -270,7 +270,7 @@ class FREDConfigBuilder:
         if self._seed is not None:
             header_lines.append("##### RANDOM SEED")
             header_lines.append(f"# Original seed: {self._seed}")
-            header_lines.append(f"# (Use -r flag with FRED to specify run number)")
+            header_lines.append("# (Use -r flag with FRED to specify run number)")
             header_lines.append("")
 
         header_lines.append("##################################################")
@@ -285,7 +285,7 @@ class FREDConfigBuilder:
             # Ensure output directory exists
             output_fred_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_fred_path, "w") as f:
+            with open(output_fred_path, "w", encoding="utf-8") as f:
                 f.write(final_content)
 
             logger.info(

@@ -3,4 +3,5 @@
 python_sources(
     name="lib",
     sources=["*.py", "utils/*.py"],
+    resolve="simulation_runner_env",
 )

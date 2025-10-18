@@ -8,6 +8,7 @@ run_shell_command(
     command="make",
     execution_dependencies=[":fred-framework"],
     workdir="fred-framework",
+    # Output files are captured by fred-binary and fred-data targets
 )
 
 files(
@@ -31,7 +32,7 @@ docker_image(
         # Copy simulation-runner Python CLI
         "COPY simulation_runner/simulation-runner-cli.pex /usr/local/bin/simulation-runner",
         "RUN chmod +x /usr/local/bin/simulation-runner",
-        # Copy FRED binary and data
+        # Copy FRED binary and data (built by build-fred target)
         "COPY fred-framework/bin/FRED /usr/local/bin/FRED",
         "RUN chmod +x /usr/local/bin/FRED",
         "COPY fred-framework/data /fred-framework/data",
