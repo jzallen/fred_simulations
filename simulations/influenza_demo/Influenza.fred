@@ -1,0 +1,77 @@
+
+#####################################################
+# MODULE FRED::Influenza
+# Author: John Grefenstette
+# Date: 22 Jul 2019
+
+condition INF {
+  states = S E Is Ia R Import
+  import_start_state = Import
+  transmission_mode = proximity
+  transmissibility = 1.0
+  R0_a = 0.0398238
+  R0_b = 0.611043
+  S.is_dormant = 1
+  R.is_dormant = 1
+  exposed_state = E
+}
+
+state INF.S {
+  set_sus(INF,1)
+  wait()
+  next()
+}
+
+state INF.E {
+  set_sus(INF,0)
+  wait(24*lognormal(1.9,1.23))
+  next(Is) with prob(0.67)
+  next(Ia) with prob(0.33)
+}
+
+state INF.Is {
+  set_trans(INF,1)
+  set_state(StayHome,No,Symptoms)
+  wait(24* lognormal(5.0,1.5))
+  next(R)
+}
+
+state INF.Ia {
+  set_trans(INF,0.5)
+  wait( 24 * lognormal(5.0, 1.5) )
+  next(R)
+}
+
+state INF.R {
+  set_trans(INF,0)
+  set_state(StayHome,Yes,No)
+  wait()
+  next()
+}
+
+state INF.Import {
+  import_count(10)
+  wait()
+  next()
+}
+
+condition StayHome {
+  states = No Symptoms Yes
+}
+
+state StayHome,No {}
+
+state StayHome.Symptoms {
+  wait(0)
+  next(Yes) with prob(0.5)
+  default(No)
+}
+
+state StayHome.Yes {
+  absent()
+  present(Household)
+  wait()
+  next()
+}
+
+
