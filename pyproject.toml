@@ -1,0 +1,38 @@
+# Root pyproject.toml for FRED Simulations project
+# This file configures Ruff for Pants-native linting and formatting
+
+[tool.ruff]
+# Match existing Black settings
+line-length = 100
+target-version = "py311"
+
+# Exclude fred-framework directory (C++ code)
+extend-exclude = ["fred-framework"]
+
+[tool.ruff.format]
+# Use double quotes for strings (Black default)
+quote-style = "double"
+
+# Use spaces for indentation (Black default)
+indent-style = "space"
+
+# Respect magic trailing commas (Black default)
+skip-magic-trailing-comma = false
+
+# Auto-detect line endings (Black default)
+line-ending = "auto"
+
+[tool.ruff.lint]
+# Enable pycodestyle (E) and Pyflakes (F) rules by default
+# These replace flake8
+select = ["E", "F", "I"]  # E=errors, F=pyflakes, I=isort
+
+# Ignore rules that conflict with Black or are too strict
+# E203: whitespace before ':' (conflicts with Black)
+# W503: line break before binary operator (conflicts with Black)
+ignore = ["E203", "W503"]
+
+[tool.ruff.lint.isort]
+# Match existing isort settings
+profile = "black"
+line-length = 100
