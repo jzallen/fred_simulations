@@ -298,6 +298,8 @@ class TestJobRoutes:
                     "userDeleted": False,
                     "epxClientVersion": "1.2.2",
                     "config_url": "http://localhost:5001/pre-signed-url",
+                    "results_url": None,
+                    "results_uploaded_at": None,
                 }
             ]
         }
