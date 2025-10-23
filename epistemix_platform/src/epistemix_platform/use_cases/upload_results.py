@@ -100,7 +100,7 @@ def upload_results(
         logger.info(f"Created ZIP file: {zip_size} bytes ({zip_size / 1024 / 1024:.2f} MB)")
 
     except Exception as e:
-        raise ValueError(f"Failed to create ZIP file: {e}")
+        raise ValueError(f"Failed to create ZIP file: {e}") from e
 
     # 4. Get presigned S3 URL for upload
     job_upload = JobUpload(
@@ -114,7 +114,7 @@ def upload_results(
         upload_location = upload_location_repository.get_upload_location(job_upload)
         logger.info(f"Got presigned URL for run {run_id} results upload")
     except Exception as e:
-        raise ValueError(f"Failed to get upload location: {e}")
+        raise ValueError(f"Failed to get upload location: {e}") from e
 
     # 5. Upload ZIP to S3 using presigned URL
     try:
@@ -153,8 +153,8 @@ def upload_results(
         )
     except Exception as e:
         # Results were uploaded but database update failed
-        logger.error(f"CRITICAL: Results uploaded to S3 but DB update failed: {e}")
-        raise ValueError(f"Results uploaded to S3, but failed to update database: {e}")
+        logger.exception("CRITICAL: Results uploaded to S3 but DB update failed")
+        raise ValueError(f"Results uploaded to S3, but failed to update database: {e}") from e
 
     # Return the clean S3 URL (without credentials)
     return run.results_url

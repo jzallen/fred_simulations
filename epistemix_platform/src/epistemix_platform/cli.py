@@ -729,8 +729,6 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
         click.echo(f"  S3 Location: {clean_url}")
         click.echo("  Status: DONE")
 
-        session.close()
-
     except ValueError as e:
         # Rollback transaction on validation error
         if "session" in locals():
@@ -749,6 +747,10 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
                 pass
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
+    finally:
+        # Ensure session is always closed to prevent resource leaks
+        if "session" in locals():
+            session.close()
 
 
 @cli.command("version")
