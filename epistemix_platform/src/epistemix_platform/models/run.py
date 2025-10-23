@@ -64,6 +64,8 @@ class Run:
     user_deleted: bool = False
     epx_client_version: str = "1.2.2"
     config_url: str | None = None  # Presigned URL for run configuration
+    results_url: str | None = None  # Presigned URL for run results ZIP
+    results_uploaded_at: datetime | None = None  # Timestamp when results were uploaded
 
     @classmethod
     def create_unpersisted(
@@ -77,6 +79,8 @@ class Run:
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
         config_url: str | None = None,
+        results_url: str | None = None,
+        results_uploaded_at: datetime | None = None,
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -90,6 +94,9 @@ class Run:
             status: Status of the run
             user_deleted: Whether the user has deleted the run
             epx_client_version: Version of the EPX client
+            config_url: Presigned URL for run configuration
+            results_url: Presigned URL for run results ZIP
+            results_uploaded_at: Timestamp when results were uploaded
 
         Returns:
             A new Run instance with id=None
@@ -107,6 +114,8 @@ class Run:
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
             config_url=config_url,
+            results_url=results_url,
+            results_uploaded_at=results_uploaded_at,
         )
 
     @classmethod
@@ -124,6 +133,8 @@ class Run:
         user_deleted: bool = False,
         epx_client_version: str = "1.2.2",
         config_url: str | None = None,
+        results_url: str | None = None,
+        results_uploaded_at: datetime | None = None,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -140,6 +151,9 @@ class Run:
             status: Status of the run
             user_deleted: Whether the user has deleted the run
             epx_client_version: Version of the EPX client
+            config_url: Presigned URL for run configuration
+            results_url: Presigned URL for run results ZIP
+            results_uploaded_at: Timestamp when results were uploaded
 
         Returns:
             A new Run instance with the specified ID
@@ -157,6 +171,8 @@ class Run:
             user_deleted=user_deleted,
             epx_client_version=epx_client_version,
             config_url=config_url,
+            results_url=results_url,
+            results_uploaded_at=results_uploaded_at,
         )
 
     def is_persisted(self) -> bool:
@@ -207,6 +223,10 @@ class Run:
             "userDeleted": self.user_deleted,
             "epxClientVersion": self.epx_client_version,
             "config_url": self.config_url,
+            "results_url": self.results_url,
+            "results_uploaded_at": self.results_uploaded_at.isoformat()
+            if self.results_uploaded_at
+            else None,
         }
 
     def to_run_response_dict(self) -> dict[str, Any]:

@@ -37,7 +37,9 @@ class RunMapper:
             status=RunMapper._enum_to_run_status(run_record.status),
             user_deleted=bool(run_record.user_deleted),
             epx_client_version=run_record.epx_client_version,
-            config_url=run_record.url,
+            config_url=run_record.config_url,
+            results_url=run_record.results_url,
+            results_uploaded_at=run_record.results_uploaded_at,
         )
 
     @staticmethod
@@ -63,7 +65,9 @@ class RunMapper:
             status=RunMapper._run_status_to_enum(run.status),
             user_deleted=1 if run.user_deleted else 0,
             epx_client_version=run.epx_client_version,
-            url=run.config_url,
+            config_url=run.config_url,
+            results_url=run.results_url,
+            results_uploaded_at=run.results_uploaded_at,
         )
 
     @staticmethod
@@ -85,7 +89,9 @@ class RunMapper:
         record.status = RunMapper._run_status_to_enum(run.status)
         record.user_deleted = 1 if run.user_deleted else 0
         record.epx_client_version = run.epx_client_version
-        record.url = run.config_url
+        record.config_url = run.config_url
+        record.results_url = run.results_url
+        record.results_uploaded_at = run.results_uploaded_at
 
     @staticmethod
     def _run_status_to_enum(status: RunStatus) -> RunStatusEnum:

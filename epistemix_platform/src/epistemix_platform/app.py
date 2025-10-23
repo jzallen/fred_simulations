@@ -349,11 +349,11 @@ def get_job_results():
 
     runs = runs_result.unwrap()
 
-    # Extract URLs from runs
+    # Extract results URLs from runs (not config URLs)
     urls = [
-        {"run_id": run.get("id"), "url": run.get("config_url")}
+        {"run_id": run.get("id"), "url": run.get("results_url")}
         for run in runs
-        if run.get("config_url") is not None
+        if run.get("results_url") is not None
     ]
 
     return jsonify({"urls": urls}), 200

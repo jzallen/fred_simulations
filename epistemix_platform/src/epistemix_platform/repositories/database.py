@@ -88,7 +88,9 @@ class RunRecord(Base):
     status = Column(Enum(RunStatusEnum), nullable=False, default=RunStatusEnum.SUBMITTED)
     user_deleted = Column(Integer, nullable=False, default=0)  # SQLite doesn't have native boolean
     epx_client_version = Column(String, nullable=False, default="1.2.2")
-    url = Column(String, nullable=True)  # Store the presigned URL for this run
+    config_url = Column(String, nullable=True)  # Presigned URL for run config (renamed from 'url')
+    results_url = Column(String, nullable=True)  # Presigned URL for run results ZIP
+    results_uploaded_at = Column(DateTime, nullable=True)  # Timestamp when results were uploaded
 
 
 def create_postgresql_engine(database_url: str, config: "Config") -> Engine:

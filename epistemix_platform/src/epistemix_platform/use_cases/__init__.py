@@ -14,6 +14,7 @@ from .submit_job import submit_job  # pants: no-infer-dep
 from .submit_job_config import submit_job_config  # pants: no-infer-dep
 from .submit_run_config import submit_run_config  # pants: no-infer-dep
 from .submit_runs import RunRequestDict, get_runs_storage, submit_runs  # pants: no-infer-dep
+from .upload_results import upload_results  # pants: no-infer-dep
 from .write_to_local import write_to_local  # pants: no-infer-dep
 
 
@@ -31,5 +32,6 @@ __all__ = [
     "RunRequestDict",
     "get_job_uploads",
     "read_upload_content",
+    "upload_results",
     "write_to_local",
 ]
