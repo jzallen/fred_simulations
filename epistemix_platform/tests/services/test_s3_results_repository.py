@@ -89,11 +89,22 @@ class TestS3ResultsRepository:
         """Sample ZIP file content."""
         return b"fake zip content representing simulation results"
 
+    @pytest.fixture
+    def sample_prefix(self):
+        """Create a sample JobS3Prefix for testing."""
+        from datetime import datetime
+        from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
+
+        return JobS3Prefix(
+            job_id=12,
+            timestamp=datetime(2025, 10, 23, 21, 15, 0),
+        )
+
     # ==========================================================================
     # Scenario 1: Successfully upload results to S3 and return HTTPS URL
     # ==========================================================================
 
-    def test_upload_results_success(self, repository, mock_s3_client, bucket_name, zip_content):
+    def test_upload_results_success(self, repository, mock_s3_client, bucket_name, zip_content, sample_prefix):
         """
         Given a configured S3 client and bucket name
         And simulation results as ZIP bytes
@@ -107,27 +118,28 @@ class TestS3ResultsRepository:
         run_id = 4
 
         # Act
-        result = repository.upload_results(job_id=job_id, run_id=run_id, zip_content=zip_content)
+        result = repository.upload_results(job_id=job_id, run_id=run_id, zip_content=zip_content, s3_prefix=sample_prefix)
 
         # Assert
         # Verify S3 put_object was called with correct parameters
+        expected_key = "jobs/12/2025/10/23/211500/run_4_results.zip"
         mock_s3_client.put_object.assert_called_once_with(
             Bucket=bucket_name,
-            Key="results/job_12/run_4.zip",
+            Key=expected_key,
             Body=zip_content,
             ContentType="application/zip",
         )
 
         # Verify returned URL
         assert isinstance(result, UploadLocation)
-        expected_url = f"https://{bucket_name}.s3.amazonaws.com/results/job_12/run_4.zip"
+        expected_url = f"https://{bucket_name}.s3.amazonaws.com/{expected_key}"
         assert result.url == expected_url
 
     # ==========================================================================
     # Scenario 2: Sanitize AWS credentials in ClientError exceptions
     # ==========================================================================
 
-    def test_sanitize_credentials_in_client_error(self, repository, mock_s3_client, zip_content):
+    def test_sanitize_credentials_in_client_error(self, repository, mock_s3_client, zip_content, sample_prefix):
         """
         Given an S3 client that raises ClientError with AWS credentials in the message
         When I call upload_results
@@ -147,7 +159,7 @@ class TestS3ResultsRepository:
 
         # Act & Assert
         with pytest.raises(ResultsStorageError) as exc_info:
-            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content)
+            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix)
 
         # Verify credentials were sanitized
         error_message = str(exc_info.value)
@@ -163,7 +175,7 @@ class TestS3ResultsRepository:
     # Scenario 3: Sanitize AWS credentials in unexpected exceptions
     # ==========================================================================
 
-    def test_sanitize_credentials_in_unexpected_error(self, repository, mock_s3_client, zip_content):
+    def test_sanitize_credentials_in_unexpected_error(self, repository, mock_s3_client, zip_content, sample_prefix):
         """
         Given an S3 client that raises a non-ClientError exception
         When I call upload_results
@@ -178,7 +190,7 @@ class TestS3ResultsRepository:
 
         # Act & Assert
         with pytest.raises(ResultsStorageError) as exc_info:
-            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content)
+            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix)
 
         # Verify credentials were sanitized
         error_message = str(exc_info.value)
@@ -369,3 +381,170 @@ class TestS3ResultsRepository:
         assert '"AWSAccessKeyId": "[REDACTED_KEY]"' in sanitized
         assert "thisisafakelongsecretvaluefortest1234567890" not in sanitized
         assert '"SecretAccessKey": "[REDACTED]"' in sanitized
+
+
+# ==========================================================================
+# JobS3Prefix Integration Tests
+# ==========================================================================
+
+
+class TestS3ResultsRepositoryWithJobS3Prefix:
+    """
+    Tests for S3ResultsRepository integration with JobS3Prefix.
+
+    Behavioral Specifications:
+    ==========================
+
+    Scenario 1: Upload results using JobS3Prefix
+      Given a JobS3Prefix with job_id=12 and timestamp
+      And an S3ResultsRepository
+      When I call upload_results with the prefix
+      Then the S3 client uploads to the prefix-based key
+      And the key is "jobs/12/2025/10/23/211500/run_4_results.zip"
+
+    Scenario 2: Multiple uploads use same prefix
+      Given a single JobS3Prefix created from job.created_at
+      When I upload results for run_4 and run_5
+      Then both uploads use the same timestamp directory
+      And keys are "jobs/12/.../run_4_results.zip" and "jobs/12/.../run_5_results.zip"
+
+    Scenario 3: Prefix consistency across restarts
+      Given a JobS3Prefix created from job.created_at
+      When I create repository instances at different times
+      Then all uploads still use the original job.created_at timestamp
+    """
+
+    @pytest.fixture
+    def mock_s3_client(self):
+        """Create a mock S3 client."""
+        return MagicMock()
+
+    @pytest.fixture
+    def bucket_name(self):
+        """S3 bucket name for testing."""
+        return "test-simulation-results"
+
+    @pytest.fixture
+    def repository(self, mock_s3_client, bucket_name):
+        """Create an S3ResultsRepository instance."""
+        return S3ResultsRepository(s3_client=mock_s3_client, bucket_name=bucket_name)
+
+    @pytest.fixture
+    def zip_content(self):
+        """Sample ZIP file content."""
+        return b"fake zip content representing simulation results"
+
+    @pytest.fixture
+    def sample_prefix(self):
+        """Create a sample JobS3Prefix for testing."""
+        from datetime import datetime
+        from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
+
+        return JobS3Prefix(
+            job_id=12,
+            timestamp=datetime(2025, 10, 23, 21, 15, 0),
+        )
+
+    # ==========================================================================
+    # Scenario 1: Upload results using JobS3Prefix
+    # ==========================================================================
+
+    def test_upload_results_with_prefix(self, repository, mock_s3_client, bucket_name, sample_prefix, zip_content):
+        """
+        Given a JobS3Prefix with job_id=12 and timestamp
+        And an S3ResultsRepository
+        When I call upload_results with the prefix
+        Then the S3 client uploads to the prefix-based key
+        And the key is "jobs/12/2025/10/23/211500/run_4_results.zip"
+        """
+        # Act
+        result = repository.upload_results(
+            job_id=12,
+            run_id=4,
+            zip_content=zip_content,
+            s3_prefix=sample_prefix,
+        )
+
+        # Assert
+        # Verify S3 put_object was called with prefix-based key
+        mock_s3_client.put_object.assert_called_once()
+        call_kwargs = mock_s3_client.put_object.call_args.kwargs
+
+        assert call_kwargs["Bucket"] == bucket_name
+        assert call_kwargs["Key"] == "jobs/12/2025/10/23/211500/run_4_results.zip"
+        assert call_kwargs["Body"] == zip_content
+        assert call_kwargs["ContentType"] == "application/zip"
+
+        # Verify returned URL
+        assert isinstance(result, UploadLocation)
+        expected_url = f"https://{bucket_name}.s3.amazonaws.com/jobs/12/2025/10/23/211500/run_4_results.zip"
+        assert result.url == expected_url
+
+    # ==========================================================================
+    # Scenario 2: Multiple uploads use same prefix
+    # ==========================================================================
+
+    def test_multiple_uploads_same_prefix(self, repository, mock_s3_client, sample_prefix, zip_content):
+        """
+        Given a single JobS3Prefix created from job.created_at
+        When I upload results for run_4 and run_5
+        Then both uploads use the same timestamp directory
+        And keys are "jobs/12/.../run_4_results.zip" and "jobs/12/.../run_5_results.zip"
+        """
+        # Act - Upload for run 4
+        result_4 = repository.upload_results(
+            job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
+        )
+
+        # Act - Upload for run 5 (same prefix!)
+        result_5 = repository.upload_results(
+            job_id=12, run_id=5, zip_content=zip_content, s3_prefix=sample_prefix
+        )
+
+        # Assert - Both calls used put_object
+        assert mock_s3_client.put_object.call_count == 2
+
+        # Get the two S3 keys used
+        calls = mock_s3_client.put_object.call_args_list
+        key_4 = calls[0].kwargs["Key"]
+        key_5 = calls[1].kwargs["Key"]
+
+        # Both should use same base prefix
+        expected_base = "jobs/12/2025/10/23/211500"
+        assert key_4.startswith(expected_base)
+        assert key_5.startswith(expected_base)
+
+        # But different run IDs
+        assert key_4 == "jobs/12/2025/10/23/211500/run_4_results.zip"
+        assert key_5 == "jobs/12/2025/10/23/211500/run_5_results.zip"
+
+    # ==========================================================================
+    # Scenario 3: Prefix consistency across restarts
+    # ==========================================================================
+
+    def test_prefix_consistency_across_repository_instances(self, mock_s3_client, bucket_name, sample_prefix, zip_content):
+        """
+        Given a JobS3Prefix created from job.created_at
+        When I create repository instances at different times
+        Then all uploads still use the original job.created_at timestamp
+        """
+        # Create first repository instance
+        repo1 = S3ResultsRepository(s3_client=mock_s3_client, bucket_name=bucket_name)
+        result1 = repo1.upload_results(
+            job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
+        )
+
+        # Simulate time passing - create second repository instance
+        repo2 = S3ResultsRepository(s3_client=mock_s3_client, bucket_name=bucket_name)
+        result2 = repo2.upload_results(
+            job_id=12, run_id=5, zip_content=zip_content, s3_prefix=sample_prefix  # SAME prefix!
+        )
+
+        # Assert - Both uploads used the SAME timestamp
+        calls = mock_s3_client.put_object.call_args_list
+        key_1 = calls[0].kwargs["Key"]
+        key_2 = calls[1].kwargs["Key"]
+
+        # Both share the exact same base prefix (from job.created_at)
+        assert "jobs/12/2025/10/23/211500" in key_1
+        assert "jobs/12/2025/10/23/211500" in key_2

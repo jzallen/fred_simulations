@@ -16,6 +16,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from epistemix_platform.exceptions import ResultsStorageError
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.upload_location import UploadLocation
 
 
@@ -53,20 +54,24 @@ class S3ResultsRepository:
         self.s3_client = s3_client
         self.bucket_name = bucket_name
 
-    def upload_results(self, job_id: int, run_id: int, zip_content: bytes) -> UploadLocation:
+    def upload_results(
+        self, job_id: int, run_id: int, zip_content: bytes, s3_prefix: JobS3Prefix
+    ) -> UploadLocation:
         """
         Upload simulation results ZIP to S3 using IAM credentials.
 
         This is a server-side operation that uses the executing environment's
         IAM credentials to perform direct S3 PUT operations.
 
-        S3 Key Format: results/job_{job_id}/run_{run_id}.zip
+        S3 Key Format: {s3_prefix.base_prefix}/run_{run_id}_results.zip
+        Example: jobs/12/2025/10/23/211500/run_4_results.zip
         Content-Type: application/zip
 
         Args:
             job_id: Job identifier
             run_id: Run identifier
             zip_content: Binary ZIP file content
+            s3_prefix: JobS3Prefix for consistent path generation
 
         Returns:
             UploadLocation with S3 HTTPS URL (not presigned, permanent URL)
@@ -74,7 +79,7 @@ class S3ResultsRepository:
         Raises:
             ResultsStorageError: If S3 upload fails (with sanitized error message)
         """
-        object_key = self._generate_results_key(job_id, run_id)
+        object_key = s3_prefix.run_results_key(run_id)
 
         try:
             self.s3_client.put_object(

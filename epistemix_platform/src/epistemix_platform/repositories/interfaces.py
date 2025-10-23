@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from epistemix_platform.models.job import Job, JobStatus
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import Run, RunStatus
 from epistemix_platform.models.upload_content import UploadContent
@@ -295,7 +296,9 @@ class IResultsRepository(Protocol):
     Direct boto3 is for server-side uploads (simulation results).
     """
 
-    def upload_results(self, job_id: int, run_id: int, zip_content: bytes) -> UploadLocation:
+    def upload_results(
+        self, job_id: int, run_id: int, zip_content: bytes, s3_prefix: "JobS3Prefix"
+    ) -> UploadLocation:
         """
         Upload simulation results ZIP directly to S3 using boto3 with IAM credentials.
 
