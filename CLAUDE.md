@@ -122,6 +122,36 @@ pants package simulation_runner:simulation-runner-cli
 ./dist/simulation_runner/simulation-runner-cli.pex version
 ```
 
+### Epistemix CLI (Job & Results Management)
+```bash
+# Build epistemix-cli
+pants package epistemix_platform:epistemix-cli
+
+# Upload simulation results to S3 (NEW - FRED-31)
+./dist/epistemix_platform/epistemix-cli.pex jobs results upload \
+  --job-id 12 \
+  --run-id 4 \
+  --results-dir ./output/RUN4
+
+# List jobs
+./dist/epistemix_platform/epistemix-cli.pex jobs list
+
+# Get job info
+./dist/epistemix_platform/epistemix-cli.pex jobs info --job-id 12
+
+# Download job uploads
+./dist/epistemix_platform/epistemix-cli.pex jobs uploads download \
+  --job-id 12 \
+  --output-dir ./downloads \
+  --force
+
+# Archive job uploads (move to Glacier storage)
+./dist/epistemix_platform/epistemix-cli.pex jobs uploads archive \
+  --job-id 12 \
+  --days-since-create 30 \
+  --dry-run
+```
+
 ### Docker Images
 ```bash
 # Build Docker images using Pants
