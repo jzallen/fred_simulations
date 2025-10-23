@@ -653,13 +653,25 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
 
     This command:
     1. Validates the results directory contains FRED output (RUN* directories)
-    2. Creates a ZIP file preserving the directory structure
+    2. Creates a ZIP file preserving the directory structure with RUN*/ at root
     3. Uploads the ZIP to S3 using a presigned URL
     4. Updates the run record with the results URL and timestamp
     5. Marks the run as DONE
 
-    Example:
-        epistemix-cli jobs results upload --job-id 12 --run-id 4 --results-dir ./output/RUN4
+    The results directory can be either:
+    - Parent directory containing RUN* subdirectories: $WORKSPACE_DIR/OUT/run_4/
+    - Single RUN* directory: $WORKSPACE_DIR/OUT/run_4/RUN1/
+
+    Note: WORKSPACE_DIR is configurable via environment (defaults to /workspace/job_{job_id})
+
+    Examples:
+        # Upload all runs from parent directory
+        epistemix-cli jobs results upload --job-id 12 --run-id 4 \\
+            --results-dir $WORKSPACE_DIR/OUT/run_4
+
+        # Upload single RUN directory
+        epistemix-cli jobs results upload --job-id 12 --run-id 4 \\
+            --results-dir $WORKSPACE_DIR/OUT/run_4/RUN1
     """
     try:
         # Get configuration from environment/config file
@@ -705,6 +717,9 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
 
         results_url = result.unwrap()
 
+        # Persist DB changes (results_url, results_uploaded_at, status)
+        session.commit()
+
         # Clean URL for display (remove query params with credentials)
         clean_url = results_url.split("?")[0] if "?" in results_url else results_url
 
@@ -717,9 +732,21 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
         session.close()
 
     except ValueError as e:
+        # Rollback transaction on validation error
+        if "session" in locals():
+            try:
+                session.rollback()
+            except Exception:
+                pass
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
+        # Rollback transaction on unexpected error
+        if "session" in locals():
+            try:
+                session.rollback()
+            except Exception:
+                pass
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

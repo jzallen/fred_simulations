@@ -62,15 +62,21 @@ def upload_results(
     if not results_dir.is_dir():
         raise ValueError(f"Results path is not a directory: {results_dir}")
 
-    # Check for FRED output files (look for RUN* directories)
-    run_dirs = list(results_dir.glob("RUN*"))
-    if not run_dirs:
+    # Accept either parent dir containing RUN* subdirs or a single RUN* dir
+    run_dirs = [p for p in results_dir.glob("RUN*") if p.is_dir()]
+    single_run_dir = results_dir.name.upper().startswith("RUN") and results_dir.is_dir()
+
+    if not run_dirs and not single_run_dir:
         raise ValueError(
             f"No FRED output directories (RUN*) found in {results_dir}. "
-            "Expected FRED simulation output structure."
+            "Pass the parent directory containing RUN*/ subdirectories or a single RUN* directory."
         )
 
-    logger.info(f"Found {len(run_dirs)} RUN directories in {results_dir}")
+    logger.info(
+        "Found %s in %s",
+        f"{len(run_dirs)} RUN directories" if run_dirs else f"single directory {results_dir.name}",
+        results_dir,
+    )
 
     # 3. Create ZIP file in memory preserving directory structure
     zip_buffer = io.BytesIO()
@@ -79,9 +85,14 @@ def upload_results(
             # Add all files recursively
             for file_path in results_dir.rglob("*"):
                 if file_path.is_file():
-                    # Get relative path from results_dir
-                    arcname = file_path.relative_to(results_dir)
-                    zip_file.write(file_path, arcname=str(arcname))
+                    # Build arcname, ensuring RUN*/ prefix at ZIP root
+                    if run_dirs:
+                        # Parent directory case: preserve relative path from results_dir
+                        arcname = file_path.relative_to(results_dir)
+                    else:
+                        # Single RUN* directory case: prefix with directory name
+                        arcname = Path(results_dir.name) / file_path.relative_to(results_dir)
+                    zip_file.write(file_path, arcname=arcname.as_posix())
                     logger.debug(f"Added to ZIP: {arcname}")
 
         zip_buffer.seek(0)
