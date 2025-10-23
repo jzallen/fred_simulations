@@ -281,3 +281,52 @@ class IUploadLocationRepository(Protocol):
             maintaining the original order
         """
         ...
+
+
+@runtime_checkable
+class IResultsRepository(Protocol):
+    """
+    Protocol (interface) for simulation results storage operations.
+
+    This repository handles server-side uploads of simulation results using
+    direct boto3 operations with IAM credentials, NOT presigned URLs.
+
+    Presigned URLs are for client-side uploads (job configs).
+    Direct boto3 is for server-side uploads (simulation results).
+    """
+
+    def upload_results(self, job_id: int, run_id: int, zip_content: bytes) -> UploadLocation:
+        """
+        Upload simulation results ZIP directly to S3 using boto3 with IAM credentials.
+
+        This is a server-side operation that uses the executing environment's
+        IAM credentials to perform direct S3 PUT operations.
+
+        Args:
+            job_id: ID of the job
+            run_id: ID of the run
+            zip_content: Binary ZIP content to upload
+
+        Returns:
+            UploadLocation with the S3 URL where results were uploaded
+
+        Raises:
+            ValueError: If upload fails
+        """
+        ...
+
+    def get_download_url(self, results_url: str, expiration_seconds: int = 3600) -> UploadLocation:
+        """
+        Generate a presigned GET URL for downloading results.
+
+        Args:
+            results_url: The S3 URL of the results file
+            expiration_seconds: How long the presigned URL should be valid (default 1 hour)
+
+        Returns:
+            UploadLocation with presigned download URL
+
+        Raises:
+            ValueError: If URL generation fails
+        """
+        ...
