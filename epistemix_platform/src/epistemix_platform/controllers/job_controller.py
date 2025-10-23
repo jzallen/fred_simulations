@@ -28,6 +28,7 @@ from epistemix_platform.use_cases import archive_uploads as archive_uploads_use_
 from epistemix_platform.use_cases import (
     get_job_uploads,
     read_upload_content,
+    upload_results,
     write_to_local,
 )
 from epistemix_platform.use_cases import get_runs_by_job_id as get_runs_by_job_id_use_case
@@ -61,6 +62,7 @@ class JobControllerDependencies:
         read_upload_content_fn: Callable[[UploadLocation], UploadContent],
         write_to_local_fn: Callable[[Path, UploadContent, bool], None],
         archive_uploads_fn: Callable | None = None,
+        upload_results_fn: Callable[[int, int, Path], str] | None = None,
     ):
         self.register_job_fn = register_job_fn
         self.submit_job_fn = submit_job_fn
@@ -72,6 +74,7 @@ class JobControllerDependencies:
         self.read_upload_content_fn = read_upload_content_fn
         self.write_to_local_fn = write_to_local_fn
         self.archive_uploads_fn = archive_uploads_fn or archive_uploads_use_case
+        self.upload_results_fn = upload_results_fn or upload_results
 
 
 class JobController:
@@ -148,6 +151,9 @@ class JobController:
             write_to_local_fn=write_to_local,
             archive_uploads_fn=functools.partial(
                 archive_uploads_use_case, upload_location_repository
+            ),
+            upload_results_fn=functools.partial(
+                upload_results, run_repository, upload_location_repository
             ),
         )
         return service
@@ -511,3 +517,41 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in archive_job_uploads")
             return Failure("An unexpected error occurred while archiving uploads")
+
+    def upload_results_from_directory(
+        self, job_id: int, run_id: int, results_dir: Path
+    ) -> Result[str, str]:
+        """
+        Upload FRED simulation results from a directory to S3.
+
+        This method orchestrates uploading simulation results as a ZIP file to S3
+        and updating the run record with the results URL and timestamp.
+
+        Args:
+            job_id: ID of the job
+            run_id: ID of the run
+            results_dir: Path to directory containing FRED output files
+
+        Returns:
+            Result containing the S3 URL where results were uploaded (Success)
+            or an error message (Failure)
+        """
+        try:
+            logger.info(f"Uploading results for run {run_id} (job {job_id}) from {results_dir}")
+
+            # Use the upload_results use case
+            results_url = self._dependencies.upload_results_fn(
+                job_id=job_id,
+                run_id=run_id,
+                results_dir=results_dir,
+            )
+
+            logger.info(f"Successfully uploaded results for run {run_id}: {results_url}")
+            return Success(results_url)
+
+        except ValueError as e:
+            logger.error(f"Validation error in upload_results: {e}")
+            return Failure(str(e))
+        except Exception:
+            logger.exception("Unexpected error in upload_results")
+            return Failure("An unexpected error occurred while uploading results")

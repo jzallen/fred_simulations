@@ -633,6 +633,126 @@ def download_job_uploads(job_id: int, output_dir: str | None, force: bool):
         sys.exit(1)
 
 
+@jobs.group("results")
+def job_results():
+    """Commands for managing job results."""
+    pass
+
+
+@job_results.command("upload")
+@click.option("--job-id", required=True, type=int, help="Job ID to upload results for")
+@click.option("--run-id", required=True, type=int, help="Run ID to upload results for")
+@click.option(
+    "--results-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    help="Directory containing FRED simulation output",
+)
+def upload_results(job_id: int, run_id: int, results_dir: Path):
+    """Upload FRED simulation results to S3 as a ZIP file.
+
+    This command:
+    1. Validates the results directory contains FRED output (RUN* directories)
+    2. Creates a ZIP file preserving the directory structure with RUN*/ at root
+    3. Uploads the ZIP to S3 using a presigned URL
+    4. Updates the run record with the results URL and timestamp
+    5. Marks the run as DONE
+
+    The results directory can be either:
+    - Parent directory containing RUN* subdirectories: $WORKSPACE_DIR/OUT/run_4/
+    - Single RUN* directory: $WORKSPACE_DIR/OUT/run_4/RUN1/
+
+    Note: WORKSPACE_DIR is configurable via environment (defaults to /workspace/job_{job_id})
+
+    Examples:
+        # Upload all runs from parent directory
+        epistemix-cli jobs results upload --job-id 12 --run-id 4 \\
+            --results-dir $WORKSPACE_DIR/OUT/run_4
+
+        # Upload single RUN directory
+        epistemix-cli jobs results upload --job-id 12 --run-id 4 \\
+            --results-dir $WORKSPACE_DIR/OUT/run_4/RUN1
+    """
+    try:
+        # Get configuration from environment/config file
+        config = get_default_config()
+        env = config["env"]
+        bucket_name = config["bucket"] or "epistemix-uploads-dev"
+        region_name = config["region"]
+
+        # Get database session
+        session = get_database_session()
+
+        def session_factory():
+            return session
+
+        # Create repositories with mappers
+        job_mapper = JobMapper()
+        run_mapper = RunMapper()
+        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
+
+        # Create upload location repository
+        upload_location_repository = create_upload_location_repository(
+            env=env, bucket_name=bucket_name, region_name=region_name
+        )
+
+        # Create JobController
+        job_controller = JobController.create_with_repositories(
+            job_repository=job_repository,
+            run_repository=run_repository,
+            upload_location_repository=upload_location_repository,
+        )
+
+        click.echo(f"Uploading results for run {run_id} (job {job_id}) from {results_dir}")
+
+        # Upload results using the controller
+        result = job_controller.upload_results_from_directory(
+            job_id=job_id, run_id=run_id, results_dir=results_dir
+        )
+
+        if not is_successful(result):
+            click.echo(f"Error: {result.failure()}", err=True)
+            sys.exit(1)
+
+        results_url = result.unwrap()
+
+        # Persist DB changes (results_url, results_uploaded_at, status)
+        session.commit()
+
+        # Clean URL for display (remove query params with credentials)
+        clean_url = results_url.split("?")[0] if "?" in results_url else results_url
+
+        click.echo("\n✓ Successfully uploaded results to S3")
+        click.echo(f"  Run ID: {run_id}")
+        click.echo(f"  Job ID: {job_id}")
+        click.echo(f"  S3 Location: {clean_url}")
+        click.echo("  Status: DONE")
+
+    except ValueError as e:
+        # Rollback transaction on validation error
+        if "session" in locals():
+            try:
+                session.rollback()
+            except Exception:
+                pass
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        # Rollback transaction on unexpected error
+        if "session" in locals():
+            try:
+                session.rollback()
+            except Exception:
+                pass
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    finally:
+        # Ensure session is always closed to prevent resource leaks
+        if "session" in locals():
+            session.close()
+
+
 @cli.command("version")
 def version():
     """Show CLI version."""

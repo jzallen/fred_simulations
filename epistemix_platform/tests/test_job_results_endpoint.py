@@ -49,7 +49,7 @@ class TestJobResultsEndpoint:
             db_manager.create_tables()  # Ensure tables exist
             session = db_manager.get_session()
 
-            # Create test runs with URLs
+            # Create test runs with results URLs
             run1 = RunRecord(
                 id=1,
                 job_id=100,
@@ -57,7 +57,7 @@ class TestJobResultsEndpoint:
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 request={"test": "data"},
-                url="https://example.com/run1-url",
+                results_url="https://example.com/run1-url",
             )
 
             run2 = RunRecord(
@@ -67,10 +67,10 @@ class TestJobResultsEndpoint:
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 request={"test": "data"},
-                url="https://example.com/run2-url",
+                results_url="https://example.com/run2-url",
             )
 
-            # Run without URL
+            # Run without results URL
             run3 = RunRecord(
                 id=3,
                 job_id=100,
@@ -78,7 +78,7 @@ class TestJobResultsEndpoint:
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 request={"test": "data"},
-                url=None,
+                results_url=None,
             )
 
             # Run for different job
@@ -89,7 +89,7 @@ class TestJobResultsEndpoint:
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 request={"test": "data"},
-                url="https://example.com/run4-url",
+                results_url="https://example.com/run4-url",
             )
 
             session.add(run1)
@@ -172,7 +172,7 @@ class TestJobResultsEndpoint:
             db_manager.create_tables()  # Ensure tables exist
             session = db_manager.get_session()
 
-            # Create a run without URL
+            # Create a run without results URL
             run = RunRecord(
                 id=1,
                 job_id=300,
@@ -180,7 +180,7 @@ class TestJobResultsEndpoint:
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
                 request={"test": "data"},
-                url=None,  # No URL
+                results_url=None,  # No results URL
             )
 
             session.add(run)
