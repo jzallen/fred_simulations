@@ -36,11 +36,11 @@ class S3ResultsRepository:
     - Removes access keys, secrets, and signatures from exceptions
     - Uses IAM role credentials (no hardcoded secrets)
 
-    S3 Key Structure:
-        results/job_{job_id}/run_{run_id}.zip
+    S3 Key Structure (via JobS3Prefix):
+        jobs/{job_id}/{yyyy}/{mm}/{dd}/{HHMMSS}/run_{run_id}_results.zip
 
     Example:
-        results/job_123/run_4.zip
+        jobs/123/2025/10/23/211500/run_4_results.zip
     """
 
     def __init__(self, s3_client: boto3.client, bucket_name: str):
@@ -137,17 +137,23 @@ class S3ResultsRepository:
             ValueError: If results_url format is invalid
             ResultsStorageError: If presigned URL generation fails
         """
-        # Extract object key from S3 URL
+        # Extract bucket and object key from S3 URL
         try:
-            object_key = self._extract_key_from_url(results_url)
+            bucket, object_key = self._extract_bucket_and_key(results_url)
         except ValueError as e:
             raise ValueError(f"Invalid S3 URL format: {e}") from e
+
+        # Optional: Warn if bucket differs from repository configuration
+        if bucket != self.bucket_name:
+            logger.warning(
+                f"Presigning URL for different bucket: {bucket} (repo bucket={self.bucket_name})"
+            )
 
         try:
             presigned_url = self.s3_client.generate_presigned_url(
                 "get_object",
                 Params={
-                    "Bucket": self.bucket_name,
+                    "Bucket": bucket,
                     "Key": object_key,
                 },
                 ExpiresIn=expiration_seconds,
@@ -181,12 +187,9 @@ class S3ResultsRepository:
 
     def _extract_key_from_url(self, s3_url: str) -> str:
         """
-        Extract S3 object key from S3 URL.
+        Extract S3 object key from S3 URL (legacy helper).
 
-        Supports formats:
-        - https://bucket.s3.amazonaws.com/results/job_123/run_4.zip
-        - https://bucket.s3.us-east-1.amazonaws.com/results/job_123/run_4.zip
-        - s3://bucket/results/job_123/run_4.zip
+        This method delegates to _extract_bucket_and_key for backward compatibility.
 
         Args:
             s3_url: S3 URL (various formats supported)
@@ -197,21 +200,57 @@ class S3ResultsRepository:
         Raises:
             ValueError: If URL format is not recognized
         """
-        # Handle s3:// format
+        _, key = self._extract_bucket_and_key(s3_url)
+        return key
+
+    def _extract_bucket_and_key(self, s3_url: str) -> tuple[str, str]:
+        """
+        Extract bucket and key from common S3 URL formats.
+
+        Supports:
+        - s3://bucket/key
+        - https://bucket.s3.amazonaws.com/key
+        - https://bucket.s3.{region}.amazonaws.com/key
+        - https://s3.amazonaws.com/bucket/key
+        - https://s3.{region}.amazonaws.com/bucket/key
+
+        Args:
+            s3_url: S3 URL in any supported format
+
+        Returns:
+            Tuple of (bucket_name, object_key)
+
+        Raises:
+            ValueError: If URL format is not recognized
+
+        Examples:
+            >>> repo._extract_bucket_and_key("s3://my-bucket/path/to/file.zip")
+            ('my-bucket', 'path/to/file.zip')
+            >>> repo._extract_bucket_and_key("https://my-bucket.s3.amazonaws.com/path/to/file.zip")
+            ('my-bucket', 'path/to/file.zip')
+        """
+        # s3://bucket/key
         if s3_url.startswith("s3://"):
             parts = s3_url[5:].split("/", 1)
-            if len(parts) == 2:
-                return parts[1]  # Return everything after bucket name
+            if len(parts) == 2 and parts[0] and parts[1]:
+                return parts[0], parts[1]
+            raise ValueError(f"Unrecognized S3 URL format: {s3_url}")
 
-        # Handle https:// format with s3.amazonaws.com
-        if "s3.amazonaws.com/" in s3_url:
-            return s3_url.split("s3.amazonaws.com/")[1].split("?")[
-                0
-            ]  # Remove query params if present
+        # Virtual-hosted-style: https://bucket.s3.amazonaws.com/key
+        # Or regional: https://bucket.s3.us-east-1.amazonaws.com/key
+        match = re.match(
+            r"^https://([^.]+)\.s3(?:\.[^.]*)?\.(amazonaws\.com)/(.+?)(?:\?.*)?$", s3_url
+        )
+        if match:
+            return match.group(1), match.group(3)
 
-        # Handle regional https:// format with s3.{region}.amazonaws.com
-        if ".s3." in s3_url and ".amazonaws.com/" in s3_url:
-            return s3_url.split(".amazonaws.com/")[1].split("?")[0]
+        # Path-style: https://s3.amazonaws.com/bucket/key
+        # Or regional: https://s3.{region}.amazonaws.com/bucket/key
+        match = re.match(
+            r"^https://s3(?:\.[^.]*)?\.(amazonaws\.com)/([^/]+)/(.+?)(?:\?.*)?$", s3_url
+        )
+        if match:
+            return match.group(2), match.group(3)
 
         raise ValueError(f"Unrecognized S3 URL format: {s3_url}")
 
