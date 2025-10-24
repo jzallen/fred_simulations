@@ -217,20 +217,30 @@ class TestS3ResultsRepository:
         assert exc_info.value.sanitized is True
 
     # ==========================================================================
-    # Scenario 4: Generate correct S3 object key format
+    # Scenario 4: Generate correct S3 object key format using JobS3Prefix
     # ==========================================================================
 
-    def test_generate_results_key_format(self, repository):
+    def test_generate_results_key_format(self):
         """
         Given job_id=123 and run_id=45
-        When I generate the results key
-        Then the key is "results/job_123/run_45.zip"
+        When I generate the results key using JobS3Prefix
+        Then the key follows the format "jobs/{job_id}/{yyyy}/{mm}/{dd}/{HHMMSS}/run_{run_id}_results.zip"
         """
+        # Arrange
+        from datetime import datetime
+
+        from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
+
+        prefix = JobS3Prefix(
+            job_id=123,
+            timestamp=datetime(2025, 10, 24, 15, 30, 45),
+        )
+
         # Act
-        key = repository._generate_results_key(job_id=123, run_id=45)
+        key = prefix.run_results_key(run_id=45)
 
         # Assert
-        assert key == "results/job_123/run_45.zip"
+        assert key == "jobs/123/2025/10/24/153045/run_45_results.zip"
 
     # ==========================================================================
     # Scenario 5: Successfully generate presigned download URL

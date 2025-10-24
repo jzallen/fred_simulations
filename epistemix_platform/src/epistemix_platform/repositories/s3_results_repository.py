@@ -170,21 +170,6 @@ class S3ResultsRepository:
 
         return UploadLocation(url=presigned_url)
 
-    def _generate_results_key(self, job_id: int, run_id: int) -> str:
-        """
-        Generate S3 object key for results ZIP.
-
-        Format: results/job_{job_id}/run_{run_id}.zip
-
-        Args:
-            job_id: Job identifier
-            run_id: Run identifier
-
-        Returns:
-            S3 object key
-        """
-        return f"results/job_{job_id}/run_{run_id}.zip"
-
     def _extract_key_from_url(self, s3_url: str) -> str:
         """
         Extract S3 object key from S3 URL (legacy helper).
