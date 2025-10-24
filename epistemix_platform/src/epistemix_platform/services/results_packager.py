@@ -111,22 +111,29 @@ class FredResultsPackager:
         is_single_run_dir = self._is_run_directory(results_dir)
 
         if not run_dirs and not is_single_run_dir:
-            raise InvalidResultsDirectoryError(
-                f"No FRED output directories (RUN*) found in {results_dir}. "
-                "Expected either a RUN* directory or a parent containing RUN*/ subdirectories."
+            logger.warning(
+                "No RUN* directories found: path=%s is_run_dir=%s run_dirs_count=%s. "
+                "Expected either a RUN* directory or a parent containing RUN*/ subdirectories.",
+                results_dir,
+                is_single_run_dir,
+                len(run_dirs),
             )
+            raise InvalidResultsDirectoryError("No FRED output directories found")
 
         logger.info(
             "Found %s in %s",
-            f"{len(run_dirs)} RUN directories" if run_dirs else f"single directory {results_dir.name}",
+            f"{len(run_dirs)} RUN directories"
+            if run_dirs
+            else f"single directory {results_dir.name}",
             results_dir,
         )
 
         # Step 3: Create ZIP in memory
         try:
-            zip_content, file_count = self._create_zip(results_dir, run_dirs, is_single_run_dir)
+            zip_content, file_count = self._create_zip(results_dir, run_dirs)
         except Exception as e:
-            raise ResultsPackagingError(f"Failed to create ZIP file: {e}") from e
+            logger.exception("ZIP creation failed for %s", results_dir)
+            raise ResultsPackagingError("Failed to create ZIP file") from e
 
         # Step 4: Get metadata
         total_size = len(zip_content)
@@ -150,10 +157,12 @@ class FredResultsPackager:
             InvalidResultsDirectoryError: If validation fails
         """
         if not results_dir.exists():
-            raise InvalidResultsDirectoryError(f"Results directory does not exist: {results_dir}")
+            logger.error("Results directory does not exist: %s", results_dir)
+            raise InvalidResultsDirectoryError("Results directory does not exist")
 
         if not results_dir.is_dir():
-            raise InvalidResultsDirectoryError(f"Path is not a directory: {results_dir}")
+            logger.error("Path is not a directory: %s", results_dir)
+            raise InvalidResultsDirectoryError("Path is not a directory")
 
     def _find_run_directories(self, path: Path) -> list[Path]:
         """
@@ -179,16 +188,18 @@ class FredResultsPackager:
         """
         return path.name.upper().startswith("RUN") and path.is_dir()
 
-    def _create_zip(
-        self, results_dir: Path, run_dirs: list[Path], is_single_run: bool
-    ) -> tuple[bytes, int]:
+    def _create_zip(self, results_dir: Path, run_dirs: list[Path]) -> tuple[bytes, int]:
         """
         Create ZIP file from results directory.
+
+        SECURITY: Only includes files from RUN* directories and prevents symlink escape attacks.
+        - Restricts iteration to RUN* subdirectories only
+        - Skips symlinks to prevent directory traversal attacks
+        - Validates resolved paths stay within results_dir root
 
         Args:
             results_dir: Root directory to zip
             run_dirs: List of RUN* subdirectories (if parent directory)
-            is_single_run: True if results_dir itself is a RUN* directory
 
         Returns:
             Tuple of (zip_content_bytes, file_count)
@@ -199,18 +210,36 @@ class FredResultsPackager:
         zip_buffer = io.BytesIO()
         file_count = 0
 
+        # Resolve root path once for security checks
+        root_path = results_dir.resolve()
+
+        # Determine which directories to iterate (only RUN* dirs)
+        targets = run_dirs if run_dirs else [results_dir]
+
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for file_path in results_dir.rglob("*"):
-                if file_path.is_file():
-                    arcname = self._calculate_archive_name(file_path, results_dir, run_dirs, is_single_run)
+            for base in targets:
+                for file_path in base.rglob("*"):
+                    if not file_path.is_file():
+                        continue
+
+                    # SECURITY: Prevent packaging files outside root via symlinks
+                    try:
+                        resolved = file_path.resolve()
+                        resolved.relative_to(root_path)
+                    except (ValueError, RuntimeError):
+                        # File is outside root or symlink escape attempt
+                        logger.warning("Skipping file outside root via symlink: %s", file_path)
+                        continue
+
+                    arcname = self._calculate_archive_name(file_path, results_dir, run_dirs)
                     zip_file.write(file_path, arcname=arcname.as_posix())
                     file_count += 1
-                    logger.debug(f"Added to ZIP: {arcname}")
+                    logger.debug("Added to ZIP: %s", arcname)
 
         return zip_buffer.getvalue(), file_count
 
     def _calculate_archive_name(
-        self, file_path: Path, results_dir: Path, run_dirs: list[Path], is_single_run: bool
+        self, file_path: Path, results_dir: Path, run_dirs: list[Path]
     ) -> Path:
         """
         Calculate the archive path for a file in the ZIP.
@@ -223,7 +252,6 @@ class FredResultsPackager:
             file_path: Path to file being added
             results_dir: Root results directory
             run_dirs: List of RUN* subdirectories
-            is_single_run: True if results_dir is itself a RUN* directory
 
         Returns:
             Path to use as archive name in ZIP
@@ -232,7 +260,6 @@ class FredResultsPackager:
             # Parent directory case: preserve relative path from results_dir
             # Example: results_dir=/output, file=/output/RUN1/data.txt -> RUN1/data.txt
             return file_path.relative_to(results_dir)
-        else:
-            # Single RUN* directory case: prefix with directory name
-            # Example: results_dir=/output/RUN4, file=/output/RUN4/data.txt -> RUN4/data.txt
-            return Path(results_dir.name) / file_path.relative_to(results_dir)
+        # Single RUN* directory case: prefix with directory name
+        # Example: results_dir=/output/RUN4, file=/output/RUN4/data.txt -> RUN4/data.txt
+        return Path(results_dir.name) / file_path.relative_to(results_dir)

@@ -56,7 +56,7 @@ Scenario 7: Reject invalid S3 URL formats
   And the error message indicates invalid URL format
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -93,6 +93,7 @@ class TestS3ResultsRepository:
     def sample_prefix(self):
         """Create a sample JobS3Prefix for testing."""
         from datetime import datetime
+
         from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
 
         return JobS3Prefix(
@@ -104,7 +105,9 @@ class TestS3ResultsRepository:
     # Scenario 1: Successfully upload results to S3 and return HTTPS URL
     # ==========================================================================
 
-    def test_upload_results_success(self, repository, mock_s3_client, bucket_name, zip_content, sample_prefix):
+    def test_upload_results_success(
+        self, repository, mock_s3_client, bucket_name, zip_content, sample_prefix
+    ):
         """
         Given a configured S3 client and bucket name
         And simulation results as ZIP bytes
@@ -118,7 +121,9 @@ class TestS3ResultsRepository:
         run_id = 4
 
         # Act
-        result = repository.upload_results(job_id=job_id, run_id=run_id, zip_content=zip_content, s3_prefix=sample_prefix)
+        result = repository.upload_results(
+            job_id=job_id, run_id=run_id, zip_content=zip_content, s3_prefix=sample_prefix
+        )
 
         # Assert
         # Verify S3 put_object was called with correct parameters
@@ -139,7 +144,9 @@ class TestS3ResultsRepository:
     # Scenario 2: Sanitize AWS credentials in ClientError exceptions
     # ==========================================================================
 
-    def test_sanitize_credentials_in_client_error(self, repository, mock_s3_client, zip_content, sample_prefix):
+    def test_sanitize_credentials_in_client_error(
+        self, repository, mock_s3_client, zip_content, sample_prefix
+    ):
         """
         Given an S3 client that raises ClientError with AWS credentials in the message
         When I call upload_results
@@ -159,13 +166,17 @@ class TestS3ResultsRepository:
 
         # Act & Assert
         with pytest.raises(ResultsStorageError) as exc_info:
-            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix)
+            repository.upload_results(
+                job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
+            )
 
         # Verify credentials were sanitized
         error_message = str(exc_info.value)
         assert "AKIAFAKECREDENTIAL99" not in error_message  # Key should be redacted
         assert "[REDACTED_KEY]" in error_message
-        assert "ThisIsAFakeSecretKeyForTestingPurposes1234567890" not in error_message  # Secret redacted
+        assert (
+            "ThisIsAFakeSecretKeyForTestingPurposes1234567890" not in error_message
+        )  # Secret redacted
         assert "[REDACTED]" in error_message
 
         # Verify sanitized flag
@@ -175,7 +186,9 @@ class TestS3ResultsRepository:
     # Scenario 3: Sanitize AWS credentials in unexpected exceptions
     # ==========================================================================
 
-    def test_sanitize_credentials_in_unexpected_error(self, repository, mock_s3_client, zip_content, sample_prefix):
+    def test_sanitize_credentials_in_unexpected_error(
+        self, repository, mock_s3_client, zip_content, sample_prefix
+    ):
         """
         Given an S3 client that raises a non-ClientError exception
         When I call upload_results
@@ -190,7 +203,9 @@ class TestS3ResultsRepository:
 
         # Act & Assert
         with pytest.raises(ResultsStorageError) as exc_info:
-            repository.upload_results(job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix)
+            repository.upload_results(
+                job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
+            )
 
         # Verify credentials were sanitized
         error_message = str(exc_info.value)
@@ -290,7 +305,7 @@ class TestS3ResultsRepository:
     # Scenario 7: Reject invalid S3 URL formats
     # ==========================================================================
 
-    def test_reject_invalid_s3_url_format(self, repository, mock_s3_client):
+    def test_reject_invalid_s3_url_format(self, repository):
         """
         Given an invalid S3 URL "https://example.com/file.zip"
         When I call get_download_url
@@ -438,6 +453,7 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
     def sample_prefix(self):
         """Create a sample JobS3Prefix for testing."""
         from datetime import datetime
+
         from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
 
         return JobS3Prefix(
@@ -449,7 +465,9 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
     # Scenario 1: Upload results using JobS3Prefix
     # ==========================================================================
 
-    def test_upload_results_with_prefix(self, repository, mock_s3_client, bucket_name, sample_prefix, zip_content):
+    def test_upload_results_with_prefix(
+        self, repository, mock_s3_client, bucket_name, sample_prefix, zip_content
+    ):
         """
         Given a JobS3Prefix with job_id=12 and timestamp
         And an S3ResultsRepository
@@ -477,14 +495,18 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
 
         # Verify returned URL
         assert isinstance(result, UploadLocation)
-        expected_url = f"https://{bucket_name}.s3.amazonaws.com/jobs/12/2025/10/23/211500/run_4_results.zip"
+        expected_url = (
+            f"https://{bucket_name}.s3.amazonaws.com/jobs/12/2025/10/23/211500/run_4_results.zip"
+        )
         assert result.url == expected_url
 
     # ==========================================================================
     # Scenario 2: Multiple uploads use same prefix
     # ==========================================================================
 
-    def test_multiple_uploads_same_prefix(self, repository, mock_s3_client, sample_prefix, zip_content):
+    def test_multiple_uploads_same_prefix(
+        self, repository, mock_s3_client, sample_prefix, zip_content
+    ):
         """
         Given a single JobS3Prefix created from job.created_at
         When I upload results for run_4 and run_5
@@ -492,12 +514,12 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
         And keys are "jobs/12/.../run_4_results.zip" and "jobs/12/.../run_5_results.zip"
         """
         # Act - Upload for run 4
-        result_4 = repository.upload_results(
+        repository.upload_results(
             job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
         )
 
         # Act - Upload for run 5 (same prefix!)
-        result_5 = repository.upload_results(
+        repository.upload_results(
             job_id=12, run_id=5, zip_content=zip_content, s3_prefix=sample_prefix
         )
 
@@ -522,7 +544,9 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
     # Scenario 3: Prefix consistency across restarts
     # ==========================================================================
 
-    def test_prefix_consistency_across_repository_instances(self, mock_s3_client, bucket_name, sample_prefix, zip_content):
+    def test_prefix_consistency_across_repository_instances(
+        self, mock_s3_client, bucket_name, sample_prefix, zip_content
+    ):
         """
         Given a JobS3Prefix created from job.created_at
         When I create repository instances at different times
@@ -530,14 +554,15 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
         """
         # Create first repository instance
         repo1 = S3ResultsRepository(s3_client=mock_s3_client, bucket_name=bucket_name)
-        result1 = repo1.upload_results(
-            job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix
-        )
+        repo1.upload_results(job_id=12, run_id=4, zip_content=zip_content, s3_prefix=sample_prefix)
 
         # Simulate time passing - create second repository instance
         repo2 = S3ResultsRepository(s3_client=mock_s3_client, bucket_name=bucket_name)
-        result2 = repo2.upload_results(
-            job_id=12, run_id=5, zip_content=zip_content, s3_prefix=sample_prefix  # SAME prefix!
+        repo2.upload_results(
+            job_id=12,
+            run_id=5,
+            zip_content=zip_content,
+            s3_prefix=sample_prefix,  # SAME prefix!
         )
 
         # Assert - Both uploads used the SAME timestamp
@@ -548,3 +573,32 @@ class TestS3ResultsRepositoryWithJobS3Prefix:
         # Both share the exact same base prefix (from job.created_at)
         assert "jobs/12/2025/10/23/211500" in key_1
         assert "jobs/12/2025/10/23/211500" in key_2
+
+    # ==========================================================================
+    # Scenario 4: Reject job_id/prefix mismatch (MAJOR SECURITY)
+    # ==========================================================================
+
+    def test_reject_job_id_prefix_mismatch(self, repository, sample_prefix, zip_content):
+        """
+        Given a JobS3Prefix for job_id=12
+        When I call upload_results with a different job_id=999
+        Then a ValueError is raised
+        And the error message indicates the mismatch
+        """
+        # Arrange: sample_prefix has job_id=12
+        assert sample_prefix.job_id == 12
+
+        # Act & Assert: Try to upload with mismatched job_id
+        with pytest.raises(ValueError) as exc_info:
+            repository.upload_results(
+                job_id=999,  # WRONG job_id!
+                run_id=4,
+                zip_content=zip_content,
+                s3_prefix=sample_prefix,
+            )
+
+        # Verify error message is clear
+        error_message = str(exc_info.value).lower()
+        assert "mismatch" in error_message or "does not match" in error_message
+        assert "12" in str(exc_info.value)  # Expected job_id
+        assert "999" in str(exc_info.value)  # Provided job_id

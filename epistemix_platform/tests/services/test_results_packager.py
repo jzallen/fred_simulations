@@ -64,10 +64,8 @@ Scenario 8: Verify correct archive paths in ZIP structure
   Then the ZIP contains "RUN1/data.txt" and "RUN2/data.txt" (no extra prefix)
 """
 
-import tempfile
 import zipfile
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 
@@ -302,11 +300,10 @@ class TestFredResultsPackager:
         Then a ResultsPackagingError is raised
         And the error message describes the ZIP creation failure
         """
-        # Arrange: Mock zipfile.ZipFile to raise IOError
-        original_zipfile = zipfile.ZipFile
 
+        # Arrange: Mock zipfile.ZipFile to raise OSError
         def failing_zipfile(*args, **kwargs):
-            raise IOError("Disk full - cannot write ZIP")
+            raise OSError("Disk full - cannot write ZIP")
 
         monkeypatch.setattr(zipfile, "ZipFile", failing_zipfile)
 
@@ -353,3 +350,95 @@ class TestFredResultsPackager:
             assert "RUN2/data2.txt" in names
             # Verify no files have "output/" prefix
             assert not any(name for name in names if name.startswith("output/"))
+
+    # ==========================================================================
+    # Scenario 9: Security - Prevent symlink escape attacks (CRITICAL)
+    # ==========================================================================
+
+    def test_prevent_symlink_escape_attack(self, packager, tmp_path):
+        """
+        Given a RUN directory with a symlink pointing outside the results tree
+        When I package the directory
+        Then the symlink target file is NOT included in the ZIP
+        And only files within the RUN directory are packaged
+        """
+        # Arrange: Create a sensitive file outside the results directory
+        sensitive_dir = tmp_path / "sensitive"
+        sensitive_dir.mkdir()
+        sensitive_file = sensitive_dir / "secrets.txt"
+        sensitive_file.write_text("AWS_SECRET_KEY=super-secret-do-not-leak")
+
+        # Create RUN directory with legitimate files
+        run_dir = tmp_path / "RUN1"
+        run_dir.mkdir()
+        (run_dir / "legitimate.txt").write_text("safe data")
+
+        # Create symlink inside RUN1 that points to sensitive file outside
+        symlink_path = run_dir / "evil_symlink.txt"
+        symlink_path.symlink_to(sensitive_file)
+
+        # Act
+        result = packager.package_directory(run_dir)
+
+        # Assert: ZIP should NOT contain the symlink target content
+        with zipfile.ZipFile(BytesIO(result.zip_content)) as zf:
+            names = zf.namelist()
+
+            # Should contain legitimate file
+            assert "RUN1/legitimate.txt" in names
+
+            # Should NOT contain symlink or its target content
+            assert "RUN1/evil_symlink.txt" not in names
+            assert "RUN1/secrets.txt" not in names
+
+            # Verify the sensitive content is not in the ZIP
+            for name in names:
+                content = zf.read(name).decode()
+                assert "AWS_SECRET_KEY" not in content
+                assert "super-secret" not in content
+
+    def test_prevent_non_run_directory_inclusion(self, packager, tmp_path):
+        """
+        Given a parent directory with RUN* subdirectories AND non-RUN directories
+        When I package the parent directory
+        Then only files from RUN* directories are included
+        And files from non-RUN directories are excluded
+        """
+        # Arrange: Create parent with RUN and non-RUN directories
+        parent_dir = tmp_path / "output"
+        parent_dir.mkdir()
+
+        # Create legitimate RUN directory
+        run1 = parent_dir / "RUN1"
+        run1.mkdir()
+        (run1 / "data.txt").write_text("run 1 data")
+
+        # Create non-RUN directory that should be EXCLUDED
+        config_dir = parent_dir / "config"
+        config_dir.mkdir()
+        (config_dir / "sensitive_config.txt").write_text("DB_PASSWORD=secret123")
+
+        # Create another non-RUN directory
+        logs_dir = parent_dir / "logs"
+        logs_dir.mkdir()
+        (logs_dir / "error.log").write_text("ERROR: secret token xyz")
+
+        # Act
+        result = packager.package_directory(parent_dir)
+
+        # Assert: Only RUN1 files should be in ZIP
+        with zipfile.ZipFile(BytesIO(result.zip_content)) as zf:
+            names = zf.namelist()
+
+            # Should contain RUN1 files
+            assert "RUN1/data.txt" in names
+
+            # Should NOT contain non-RUN directory files
+            assert "config/sensitive_config.txt" not in names
+            assert "logs/error.log" not in names
+
+            # Verify no sensitive content leaked
+            for name in names:
+                content = zf.read(name).decode()
+                assert "DB_PASSWORD" not in content
+                assert "secret token" not in content

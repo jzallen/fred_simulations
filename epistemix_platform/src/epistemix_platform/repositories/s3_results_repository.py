@@ -77,8 +77,15 @@ class S3ResultsRepository:
             UploadLocation with S3 HTTPS URL (not presigned, permanent URL)
 
         Raises:
+            ValueError: If job_id does not match s3_prefix.job_id
             ResultsStorageError: If S3 upload fails (with sanitized error message)
         """
+        # CRITICAL INVARIANT: Ensure job_id matches prefix to avoid misplacing artifacts
+        if s3_prefix.job_id != job_id:
+            raise ValueError(
+                f"s3_prefix.job_id ({s3_prefix.job_id}) does not match job_id ({job_id})"
+            )
+
         object_key = s3_prefix.run_results_key(run_id)
 
         try:
@@ -88,11 +95,13 @@ class S3ResultsRepository:
                 Body=zip_content,
                 ContentType="application/zip",
             )
-            logger.info(f"Successfully uploaded results to S3: s3://{self.bucket_name}/{object_key}")
+            logger.info(
+                f"Successfully uploaded results to S3: s3://{self.bucket_name}/{object_key}"
+            )
         except ClientError as e:
             # CRITICAL SECURITY: Sanitize credentials before logging or raising
             sanitized_message = self._sanitize_credentials(str(e))
-            logger.error(f"S3 upload failed: {sanitized_message}")
+            logger.error(f"S3 upload failed: {sanitized_message}")  # noqa: TRY400
             raise ResultsStorageError(
                 f"Failed to upload results to S3: {sanitized_message}", sanitized=True
             ) from e
@@ -100,7 +109,7 @@ class S3ResultsRepository:
             # Catch-all for non-AWS errors (network, etc.)
             # These shouldn't contain credentials, but sanitize anyway for safety
             sanitized_message = self._sanitize_credentials(str(e))
-            logger.error(f"Unexpected error during S3 upload: {sanitized_message}")
+            logger.error(f"Unexpected error during S3 upload: {sanitized_message}")  # noqa: TRY400
             raise ResultsStorageError(
                 f"Unexpected error uploading to S3: {sanitized_message}", sanitized=True
             ) from e
@@ -143,10 +152,12 @@ class S3ResultsRepository:
                 },
                 ExpiresIn=expiration_seconds,
             )
-            logger.info(f"Generated presigned download URL for {object_key}, expires in {expiration_seconds}s")
+            logger.info(
+                f"Generated presigned download URL for {object_key}, expires in {expiration_seconds}s"
+            )
         except ClientError as e:
             sanitized_message = self._sanitize_credentials(str(e))
-            logger.error(f"Failed to generate presigned URL: {sanitized_message}")
+            logger.error(f"Failed to generate presigned URL: {sanitized_message}")  # noqa: TRY400
             raise ResultsStorageError(
                 f"Failed to generate download URL: {sanitized_message}", sanitized=True
             ) from e
@@ -194,7 +205,9 @@ class S3ResultsRepository:
 
         # Handle https:// format with s3.amazonaws.com
         if "s3.amazonaws.com/" in s3_url:
-            return s3_url.split("s3.amazonaws.com/")[1].split("?")[0]  # Remove query params if present
+            return s3_url.split("s3.amazonaws.com/")[1].split("?")[
+                0
+            ]  # Remove query params if present
 
         # Handle regional https:// format with s3.{region}.amazonaws.com
         if ".s3." in s3_url and ".amazonaws.com/" in s3_url:
@@ -246,13 +259,19 @@ class S3ResultsRepository:
             message,
         )
 
-        message = re.sub(r"<Signature>[^<]+</Signature>", "<Signature>[REDACTED]</Signature>", message)
+        message = re.sub(
+            r"<Signature>[^<]+</Signature>", "<Signature>[REDACTED]</Signature>", message
+        )
 
         # Pattern 4: JSON credential fields
         # Example: "AWSAccessKeyId": "AKIA..."
-        message = re.sub(r'"AWSAccessKeyId":\s*"[^"]+"', '"AWSAccessKeyId": "[REDACTED_KEY]"', message)
+        message = re.sub(
+            r'"AWSAccessKeyId":\s*"[^"]+"', '"AWSAccessKeyId": "[REDACTED_KEY]"', message
+        )
 
-        message = re.sub(r'"SecretAccessKey":\s*"[^"]+"', '"SecretAccessKey": "[REDACTED]"', message)
+        message = re.sub(
+            r'"SecretAccessKey":\s*"[^"]+"', '"SecretAccessKey": "[REDACTED]"', message
+        )
 
         message = re.sub(r'"Signature":\s*"[^"]+"', '"Signature": "[REDACTED]"', message)
 
