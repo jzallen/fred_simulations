@@ -419,9 +419,18 @@ def upload_location_repository(s3_stubber):
 
 
 @pytest.fixture
-def job_controller(job_repository, run_repository, upload_location_repository):
+def results_repository(s3_stubber):
+    from epistemix_platform.repositories.s3_results_repository import S3ResultsRepository
+
+    s3_client, _ = s3_stubber
+    repo = S3ResultsRepository(s3_client=s3_client, bucket_name="test-bucket")
+    return repo
+
+
+@pytest.fixture
+def job_controller(job_repository, run_repository, upload_location_repository, results_repository):
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository
+        job_repository, run_repository, upload_location_repository, results_repository
     )
 
 

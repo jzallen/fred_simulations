@@ -24,7 +24,9 @@ from epistemix_platform.mappers.run_mapper import RunMapper
 from epistemix_platform.repositories.database import get_database_manager
 from epistemix_platform.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_platform.repositories.run_repository import SQLAlchemyRunRepository
+from epistemix_platform.repositories.s3_results_repository import S3ResultsRepository
 from epistemix_platform.repositories.s3_upload_location_repository import (
+    create_s3_client,
     create_upload_location_repository,
 )
 from epistemix_platform.use_cases.get_job import get_job
@@ -64,11 +66,65 @@ def get_default_config() -> dict[str, str]:
 
 
 def get_database_session():
-    """Get a database session."""
+    """
+    Get a new database session.
+
+    Each command gets its own session that should be closed after use.
+    This prevents "Session is closed" errors when multiple commands are run.
+
+    Returns:
+        SQLAlchemy session instance
+    """
     config = get_default_config()
     db_manager = get_database_manager(config["database_url"])
     db_manager.create_tables()
     return db_manager.get_session()
+
+
+def get_job_controller() -> JobController:
+    """
+    Get a new JobController instance.
+
+    Each command gets its own controller with a fresh database session.
+    The session should be closed after the command completes.
+
+    Returns:
+        Configured JobController instance
+    """
+    # Get configuration from environment/config file
+    config = get_default_config()
+    env = config["env"]
+    bucket_name = config["bucket"] or "epistemix-uploads-dev"
+    region_name = config["region"]
+
+    # Get database session
+    session = get_database_session()
+
+    def session_factory():
+        return session
+
+    # Create repositories with mappers
+    job_mapper = JobMapper()
+    run_mapper = RunMapper()
+    job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
+    run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
+
+    # Create upload location repository
+    upload_location_repository = create_upload_location_repository(
+        env=env, bucket_name=bucket_name, region_name=region_name
+    )
+
+    # Create S3 results repository (reuses create_s3_client for consistency)
+    s3_client = create_s3_client(region_name=region_name)
+    results_repository = S3ResultsRepository(s3_client, bucket_name)
+
+    # Create and return JobController
+    return JobController.create_with_repositories(
+        job_repository=job_repository,
+        run_repository=run_repository,
+        upload_location_repository=upload_location_repository,
+        results_repository=results_repository,
+    )
 
 
 def format_job_uploads(uploads: list) -> str:
@@ -396,35 +452,11 @@ def job_uploads():
 def list_job_uploads(job_id: int, json_output: bool):
     """List sanitized S3 URLs for all uploads of a job and its runs."""
     try:
-        # Get configuration from environment/config file
+        # Get the singleton JobController
+        job_controller = get_job_controller()
         config = get_default_config()
         env = config["env"]
         bucket_name = config["bucket"] or "epistemix-uploads-dev"
-        region_name = config["region"]
-
-        # Get database session
-        session = get_database_session()
-
-        def session_factory():
-            return session
-
-        # Create repositories with mappers
-        job_mapper = JobMapper()
-        run_mapper = RunMapper()
-        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
-        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
-
-        # Create upload location repository
-        upload_location_repository = create_upload_location_repository(
-            env=env, bucket_name=bucket_name, region_name=region_name
-        )
-
-        # Create JobController
-        job_controller = JobController.create_with_repositories(
-            job_repository=job_repository,
-            run_repository=run_repository,
-            upload_location_repository=upload_location_repository,
-        )
 
         # Get uploads WITHOUT content (just metadata and sanitized URLs)
         result = job_controller.get_job_uploads(job_id=job_id, include_content=False)
@@ -489,36 +521,13 @@ def archive_uploads(
         # Get configuration
         config = get_default_config()
         env = config["env"]
-        bucket_name = config["bucket"] or "epistemix-uploads-dev"
-        region_name = config["region"]
 
         if env == "TESTING":
             click.echo("Error: Cannot archive uploads in TESTING mode", err=True)
             sys.exit(1)
 
-        # Get database session
-        session = get_database_session()
-
-        def session_factory():
-            return session
-
-        # Create repositories with mappers
-        job_mapper = JobMapper()
-        run_mapper = RunMapper()
-        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
-        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
-
-        # Create upload location repository
-        upload_location_repository = create_upload_location_repository(
-            env=env, bucket_name=bucket_name, region_name=region_name
-        )
-
-        # Create JobController
-        job_controller = JobController.create_with_repositories(
-            job_repository=job_repository,
-            run_repository=run_repository,
-            upload_location_repository=upload_location_repository,
-        )
+        # Get the singleton JobController
+        job_controller = get_job_controller()
 
         # Archive uploads using the controller
         result = job_controller.archive_job_uploads(
@@ -559,35 +568,8 @@ def archive_uploads(
 def download_job_uploads(job_id: int, output_dir: str | None, force: bool):
     """Download all uploads for a job to a local directory."""
     try:
-        # Get configuration from environment/config file
-        config = get_default_config()
-        env = config["env"]
-        bucket_name = config["bucket"] or "epistemix-uploads-dev"
-        region_name = config["region"]
-
-        # Get database session
-        session = get_database_session()
-
-        def session_factory():
-            return session
-
-        # Create repositories with mappers
-        job_mapper = JobMapper()
-        run_mapper = RunMapper()
-        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
-        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
-
-        # Create upload location repository
-        upload_location_repository = create_upload_location_repository(
-            env=env, bucket_name=bucket_name, region_name=region_name
-        )
-
-        # Create JobController
-        job_controller = JobController.create_with_repositories(
-            job_repository=job_repository,
-            run_repository=run_repository,
-            upload_location_repository=upload_location_repository,
-        )
+        # Get the singleton JobController
+        job_controller = get_job_controller()
 
         # Determine download path
         if output_dir:
@@ -674,35 +656,9 @@ def upload_results(job_id: int, run_id: int, results_dir: Path):
             --results-dir $WORKSPACE_DIR/OUT/run_4/RUN1
     """
     try:
-        # Get configuration from environment/config file
-        config = get_default_config()
-        env = config["env"]
-        bucket_name = config["bucket"] or "epistemix-uploads-dev"
-        region_name = config["region"]
-
-        # Get database session
+        # Get the singleton JobController
+        job_controller = get_job_controller()
         session = get_database_session()
-
-        def session_factory():
-            return session
-
-        # Create repositories with mappers
-        job_mapper = JobMapper()
-        run_mapper = RunMapper()
-        job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
-        run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
-
-        # Create upload location repository
-        upload_location_repository = create_upload_location_repository(
-            env=env, bucket_name=bucket_name, region_name=region_name
-        )
-
-        # Create JobController
-        job_controller = JobController.create_with_repositories(
-            job_repository=job_repository,
-            run_repository=run_repository,
-            upload_location_repository=upload_location_repository,
-        )
 
         click.echo(f"Uploading results for run {run_id} (job {job_id}) from {results_dir}")
 

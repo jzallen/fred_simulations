@@ -24,6 +24,9 @@ from epistemix_platform.repositories import (
     IRunRepository,
     IUploadLocationRepository,
 )
+from epistemix_platform.repositories.interfaces import IResultsRepository
+from epistemix_platform.services.results_packager import FredResultsPackager
+from epistemix_platform.services.time_provider import SystemTimeProvider
 from epistemix_platform.use_cases import archive_uploads as archive_uploads_use_case
 from epistemix_platform.use_cases import (
     get_job_uploads,
@@ -115,6 +118,7 @@ class JobController:
         job_repository: IJobRepository,
         run_repository: IRunRepository,
         upload_location_repository: IUploadLocationRepository,
+        results_repository: IResultsRepository,
     ) -> Self:
         """
         Create JobController with repositories.
@@ -123,6 +127,7 @@ class JobController:
             job_repository: Repository for job persistence
             run_repository: Repository for run persistence
             upload_location_repository: Repository for upload locations (handles storage details)
+            results_repository: Repository for results uploads
 
         Returns:
             Configured JobController instance
@@ -153,7 +158,12 @@ class JobController:
                 archive_uploads_use_case, upload_location_repository
             ),
             upload_results_fn=functools.partial(
-                upload_results, run_repository, upload_location_repository
+                upload_results,
+                run_repository,
+                job_repository,
+                FredResultsPackager(),
+                results_repository,
+                SystemTimeProvider(),
             ),
         )
         return service

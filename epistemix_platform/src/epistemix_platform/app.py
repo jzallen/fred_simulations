@@ -26,7 +26,9 @@ from epistemix_platform.models.requests import (
 from epistemix_platform.repositories.database import get_database_manager
 from epistemix_platform.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_platform.repositories.run_repository import SQLAlchemyRunRepository
+from epistemix_platform.repositories.s3_results_repository import S3ResultsRepository
 from epistemix_platform.repositories.s3_upload_location_repository import (
+    create_s3_client,
     create_upload_location_repository,
 )
 
@@ -152,8 +154,14 @@ def get_job_controller():
     run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
     upload_location_repository = get_upload_location_repository()
 
+    # Create S3 results repository
+    bucket_name = app.config.get("S3_UPLOAD_BUCKET")
+    region_name = app.config.get("AWS_REGION")
+    s3_client = create_s3_client(region_name=region_name)
+    results_repository = S3ResultsRepository(s3_client, bucket_name)
+
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository
+        job_repository, run_repository, upload_location_repository, results_repository
     )
 
 
