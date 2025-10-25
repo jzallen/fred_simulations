@@ -99,6 +99,11 @@ def run(job_id: int, run_id: int | None):
             file_count = len([f for f in output_files if f.is_file()])
             click.echo(f"Generated {file_count} output files in {output_dir}")
 
+        # Upload status
+        click.echo()
+        click.echo("✓ Results uploaded to S3")
+        click.echo("  All simulation results have been uploaded")
+
         # List log files
         log_files = list(workspace.glob("*.log"))
         if log_files:

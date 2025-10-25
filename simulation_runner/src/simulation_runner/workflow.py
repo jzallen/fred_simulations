@@ -16,6 +16,7 @@ from simulation_runner.exceptions import (
     ExtractionError,
     FREDConfigError,
     SimulationError,
+    UploadError,
     ValidationError,
     WorkflowError,
 )
@@ -460,6 +461,112 @@ class SimulationWorkflow:
 
         return prepared_runs
 
+    def upload_results(self, completed_runs: list[dict]) -> list[dict]:
+        """
+        Upload simulation results to S3 using epistemix-cli.
+
+        Parameters
+        ----------
+        completed_runs : list[dict]
+            List of completed run configurations with output_dir
+
+        Returns
+        -------
+        list[dict]
+            Input list with 'results_uploaded' flag added to each dict
+
+        Raises
+        ------
+        UploadError
+            If any upload fails
+        """
+        logger.info(
+            "Uploading results",
+            extra={
+                "job_id": self.job_id,
+                "run_count": len(completed_runs),
+            },
+        )
+
+        for run_info in completed_runs:
+            run_id = run_info["run_id"]
+            output_dir = run_info.get("output_dir")
+
+            # Skip runs without output directory (e.g., validation-only runs)
+            if not output_dir:
+                logger.warning(
+                    "Skipping upload - no output directory",
+                    extra={
+                        "job_id": self.job_id,
+                        "run_id": run_id,
+                    },
+                )
+                run_info["results_uploaded"] = False
+                continue
+
+            logger.info(
+                "Uploading results for run",
+                extra={
+                    "job_id": self.job_id,
+                    "run_id": run_id,
+                    "output_dir": str(output_dir),
+                },
+            )
+
+            # Build epistemix-cli upload command
+            cmd = [
+                "epistemix-cli",
+                "jobs",
+                "results",
+                "upload",
+                "--job-id",
+                str(self.job_id),
+                "--run-id",
+                str(run_id),
+                "--results-dir",
+                str(output_dir),
+            ]
+
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=600,  # 10 minute timeout for uploads
+                )
+
+                logger.info(
+                    "Upload completed",
+                    extra={
+                        "job_id": self.job_id,
+                        "run_id": run_id,
+                        "stdout": result.stdout[:500],  # First 500 chars
+                    },
+                )
+
+                run_info["results_uploaded"] = True
+
+            except FileNotFoundError as e:
+                raise UploadError(
+                    "epistemix-cli not found. Please ensure it is installed and in PATH. "
+                    "You can build it with: pants package epistemix_platform:epistemix-cli"
+                ) from e
+            except subprocess.TimeoutExpired as e:
+                raise UploadError(
+                    f"Upload timed out after 10 minutes for run {run_id} (job {self.job_id})"
+                ) from e
+            except subprocess.CalledProcessError as e:
+                raise UploadError(
+                    f"Failed to upload results for run {run_id} (job {self.job_id}): {e.stderr}"
+                ) from e
+            except Exception as e:
+                raise UploadError(
+                    f"Unexpected error uploading results for run {run_id} (job {self.job_id}): {e}"
+                ) from e
+
+        return completed_runs
+
     def execute(self) -> Path:
         """
         Execute complete simulation workflow.
@@ -508,12 +615,13 @@ class SimulationWorkflow:
             prepared_runs = self.prepare_configs()
             validated_runs = self.validate_configs(prepared_runs)
             completed_runs = self.run_simulations(validated_runs)
+            uploaded_runs = self.upload_results(completed_runs)
 
             logger.info(
                 "Workflow completed",
                 extra={
                     "job_id": self.job_id,
-                    "completed_runs": len(completed_runs),
+                    "completed_runs": len(uploaded_runs),
                     "workspace": str(self.workspace_dir),
                 },
             )
@@ -526,6 +634,7 @@ class SimulationWorkflow:
             FREDConfigError,
             ValidationError,
             SimulationError,
+            UploadError,
         ) as e:
             logger.exception(
                 "Workflow failed",
