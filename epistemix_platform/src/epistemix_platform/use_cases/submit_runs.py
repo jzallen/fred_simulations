@@ -7,10 +7,15 @@ import logging
 import re
 from typing import Any, TypedDict
 
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import PodPhase, Run, RunStatus
 from epistemix_platform.models.user import UserToken
-from epistemix_platform.repositories.interfaces import IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories.interfaces import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 
 
 class FredArgDict(TypedDict):
@@ -82,6 +87,7 @@ def _parse_client_version(epx_version: str) -> str:
 
 
 def submit_runs(
+    job_repository: IJobRepository,
     run_repository: IRunRepository,
     upload_location_repository: IUploadLocationRepository,
     run_requests: list[RunRequestDict],
@@ -94,7 +100,12 @@ def submit_runs(
     This use case implements the core business logic for run submission.
     It processes multiple run requests and returns run responses.
 
+    Uses JobS3Prefix from the parent job to ensure run configs use job.created_at
+    as the timestamp, NOT run.created_at. This keeps all job artifacts in the
+    same S3 directory.
+
     Args:
+        job_repository: Repository for job persistence (needed to get job.created_at)
         run_repository: Repository for run persistence
         upload_location_repository: Repository for generating upload locations
         run_requests: List of run request dictionaries to process
@@ -126,6 +137,15 @@ def submit_runs(
         # Save the run to get an ID
         persisted_run = run_repository.save(run)
 
+        # Get the parent job to create JobS3Prefix with job.created_at
+        job = job_repository.find_by_id(persisted_run.job_id)
+        if not job:
+            raise ValueError(f"Job {persisted_run.job_id} not found")
+
+        # Create JobS3Prefix from job to ensure consistent timestamp
+        # IMPORTANT: Use job.created_at, NOT run.created_at
+        s3_prefix = JobS3Prefix.from_job(job)
+
         # Generate URL for this run using the persisted ID
         job_upload = JobUpload(
             context="run",
@@ -133,7 +153,7 @@ def submit_runs(
             job_id=persisted_run.job_id,
             run_id=persisted_run.id,
         )
-        upload_location = upload_location_repository.get_upload_location(job_upload)
+        upload_location = upload_location_repository.get_upload_location(job_upload, s3_prefix)
 
         # Update the run with the URL
         persisted_run.config_url = upload_location.url

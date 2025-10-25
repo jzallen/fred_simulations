@@ -5,6 +5,7 @@ This module implements the core business logic for job submission configuration.
 
 import logging
 
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IJobRepository, IUploadLocationRepository
@@ -24,6 +25,9 @@ def submit_job_config(
     This use case implements the core business logic for job configuration submission.
     It generates a pre-signed URL for uploading job configuration files.
 
+    Uses JobS3Prefix to ensure the upload location uses job.created_at as the timestamp,
+    keeping all job artifacts in the same S3 directory.
+
     Args:
         job_repository: Repository for job persistence
         upload_location_repository: Repository for generating upload locations
@@ -40,8 +44,13 @@ def submit_job_config(
     if not job:
         raise ValueError(f"Job {job_upload.job_id} not found")
 
+    # Create JobS3Prefix from job to ensure consistent timestamp
+    s3_prefix = JobS3Prefix.from_job(job)
+
     # Use the upload location repository to generate the pre-signed URL
-    job_configuration_location = upload_location_repository.get_upload_location(job_upload)
+    job_configuration_location = upload_location_repository.get_upload_location(
+        job_upload, s3_prefix
+    )
 
     # Persist the config URL to the job
     job.config_location = job_configuration_location.url

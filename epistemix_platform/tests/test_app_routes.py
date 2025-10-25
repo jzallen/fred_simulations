@@ -116,6 +116,23 @@ class TestJobRoutes:
 
     def test_run_submission__valid_request__returns_successful_response(self, client, bearer_token):
         """Test submitting multiple runs."""
+        # First register a job (required for JobS3Prefix)
+        register_headers = {
+            "Offline-Token": bearer_token,
+            "content-type": "application/json",
+            "fredcli-version": "0.4.0",
+            "user-agent": "epx_client_1.2.2",
+        }
+
+        register_body = {"tags": ["test_runs"]}
+        register_response = client.post(
+            "/jobs/register", headers=register_headers, json=register_body
+        )
+        assert register_response.status_code == 200
+        job_data = register_response.get_json()
+        job_id = job_data["id"]
+
+        # Now submit runs for the registered job
         headers = {
             "Offline-Token": bearer_token,
             "content-type": "application/json",
@@ -126,7 +143,7 @@ class TestJobRoutes:
         run_requests = {
             "runRequests": [
                 {
-                    "jobId": 123,
+                    "jobId": job_id,
                     "workingDir": "/workspaces/fred_simulations",
                     "size": "hot",
                     "fredVersion": "latest",
@@ -146,11 +163,11 @@ class TestJobRoutes:
             "runResponses": [
                 {
                     "runId": 1,
-                    "jobId": 123,
+                    "jobId": job_id,
                     "status": "Submitted",
                     "errors": None,
                     "runRequest": {
-                        "jobId": 123,
+                        "jobId": job_id,
                         "workingDir": "/workspaces/fred_simulations",
                         "size": "hot",
                         "fredVersion": "latest",
