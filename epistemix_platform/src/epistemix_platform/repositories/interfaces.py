@@ -218,12 +218,13 @@ class IUploadLocationRepository(Protocol):
     Provides access to pre-signed URLs for uploading various types of content.
     """
 
-    def get_upload_location(self, job_upload: JobUpload) -> UploadLocation:
+    def get_upload_location(self, job_upload: JobUpload, s3_prefix: JobS3Prefix) -> UploadLocation:
         """
         Get an upload location (pre-signed URL) for a given job upload.
 
         Args:
             job_upload: JobUpload object containing job_id, context, job_type, and optional run_id
+            s3_prefix: JobS3Prefix for consistent timestamp across all job artifacts
 
         Returns:
             UploadLocation containing the pre-signed URL for upload

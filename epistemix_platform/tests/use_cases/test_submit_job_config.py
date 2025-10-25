@@ -1,6 +1,7 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY
 
 from epistemix_platform.models.job import Job
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IJobRepository, IUploadLocationRepository
@@ -35,7 +36,12 @@ class TestSubmitJobConfigUseCase:
         assert isinstance(result, UploadLocation)
         assert result.url == expected_url
         assert mock_job.config_location == expected_url
-        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
+        # Verify get_upload_location was called with job_upload and a JobS3Prefix
+        mock_upload_location_repo.get_upload_location.assert_called_once()
+        call_args = mock_upload_location_repo.get_upload_location.call_args
+        assert call_args[0][0] == job_upload  # First positional arg is job_upload
+        assert isinstance(call_args[0][1], JobS3Prefix)  # Second positional arg is JobS3Prefix
+        assert call_args[0][1].job_id == job_id  # Verify prefix matches job
         mock_job_repo.save.assert_called_once_with(mock_job)
 
     def test_submit_job_config__uses_correct_resource_name(self):
@@ -58,8 +64,11 @@ class TestSubmitJobConfigUseCase:
         job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id)
         submit_job_config(mock_job_repo, mock_upload_location_repo, job_upload)
 
-        # Assert
-        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
+        # Assert - verify get_upload_location was called with job_upload and JobS3Prefix
+        mock_upload_location_repo.get_upload_location.assert_called_once()
+        call_args = mock_upload_location_repo.get_upload_location.call_args
+        assert call_args[0][0] == job_upload
+        assert isinstance(call_args[0][1], JobS3Prefix)
 
     def test_submit_job_config__uses_default_values(self):
         # Arrange
@@ -79,5 +88,8 @@ class TestSubmitJobConfigUseCase:
         job_upload = JobUpload(context="job", upload_type="config", job_id=job_id)
         submit_job_config(mock_job_repo, mock_upload_location_repo, job_upload)
 
-        # Assert
-        mock_upload_location_repo.get_upload_location.assert_called_once_with(job_upload)
+        # Assert - verify get_upload_location was called with job_upload and JobS3Prefix
+        mock_upload_location_repo.get_upload_location.assert_called_once()
+        call_args = mock_upload_location_repo.get_upload_location.call_args
+        assert call_args[0][0] == job_upload
+        assert isinstance(call_args[0][1], JobS3Prefix)

@@ -12,6 +12,8 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from botocore.stub import Stubber
 from freezegun import freeze_time
 
+from epistemix_platform.models.job import Job
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
@@ -47,9 +49,15 @@ class TestS3UploadLocationRepository:
         )
         return repo
 
+    @pytest.fixture
+    def s3_prefix(self):
+        """Fixture providing JobS3Prefix with frozen timestamp matching test frozen time."""
+        job = Job(id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00"))
+        return JobS3Prefix.from_job(job)
+
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_job_and_upload_type_input__returns_zip_upload_location(
-        self, repository, s3_stubber
+        self, repository, s3_stubber, s3_prefix
     ):
         # arrange
         s3_client, _ = s3_stubber
@@ -62,7 +70,7 @@ class TestS3UploadLocationRepository:
         s3_client.generate_presigned_url = Mock(wraps=original_generate_presigned_url)
 
         # act
-        result = repository.get_upload_location(job_upload)
+        result = repository.get_upload_location(job_upload, s3_prefix)
         url, querystring = result.url.split("?")
         params = querystring.split("&")
 
@@ -91,7 +99,7 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_job_and_upload_type_config__returns_json_upload_location(
-        self, repository, s3_stubber
+        self, repository, s3_stubber, s3_prefix
     ):
         # arrange
         s3_client, _ = s3_stubber
@@ -104,7 +112,7 @@ class TestS3UploadLocationRepository:
         s3_client.generate_presigned_url = Mock(wraps=original_generate_presigned_url)
 
         # act
-        result = repository.get_upload_location(job_upload)
+        result = repository.get_upload_location(job_upload, s3_prefix)
         url, querystring = result.url.split("?")
         params = querystring.split("&")
 
@@ -131,7 +139,7 @@ class TestS3UploadLocationRepository:
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__context_run_and_upload_type_config__returns_json_upload_location(
-        self, repository, s3_stubber
+        self, repository, s3_stubber, s3_prefix
     ):
         # arrange
         s3_client, _ = s3_stubber
@@ -144,7 +152,7 @@ class TestS3UploadLocationRepository:
         s3_client.generate_presigned_url = Mock(wraps=original_generate_presigned_url)
 
         # act
-        result = repository.get_upload_location(job_upload)
+        result = repository.get_upload_location(job_upload, s3_prefix)
         url, querystring = result.url.split("?")
         params = querystring.split("&")
 
@@ -170,11 +178,11 @@ class TestS3UploadLocationRepository:
         call_args = s3_client.generate_presigned_url.call_args
         assert "ServerSideEncryption" not in call_args[1]["Params"]
 
-    def test_get_upload_location__empty_resource_name__raises_value_error(self, repository):
+    def test_get_upload_location__empty_resource_name__raises_value_error(self, repository, s3_prefix):
         with pytest.raises(ValueError, match="JobUpload cannot be None"):
-            repository.get_upload_location(None)
+            repository.get_upload_location(None, s3_prefix)
 
-    def test_get_upload_location__s3_client_error__raises_value_error(self, repository, s3_stubber):
+    def test_get_upload_location__s3_client_error__raises_value_error(self, repository, s3_stubber, s3_prefix):
         s3_client, _ = s3_stubber
         # generate_presigned_url is a local operation and Stubber is only able to mock
         # actual requests to S3
@@ -184,11 +192,11 @@ class TestS3UploadLocationRepository:
         job_upload = JobUpload(context="job", upload_type="config", job_id=456)
 
         with pytest.raises(ValueError, match="Failed to generate upload location"):
-            repository.get_upload_location(job_upload)
+            repository.get_upload_location(job_upload, s3_prefix)
 
     @freeze_time("2025-01-01 12:00:00")
     def test_get_upload_location__presigned_url_does_not_include_server_side_encryption(
-        self, repository, s3_stubber
+        self, repository, s3_stubber, s3_prefix
     ):
         # Arrange
         s3_client, _ = s3_stubber
@@ -198,7 +206,7 @@ class TestS3UploadLocationRepository:
         job_upload = JobUpload(context="job", upload_type="input", job_id=123)
 
         # Act
-        result = repository.get_upload_location(job_upload)
+        result = repository.get_upload_location(job_upload, s3_prefix)
 
         # Assert
         s3_client.generate_presigned_url.assert_called_once()
@@ -583,6 +591,12 @@ class TestS3UploadLocationRepository:
 class TestDummyS3UploadLocationRepository:
     """Test cases for the DummyS3UploadLocationRepository."""
 
+    @pytest.fixture
+    def s3_prefix(self):
+        """Fixture providing JobS3Prefix with frozen timestamp matching test frozen time."""
+        job = Job(id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00"))
+        return JobS3Prefix.from_job(job)
+
     def test_init__with_default_url(self):
         """Test initialization with default URL."""
         repository = DummyS3UploadLocationRepository()
@@ -594,22 +608,22 @@ class TestDummyS3UploadLocationRepository:
         repository = DummyS3UploadLocationRepository(test_url=custom_url)
         assert repository.test_url == custom_url
 
-    def test_get_upload_location__returns_fixed_url(self):
+    def test_get_upload_location__returns_fixed_url(self, s3_prefix):
         """Test that get_upload_location returns the fixed URL."""
         repository = DummyS3UploadLocationRepository()
         job_upload = JobUpload(context="job", upload_type="input", job_id=789)
-        result = repository.get_upload_location(job_upload)
+        result = repository.get_upload_location(job_upload, s3_prefix)
 
         assert isinstance(result, UploadLocation)
         assert result.url == "http://localhost:5001/pre-signed-url"
 
-    def test_get_upload_location__ignores_resource_name(self):
+    def test_get_upload_location__ignores_resource_name(self, s3_prefix):
         """Test that different JobUploads return the same URL."""
         repository = DummyS3UploadLocationRepository()
         job_upload1 = JobUpload(context="job", upload_type="input", job_id=111)
         job_upload2 = JobUpload(context="run", upload_type="config", job_id=222, run_id=333)
-        result1 = repository.get_upload_location(job_upload1)
-        result2 = repository.get_upload_location(job_upload2)
+        result1 = repository.get_upload_location(job_upload1, s3_prefix)
+        result2 = repository.get_upload_location(job_upload2, s3_prefix)
 
         assert result1.url == result2.url
 

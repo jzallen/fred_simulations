@@ -143,10 +143,10 @@ class JobController:
                 submit_job_config_use_case, job_repository, upload_location_repository
             ),
             submit_runs_fn=functools.partial(
-                submit_runs_use_case, run_repository, upload_location_repository
+                submit_runs_use_case, job_repository, run_repository, upload_location_repository
             ),
             submit_run_config_fn=functools.partial(
-                submit_run_config_use_case, run_repository, upload_location_repository
+                submit_run_config_use_case, job_repository, run_repository, upload_location_repository
             ),
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
             get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),

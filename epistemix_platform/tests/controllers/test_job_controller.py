@@ -558,6 +558,10 @@ class TestJobControllerIntegration:
     def test_submit_runs__returns_success_result_with_run_responses(
         self, job_controller, run_requests, bearer_token
     ):
+        # Create job first (submit_runs now requires job to exist for JobS3Prefix)
+        job_result = job_controller.register_job(user_token_value=bearer_token, tags=["test_runs"])
+        assert is_successful(job_result)
+
         result = job_controller.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
         )
@@ -582,6 +586,10 @@ class TestJobControllerIntegration:
     def test_submit_runs__persists_runs(
         self, job_controller, run_requests, bearer_token, run_repository, db_session
     ):
+        # Create job first (submit_runs now requires job to exist for JobS3Prefix)
+        job_result = job_controller.register_job(user_token_value=bearer_token, tags=["test_persist"])
+        assert is_successful(job_result)
+
         job_controller.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
         )
@@ -615,6 +623,10 @@ class TestJobControllerIntegration:
     def test_get_runs__given_job_id__returns_success_result_with_run_data(
         self, job_controller, run_requests, bearer_token, run_config_url_pattern
     ):
+        # Create job first (submit_runs now requires job to exist for JobS3Prefix)
+        job_result = job_controller.register_job(user_token_value=bearer_token, tags=["test_get_runs"])
+        assert is_successful(job_result)
+
         job_controller.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
         )

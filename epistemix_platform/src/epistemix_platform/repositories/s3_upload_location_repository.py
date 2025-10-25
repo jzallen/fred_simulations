@@ -14,6 +14,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 from epistemix_platform.models import (
+    JobS3Prefix,  # pants: no-infer-dep
     UploadContent,  # pants: no-infer-dep
     UploadLocation,  # pants: no-infer-dep
     ZipFileEntry,  # pants: no-infer-dep
@@ -120,12 +121,16 @@ class S3UploadLocationRepository:
         self.s3_client = create_s3_client(region_name=region_name, s3_client=s3_client)
         logger.info(f"S3UploadLocationRepository configured for bucket: {bucket_name}")
 
-    def get_upload_location(self, job_upload: "JobUpload") -> "UploadLocation":
+    def get_upload_location(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> "UploadLocation":
         """
         Generate a pre-signed URL for uploading a file to S3.
 
+        Uses JobS3Prefix to ensure consistent timestamps across all job artifacts.
+        All uploads for a job use job.created_at as the S3 path timestamp.
+
         Args:
             job_upload: JobUpload object containing job_id, context, job_type, and optional run_id
+            s3_prefix: JobS3Prefix for consistent S3 path generation
 
         Returns:
             UploadLocation containing the pre-signed URL for upload
@@ -136,8 +141,8 @@ class S3UploadLocationRepository:
         if not job_upload:
             raise ValueError("JobUpload cannot be None")
 
-        # Generate the S3 key from the JobUpload object
-        object_key = self._generate_s3_key_from_upload(job_upload)
+        # Generate the S3 key from the JobUpload object using consistent prefix
+        object_key = self._generate_s3_key_from_upload(job_upload, s3_prefix)
 
         try:
             # Generate pre-signed URL for PUT operation
@@ -174,25 +179,43 @@ class S3UploadLocationRepository:
             logger.error(error_message)
             raise ValueError(error_message)
 
-    def _generate_s3_key_from_upload(self, job_upload: "JobUpload") -> str:
-        """Produces valid S3 object key from JobUpload object.
+    def _generate_s3_key_from_upload(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> str:
+        """Produces valid S3 object key from JobUpload object using JobS3Prefix.
 
-        New format: /jobs/<job_id>/<year>/<month>/<day>/<timestamp>/<filename>.<extension>
-        For runs: /jobs/<job_id>/<year>/<month>/<day>/<timestamp>/
-        run_<run_id>_<filename>.<extension>
+        Uses JobS3Prefix to ensure consistent timestamps based on job.created_at.
+        This prevents artifacts from being split across different S3 directories.
+
+        Format: jobs/<job_id>/<year>/<month>/<day>/<HHMMSS>/<filename>.<extension>
+        For runs: jobs/<job_id>/<year>/<month>/<day>/<HHMMSS>/run_<run_id>_<type>.<ext>
 
         Args:
             job_upload: JobUpload object containing job details
+            s3_prefix: JobS3Prefix providing consistent timestamp from job.created_at
 
         Returns:
             A valid S3 object key with proper structure and file extension
         """
-        # Determine filename based on context and type
+        # Use JobS3Prefix methods to generate keys based on upload type
         if job_upload.context == "run" and job_upload.run_id:
-            # Include run_id in filename for run-specific uploads
+            # Run-specific uploads
+            if job_upload.upload_type == "config":
+                return s3_prefix.run_config_key(job_upload.run_id)
+            elif job_upload.upload_type == "results":
+                return s3_prefix.run_results_key(job_upload.run_id)
+            elif job_upload.upload_type == "logs":
+                return s3_prefix.run_logs_key(job_upload.run_id)
+        else:
+            # Job-level uploads
+            if job_upload.upload_type == "config":
+                return s3_prefix.job_config_key()
+            elif job_upload.upload_type == "input":
+                return s3_prefix.job_input_key()
+
+        # Fallback for unknown types (shouldn't happen in normal flow)
+        # Use base prefix and construct filename manually
+        if job_upload.context == "run" and job_upload.run_id:
             filename = f"run_{job_upload.run_id}_{job_upload.upload_type}"
         else:
-            # For job uploads, just use the type
             filename = f"{job_upload.context}_{job_upload.upload_type}"
 
         # Determine file extension based on type
@@ -204,13 +227,7 @@ class S3UploadLocationRepository:
         elif job_upload.upload_type == "logs":
             extension = ".log"
 
-        # Generate timestamp in UTC
-        timestamp = datetime.now(UTC).strftime("%Y/%m/%d/%H%M%S")
-
-        # Build the S3 key (no leading slash per S3 best practices)
-        key = f"jobs/{job_upload.job_id}/{timestamp}/{filename}{extension}"
-
-        return key
+        return f"{s3_prefix.base_prefix}/{filename}{extension}"
 
     def _generate_s3_key(self, resource_name: str) -> str:
         """Produces valid S3 object key from resource with new structure.
@@ -603,12 +620,13 @@ class DummyS3UploadLocationRepository:
         self.test_url = test_url
         logger.info(f"DummyS3UploadLocationRepository initialized with test URL: {test_url}")
 
-    def get_upload_location(self, job_upload: "JobUpload") -> "UploadLocation":
+    def get_upload_location(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> "UploadLocation":
         """
         Generate a dummy upload location for testing.
 
         Args:
             job_upload: JobUpload object containing job details
+            s3_prefix: JobS3Prefix for consistent S3 path generation (ignored in dummy)
 
         Returns:
             UploadLocation containing the test URL

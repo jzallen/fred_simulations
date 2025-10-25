@@ -6,6 +6,7 @@ This module implements the core business logic for job submission operations.
 import logging
 
 from epistemix_platform.models.job import JobStatus
+from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.repositories.interfaces import IJobRepository, IUploadLocationRepository
@@ -24,6 +25,9 @@ def submit_job(
 
     This use case implements the core business logic for job submission.
     It validates business rules, updates the job status, and returns the response.
+
+    Uses JobS3Prefix to ensure the upload location uses job.created_at as the timestamp,
+    keeping all job artifacts in the same S3 directory.
 
     Args:
         job_repository: Repository for job persistence
@@ -46,8 +50,11 @@ def submit_job(
             f"current status: {job.status.value}"
         )
 
+    # Create JobS3Prefix from job to ensure consistent timestamp
+    s3_prefix = JobS3Prefix.from_job(job)
+
     # Use the upload location repository to generate the pre-signed URL
-    job_input_location = upload_location_repository.get_upload_location(job_upload)
+    job_input_location = upload_location_repository.get_upload_location(job_upload, s3_prefix)
 
     # Update job status and save the upload URL
     job.update_status(JobStatus.SUBMITTED)
