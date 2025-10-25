@@ -189,6 +189,9 @@ class S3UploadLocationRepository:
         Uses JobS3Prefix to ensure consistent timestamps based on job.created_at.
         This prevents artifacts from being split across different S3 directories.
 
+        This repository only handles config and input uploads.
+        Results are uploaded via S3ResultsRepository instead.
+
         Format: jobs/<job_id>/<year>/<month>/<day>/<HHMMSS>/<filename>.<extension>
         For runs: jobs/<job_id>/<year>/<month>/<day>/<HHMMSS>/run_<run_id>_<type>.<ext>
 
@@ -198,40 +201,23 @@ class S3UploadLocationRepository:
 
         Returns:
             A valid S3 object key with proper structure and file extension
+
+        Raises:
+            ValueError: If upload type is not supported by this repository
         """
-        # Use JobS3Prefix methods to generate keys based on upload type
-        if job_upload.context == "run" and job_upload.run_id:
-            # Run-specific uploads
-            if job_upload.upload_type == "config":
-                return s3_prefix.run_config_key(job_upload.run_id)
-            elif job_upload.upload_type == "results":
-                return s3_prefix.run_results_key(job_upload.run_id)
-            elif job_upload.upload_type == "logs":
-                return s3_prefix.run_logs_key(job_upload.run_id)
-        else:
-            # Job-level uploads
-            if job_upload.upload_type == "config":
+        match (job_upload.context, job_upload.upload_type):
+            case ("job", "config"):
                 return s3_prefix.job_config_key()
-            elif job_upload.upload_type == "input":
+            case ("job", "input"):
                 return s3_prefix.job_input_key()
-
-        # Fallback for unknown types (shouldn't happen in normal flow)
-        # Use base prefix and construct filename manually
-        if job_upload.context == "run" and job_upload.run_id:
-            filename = f"run_{job_upload.run_id}_{job_upload.upload_type}"
-        else:
-            filename = f"{job_upload.context}_{job_upload.upload_type}"
-
-        # Determine file extension based on type
-        extension = ""
-        if job_upload.upload_type == "input":
-            extension = ".zip"
-        elif job_upload.upload_type in ["config", "output", "results"]:
-            extension = ".json"
-        elif job_upload.upload_type == "logs":
-            extension = ".log"
-
-        return f"{s3_prefix.base_prefix}/{filename}{extension}"
+            case ("run", "config") if job_upload.run_id:
+                return s3_prefix.run_config_key(job_upload.run_id)
+            case _:
+                raise ValueError(
+                    f"Unsupported upload type for S3UploadLocationRepository: "
+                    f"context={job_upload.context}, type={job_upload.upload_type}. "
+                    f"Results should use S3ResultsRepository."
+                )
 
     def _generate_s3_key(self, resource_name: str) -> str:
         """Produces valid S3 object key from resource with new structure.
