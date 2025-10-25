@@ -576,13 +576,7 @@ class TestS3UploadLocationRepository:
 
         # Should only return the successfully archived file
         assert result == locations
-        assert result[0].errors == [
-            (
-                "Failed to archive file1.txt: AccessDenied - "
-                "An error occurred (AccessDenied) when calling "
-                "the CopyObject operation: Access Denied"
-            )
-        ]
+        assert result[0].errors == ["Failed to archive file1.txt: AccessDenied"]
         assert not bool(result[1].errors)
 
         # Verify all expected S3 calls were made
