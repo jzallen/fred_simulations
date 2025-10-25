@@ -121,7 +121,9 @@ class S3UploadLocationRepository:
         self.s3_client = create_s3_client(region_name=region_name, s3_client=s3_client)
         logger.info(f"S3UploadLocationRepository configured for bucket: {bucket_name}")
 
-    def get_upload_location(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> "UploadLocation":
+    def get_upload_location(
+        self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix"
+    ) -> "UploadLocation":
         """
         Generate a pre-signed URL for uploading a file to S3.
 
@@ -171,15 +173,17 @@ class S3UploadLocationRepository:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = f"S3 error ({error_code}): {e}"
-            logger.error(error_message)
+            logger.exception(error_message)
             raise ValueError(f"Failed to generate upload location: {error_message}")
 
         except (BotoCoreError, Exception) as e:
             error_message = f"Unexpected error generating pre-signed URL: {e}"
-            logger.error(error_message)
+            logger.exception(error_message)
             raise ValueError(error_message)
 
-    def _generate_s3_key_from_upload(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> str:
+    def _generate_s3_key_from_upload(
+        self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix"
+    ) -> str:
         """Produces valid S3 object key from JobUpload object using JobS3Prefix.
 
         Uses JobS3Prefix to ensure consistent timestamps based on job.created_at.
@@ -322,15 +326,15 @@ class S3UploadLocationRepository:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = f"S3 error ({error_code}): {e}"
-            logger.error(error_message)
+            logger.exception(error_message)
             raise ValueError(error_message)
         except NoCredentialsError as e:
             error_message = f"AWS credentials error: {e}"
-            logger.error(error_message)
+            logger.exception(error_message)
             raise ValueError(error_message)
         except Exception as e:
             error_message = f"Failed to read content: {e}"
-            logger.error(error_message)
+            logger.exception(error_message)
             raise ValueError(error_message)
 
     def _extract_s3_key_from_url(self, url: str) -> str | None:
@@ -535,7 +539,7 @@ class S3UploadLocationRepository:
                 if error_code == "404":
                     logger.warning(f"Object not found: {s3_key}")
                 else:
-                    logger.error(f"Error checking object age for {s3_key}: {e}")
+                    logger.exception(f"Error checking object age for {s3_key}")
 
         return filtered
 
@@ -591,12 +595,12 @@ class S3UploadLocationRepository:
 
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "Unknown")
-                msg = f"Failed to archive {s3_key}: {error_code} - {e}"
-                logger.error(msg)
+                msg = f"Failed to archive {s3_key}: {error_code}"
+                logger.exception(msg)
                 location.errors.append(msg)
-            except Exception as e:
-                msg = f"Unexpected error archiving {s3_key}: {e}"
-                logger.error(msg)
+            except Exception:
+                msg = f"Unexpected error archiving {s3_key}"
+                logger.exception(msg)
                 location.errors.append(msg)
 
         return locations_to_archive
@@ -620,13 +624,15 @@ class DummyS3UploadLocationRepository:
         self.test_url = test_url
         logger.info(f"DummyS3UploadLocationRepository initialized with test URL: {test_url}")
 
-    def get_upload_location(self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix") -> "UploadLocation":
+    def get_upload_location(
+        self, job_upload: "JobUpload", _s3_prefix: "JobS3Prefix"
+    ) -> "UploadLocation":
         """
         Generate a dummy upload location for testing.
 
         Args:
             job_upload: JobUpload object containing job details
-            s3_prefix: JobS3Prefix for consistent S3 path generation (ignored in dummy)
+            _s3_prefix: JobS3Prefix for consistent S3 path generation (ignored in dummy)
 
         Returns:
             UploadLocation containing the test URL
@@ -649,14 +655,14 @@ class DummyS3UploadLocationRepository:
         return UploadContent.create_text(dummy_content)
 
     def filter_by_age(
-        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None
+        self, upload_locations: list["UploadLocation"], _age_threshold: datetime | None
     ) -> list["UploadLocation"]:
         """
         Dummy implementation - returns all locations for testing.
 
         Args:
             upload_locations: List of UploadLocation objects
-            age_threshold: Optional datetime threshold (ignored in dummy)
+            _age_threshold: Optional datetime threshold (ignored in dummy)
 
         Returns:
             All upload_locations for testing
@@ -665,14 +671,14 @@ class DummyS3UploadLocationRepository:
         return upload_locations
 
     def archive_uploads(
-        self, upload_locations: list["UploadLocation"], age_threshold: datetime | None = None
+        self, upload_locations: list["UploadLocation"], _age_threshold: datetime | None = None
     ) -> list["UploadLocation"]:
         """
         Dummy implementation - simulates archiving for testing.
 
         Args:
             upload_locations: List of UploadLocation objects to archive
-            age_threshold: Optional - only archive objects older than this (ignored in dummy)
+            _age_threshold: Optional - only archive objects older than this (ignored in dummy)
 
         Returns:
             All upload_locations (simulating successful archival)

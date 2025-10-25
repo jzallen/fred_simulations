@@ -8,7 +8,11 @@ import logging
 from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.upload_location import UploadLocation
-from epistemix_platform.repositories.interfaces import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories.interfaces import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +56,9 @@ def submit_run_config(
     s3_prefix = JobS3Prefix.from_job(job)
 
     # Use the upload location repository to generate the pre-signed URL
-    run_configuration_location = upload_location_repository.get_upload_location(job_upload, s3_prefix)
+    run_configuration_location = upload_location_repository.get_upload_location(
+        job_upload, s3_prefix
+    )
 
     # If we have a run_id, persist the URL to the run
     if job_upload.run_id is not None:

@@ -7,7 +7,11 @@ from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import Run
 from epistemix_platform.models.upload_location import UploadLocation
-from epistemix_platform.repositories.interfaces import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories.interfaces import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 from epistemix_platform.use_cases import submit_run_config
 
 
@@ -37,7 +41,9 @@ class TestSubmitRunConfigUseCase:
 
         # Act
         job_upload = JobUpload(context=context, upload_type=job_type, job_id=job_id, run_id=run_id)
-        result = submit_run_config(mock_job_repo, mock_run_repo, mock_upload_location_repo, job_upload)
+        result = submit_run_config(
+            mock_job_repo, mock_run_repo, mock_upload_location_repo, job_upload
+        )
 
         # Assert
         assert isinstance(result, UploadLocation)

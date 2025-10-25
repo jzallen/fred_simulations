@@ -73,7 +73,12 @@ class TestSubmitRunsUseCase:
         return repo
 
     def test_submit_runs__returns_run_responses(
-        self, mock_job_repository, mock_repository, mock_upload_location_repository, run_request, bearer_token
+        self,
+        mock_job_repository,
+        mock_repository,
+        mock_upload_location_repository,
+        run_request,
+        bearer_token,
     ):
         mock_repository.save.return_value = Run.create_persisted(
             run_id=1,
@@ -101,7 +106,11 @@ class TestSubmitRunsUseCase:
             )
         ]
         result = submit_runs(
-            mock_job_repository, mock_repository, mock_upload_location_repository, [run_request], bearer_token
+            mock_job_repository,
+            mock_repository,
+            mock_upload_location_repository,
+            [run_request],
+            bearer_token,
         )
 
         assert result == expected_runs
@@ -112,7 +121,11 @@ class TestSubmitRunsUseCase:
         invalid_token = "Bearer invalid_token"
         with pytest.raises(ValueError, match="Failed to decode base64 token"):
             submit_runs(
-                mock_job_repository, mock_repository, mock_upload_location_repository, [run_request], invalid_token
+                mock_job_repository,
+                mock_repository,
+                mock_upload_location_repository,
+                [run_request],
+                invalid_token,
             )
 
 
@@ -148,7 +161,13 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
 
     @freeze_time("2025-01-01 12:00:00")
     def test_submit_runs__give_runs_and_valid_token__returns_runs(
-        self, job_repository, run_repository, upload_location_repository, run_request, bearer_token, db_session
+        self,
+        job_repository,
+        run_repository,
+        upload_location_repository,
+        run_request,
+        bearer_token,
+        db_session,
     ):
         # Create job first (required for JobS3Prefix)
         job = Job.create_new(user_id=123, tags=["test"])
@@ -172,19 +191,29 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
                 config_url="https://example.com/presigned-url",
             )
         ]
-        result = submit_runs(job_repository, run_repository, upload_location_repository, run_requests, bearer_token)
+        result = submit_runs(
+            job_repository, run_repository, upload_location_repository, run_requests, bearer_token
+        )
         assert result == expected_runs
 
     @freeze_time("2025-01-01 12:00:00")
     def test_submit_runs__when_no_runs_provided__returns_empty_list(
         self, job_repository, run_repository, upload_location_repository, bearer_token
     ):
-        result = submit_runs(job_repository, run_repository, upload_location_repository, [], bearer_token)
+        result = submit_runs(
+            job_repository, run_repository, upload_location_repository, [], bearer_token
+        )
         assert result == []
 
     @freeze_time("2025-01-01 12:00:00")
     def test_submit_runs__when_runs_provided__saves_runs_to_repository_on_commit(
-        self, job_repository, run_repository, upload_location_repository, run_request, bearer_token, db_session
+        self,
+        job_repository,
+        run_repository,
+        upload_location_repository,
+        run_request,
+        bearer_token,
+        db_session,
     ):
         # Create job first (required for JobS3Prefix)
         job = Job.create_new(user_id=123, tags=["test"])
@@ -194,7 +223,9 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
         # Update run_request with the actual job_id
         run_request["jobId"] = persisted_job.id
         run_requests = [run_request]
-        submit_runs(job_repository, run_repository, upload_location_repository, run_requests, bearer_token)
+        submit_runs(
+            job_repository, run_repository, upload_location_repository, run_requests, bearer_token
+        )
         db_session.commit()
 
         expected_run = Run.create_persisted(
@@ -216,4 +247,10 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
     ):
         invalid_token = "Bearer invalid_token"
         with pytest.raises(ValueError, match="Failed to decode base64 token"):
-            submit_runs(job_repository, run_repository, upload_location_repository, [run_request], invalid_token)
+            submit_runs(
+                job_repository,
+                run_repository,
+                upload_location_repository,
+                [run_request],
+                invalid_token,
+            )

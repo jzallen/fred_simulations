@@ -1,4 +1,4 @@
-from unittest.mock import Mock, ANY
+from unittest.mock import Mock
 
 from epistemix_platform.models.job import Job
 from epistemix_platform.models.job_s3_prefix import JobS3Prefix

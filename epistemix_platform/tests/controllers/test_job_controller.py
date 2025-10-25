@@ -587,7 +587,9 @@ class TestJobControllerIntegration:
         self, job_controller, run_requests, bearer_token, run_repository, db_session
     ):
         # Create job first (submit_runs now requires job to exist for JobS3Prefix)
-        job_result = job_controller.register_job(user_token_value=bearer_token, tags=["test_persist"])
+        job_result = job_controller.register_job(
+            user_token_value=bearer_token, tags=["test_persist"]
+        )
         assert is_successful(job_result)
 
         job_controller.submit_runs(
@@ -624,7 +626,9 @@ class TestJobControllerIntegration:
         self, job_controller, run_requests, bearer_token, run_config_url_pattern
     ):
         # Create job first (submit_runs now requires job to exist for JobS3Prefix)
-        job_result = job_controller.register_job(user_token_value=bearer_token, tags=["test_get_runs"])
+        job_result = job_controller.register_job(
+            user_token_value=bearer_token, tags=["test_get_runs"]
+        )
         assert is_successful(job_result)
 
         job_controller.submit_runs(

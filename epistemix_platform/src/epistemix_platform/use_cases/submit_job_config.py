@@ -48,7 +48,9 @@ def submit_job_config(
     s3_prefix = JobS3Prefix.from_job(job)
 
     # Use the upload location repository to generate the pre-signed URL
-    job_configuration_location = upload_location_repository.get_upload_location(job_upload, s3_prefix)
+    job_configuration_location = upload_location_repository.get_upload_location(
+        job_upload, s3_prefix
+    )
 
     # Persist the config URL to the job
     job.config_location = job_configuration_location.url

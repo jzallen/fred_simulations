@@ -146,7 +146,10 @@ class JobController:
                 submit_runs_use_case, job_repository, run_repository, upload_location_repository
             ),
             submit_run_config_fn=functools.partial(
-                submit_run_config_use_case, job_repository, run_repository, upload_location_repository
+                submit_run_config_use_case,
+                job_repository,
+                run_repository,
+                upload_location_repository,
             ),
             get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
             get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),
@@ -189,7 +192,7 @@ class JobController:
             job = self._dependencies.register_job_fn(user_token_value=user_token_value, tags=tags)
             return Success(job.to_dict())
         except ValueError as e:
-            logger.exception(f"Validation error in register_job: {e}")
+            logger.exception("Validation error in register_job")
             return Failure(str(e))
         except Exception:
             logger.exception("Unexpected error in register_job")
@@ -235,10 +238,10 @@ class JobController:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(upload_location.to_dict())
         except ValueError as e:
-            logger.error(f"Validation error in submit_job: {e}")
+            logger.exception("Validation error in submit_job")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in submit_job: {e}")
+        except Exception:
+            logger.exception("Unexpected error in submit_job")
             return Failure("An unexpected error occurred while submitting the job")
 
     def submit_runs(
@@ -271,10 +274,10 @@ class JobController:
             run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
         except ValueError as e:
-            logger.error(f"Validation error in submit_runs: {e}")
+            logger.exception("Validation error in submit_runs")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in submit_runs: {e}")
+        except Exception:
+            logger.exception("Unexpected error in submit_runs")
             return Failure("An unexpected error occurred while submitting the runs")
 
     def get_runs(self, job_id: int) -> Result[list[dict[str, Any]], str]:
@@ -295,10 +298,10 @@ class JobController:
             runs = self._dependencies.get_runs_by_job_id_fn(job_id=job_id)
             return Success([run.to_dict() for run in runs])
         except ValueError as e:
-            logger.error(f"Validation error in get_runs_by_job_id: {e}")
+            logger.exception("Validation error in get_runs_by_job_id")
             return Failure(str(e))
-        except Exception as e:
-            logger.exception(f"Unexpected error in get_runs_by_job_id: {e}")
+        except Exception:
+            logger.exception("Unexpected error in get_runs_by_job_id")
             return Failure("An unexpected error occurred while retrieving the runs")
 
     def get_job_uploads(
@@ -347,7 +350,7 @@ class JobController:
             return Success(results)
 
         except ValueError as e:
-            logger.error(f"Validation error in get_job_uploads: {e}")
+            logger.exception("Validation error in get_job_uploads")
             return Failure(str(e))
         except Exception:
             logger.exception("Unexpected error in get_job_uploads")
@@ -457,7 +460,7 @@ class JobController:
             return Success(str(base_path))
 
         except ValueError as e:
-            logger.error(f"Validation error in download_job_uploads: {e}")
+            logger.exception("Validation error in download_job_uploads")
             return Failure(str(e))
         except Exception:
             logger.exception("Unexpected error in download_job_uploads")
@@ -522,7 +525,7 @@ class JobController:
             return Success(archived_info)
 
         except ValueError as e:
-            logger.error(f"Validation error in archive_job_uploads: {e}")
+            logger.exception("Validation error in archive_job_uploads")
             return Failure(str(e))
         except Exception:
             logger.exception("Unexpected error in archive_job_uploads")
@@ -560,7 +563,7 @@ class JobController:
             return Success(results_url)
 
         except ValueError as e:
-            logger.error(f"Validation error in upload_results: {e}")
+            logger.exception("Validation error in upload_results")
             return Failure(str(e))
         except Exception:
             logger.exception("Unexpected error in upload_results")

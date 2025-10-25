@@ -52,7 +52,9 @@ class TestS3UploadLocationRepository:
     @pytest.fixture
     def s3_prefix(self):
         """Fixture providing JobS3Prefix with frozen timestamp matching test frozen time."""
-        job = Job(id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00"))
+        job = Job(
+            id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00")
+        )
         return JobS3Prefix.from_job(job)
 
     @freeze_time("2025-01-01 12:00:00")
@@ -178,11 +180,15 @@ class TestS3UploadLocationRepository:
         call_args = s3_client.generate_presigned_url.call_args
         assert "ServerSideEncryption" not in call_args[1]["Params"]
 
-    def test_get_upload_location__empty_resource_name__raises_value_error(self, repository, s3_prefix):
+    def test_get_upload_location__empty_resource_name__raises_value_error(
+        self, repository, s3_prefix
+    ):
         with pytest.raises(ValueError, match="JobUpload cannot be None"):
             repository.get_upload_location(None, s3_prefix)
 
-    def test_get_upload_location__s3_client_error__raises_value_error(self, repository, s3_stubber, s3_prefix):
+    def test_get_upload_location__s3_client_error__raises_value_error(
+        self, repository, s3_stubber, s3_prefix
+    ):
         s3_client, _ = s3_stubber
         # generate_presigned_url is a local operation and Stubber is only able to mock
         # actual requests to S3
@@ -594,7 +600,9 @@ class TestDummyS3UploadLocationRepository:
     @pytest.fixture
     def s3_prefix(self):
         """Fixture providing JobS3Prefix with frozen timestamp matching test frozen time."""
-        job = Job(id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00"))
+        job = Job(
+            id=123, user_id=1, tags=[], created_at=datetime.fromisoformat("2025-01-01 12:00:00")
+        )
         return JobS3Prefix.from_job(job)
 
     def test_init__with_default_url(self):
@@ -654,7 +662,7 @@ class TestCreateUploadLocationRepository:
 
     @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
     def test_create_upload_location_repository__testing_env_with_custom_url(
-        self, mock_boto3_client
+        self, _mock_boto3_client
     ):
         """Test that TESTING environment with custom URL works."""
         custom_url = "http://custom.test.url"

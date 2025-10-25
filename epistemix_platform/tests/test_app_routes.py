@@ -125,7 +125,9 @@ class TestJobRoutes:
         }
 
         register_body = {"tags": ["test_runs"]}
-        register_response = client.post("/jobs/register", headers=register_headers, json=register_body)
+        register_response = client.post(
+            "/jobs/register", headers=register_headers, json=register_body
+        )
         assert register_response.status_code == 200
         job_data = register_response.get_json()
         job_id = job_data["id"]

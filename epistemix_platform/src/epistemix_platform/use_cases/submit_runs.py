@@ -11,7 +11,11 @@ from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import PodPhase, Run, RunStatus
 from epistemix_platform.models.user import UserToken
-from epistemix_platform.repositories.interfaces import IJobRepository, IRunRepository, IUploadLocationRepository
+from epistemix_platform.repositories.interfaces import (
+    IJobRepository,
+    IRunRepository,
+    IUploadLocationRepository,
+)
 
 
 class FredArgDict(TypedDict):
