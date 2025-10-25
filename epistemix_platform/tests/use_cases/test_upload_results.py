@@ -287,11 +287,11 @@ class TestUploadResults:
         When I attempt to upload results
         Then the upload should fail with InvalidResultsDirectoryError
         And no S3 upload should be attempted
-        mock_job_repository.find_by_id.return_value = sample_job
         """
         # Arrange
         from epistemix_platform.exceptions import InvalidResultsDirectoryError
 
+        mock_job_repository.find_by_id.return_value = sample_job
         nonexistent_dir = tmp_path / "DOES_NOT_EXIST"
         mock_run_repository.find_by_id.return_value = completed_run
         mock_results_packager.package_directory.side_effect = InvalidResultsDirectoryError(

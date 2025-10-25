@@ -56,20 +56,29 @@ def create_s3_client(region_name: str | None = None, s3_client: Any | None = Non
         ValueError: If S3 client initialization fails due to missing credentials or other errors
     """
 
+    # Use injected client when provided (testing/DI)
+    if s3_client is not None:
+        try:
+            actual_region = (
+                getattr(getattr(s3_client, "meta", None), "region_name", None) or "default"
+            )
+            logger.info(f"Using injected S3 client (region: {actual_region})")
+        except Exception:
+            logger.info("Using injected S3 client")
+        return s3_client
+
     # Initialize S3 client using default credential chain
-    session_kwargs = {}
+    session_kwargs: dict[str, Any] = {}
     if region_name:
         session_kwargs["region_name"] = region_name
-
     try:
         client = boto3.client("s3", **session_kwargs)
-        # Get the actual region being used
-        actual_region = client.meta.region_name or "default"
-        logger.info(f"S3 client initialized for region: {actual_region}")
-        return client
     except (NoCredentialsError, BotoCoreError) as e:
-        logger.error(f"Failed to initialize S3 client: {e}")
-        raise ValueError(f"S3 client initialization failed: {e}")
+        logger.exception("Failed to initialize S3 client")
+        raise ValueError("S3 client initialization failed") from e
+    actual_region = getattr(getattr(client, "meta", None), "region_name", None) or "default"
+    logger.info(f"S3 client initialized for region: {actual_region}")
+    return client
 
 
 class S3UploadLocationRepository:

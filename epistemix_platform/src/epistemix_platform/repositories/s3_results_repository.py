@@ -219,25 +219,38 @@ class S3ResultsRepository:
             parts = s3_url[5:].split("/", 1)
             if len(parts) == 2 and parts[0] and parts[1]:
                 return parts[0], parts[1]
-            raise ValueError(f"Unrecognized S3 URL format: {s3_url}")
+            raise ValueError(f"Unrecognized S3 URL format: {s3_url}")  # noqa: TRY003
 
-        # Virtual-hosted-style: https://bucket.s3.amazonaws.com/key
-        # Or regional: https://bucket.s3.us-east-1.amazonaws.com/key
+        # Virtual-hosted-style:
+        # - https://bucket.s3.amazonaws.com/key
+        # - https://bucket.s3.us-east-1.amazonaws.com/key
+        # - https://bucket.s3.dualstack.us-east-1.amazonaws.com/key
+        # - https://bucket.s3-accelerate.amazonaws.com/key
+        # - https://bucket.s3-accelerate.dualstack.amazonaws.com/key
+        # - https://bucket.s3.us-gov-west-1.amazonaws.com/key
+        # - https://bucket.s3.{region}.amazonaws.com.cn/key
         match = re.match(
-            r"^https://([^.]+)\.s3(?:\.[^.]*)?\.(amazonaws\.com)/(.+?)(?:\?.*)?$", s3_url
+            r"^https?://([^.]+)\.s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?/(.+?)(?:\?.*)?$",
+            s3_url,
+            flags=re.IGNORECASE,
         )
         if match:
-            return match.group(1), match.group(3)
+            return match.group(1), match.group(2)
 
-        # Path-style: https://s3.amazonaws.com/bucket/key
-        # Or regional: https://s3.{region}.amazonaws.com/bucket/key
+        # Path-style:
+        # - https://s3.amazonaws.com/bucket/key
+        # - https://s3.us-east-1.amazonaws.com/bucket/key
+        # - https://s3.dualstack.us-east-1.amazonaws.com/bucket/key
+        # - https://s3.amazonaws.com.cn/bucket/key
         match = re.match(
-            r"^https://s3(?:\.[^.]*)?\.(amazonaws\.com)/([^/]+)/(.+?)(?:\?.*)?$", s3_url
+            r"^https?://s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?/([^/]+)/(.+?)(?:\?.*)?$",
+            s3_url,
+            flags=re.IGNORECASE,
         )
         if match:
-            return match.group(2), match.group(3)
+            return match.group(1), match.group(2)
 
-        raise ValueError(f"Unrecognized S3 URL format: {s3_url}")
+        raise ValueError(f"Unrecognized S3 URL format: {s3_url}")  # noqa: TRY003
 
     def _sanitize_credentials(self, error_message: str) -> str:
         """
@@ -247,9 +260,10 @@ class S3ResultsRepository:
         from leaking into logs, monitoring systems, or user-facing error messages.
 
         Redacts:
-        - AWS Access Key IDs (AKIA... format)
+        - AWS Access Key IDs (AKIA/ASIA/AGPA/AIDA/AROA/ANPA... formats)
         - AWS Secret Access Keys (base64-like strings 40+ chars)
         - AWS Signatures (base64-like strings 40+ chars)
+        - Presigned URL query parameters (X-Amz-*)
         - Credentials in XML responses
         - Credentials in JSON responses
 
@@ -261,13 +275,25 @@ class S3ResultsRepository:
         """
         message = error_message
 
-        # Pattern 1: AWS Access Key IDs (AKIA followed by 16 alphanumeric chars)
+        # Pattern 1: AWS Access Key IDs (20 chars). Common prefixes: AKIA, ASIA, AGPA, AIDA, AROA, ANPA
         # Example: AKIAIOSFODNN7EXAMPLE -> [REDACTED_KEY]
-        message = re.sub(r"AKIA[A-Z0-9]{16}", "[REDACTED_KEY]", message)
+        # Example: ASIAIOSFODNN7EXAMPLE -> [REDACTED_KEY]
+        message = re.sub(
+            r"(?:AKIA|ASIA|AGPA|AIDA|AROA|ANPA)[A-Z0-9]{16}", "[REDACTED_KEY]", message
+        )
 
         # Pattern 2: AWS Secrets and signatures (40+ char base64-like strings)
         # Example: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY -> [REDACTED]
         message = re.sub(r"[A-Za-z0-9+/=]{40,}", "[REDACTED]", message)
+
+        # Pattern 2b: Presign query params (avoid leaking in messages)
+        # Redacts X-Amz-Credential, X-Amz-Signature, X-Amz-Security-Token, etc.
+        message = re.sub(
+            r"(X-Amz-(?:Credential|Signature|Security-Token|SignedHeaders|Algorithm|Expires))=[^&\s]+",
+            r"\1=[REDACTED]",
+            message,
+            flags=re.IGNORECASE,
+        )
 
         # Pattern 3: XML credential fields
         # Example: <AWSAccessKeyId>AKIA...</AWSAccessKeyId>

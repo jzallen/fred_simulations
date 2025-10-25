@@ -7,7 +7,6 @@ Usage:
     epistemix jobs upload --location=<upload-location>  # Read upload contents
 """
 
-import functools
 import json
 import logging
 import os
@@ -66,13 +65,12 @@ def get_default_config() -> dict[str, str]:
     return config
 
 
-@functools.lru_cache(maxsize=1)
 def get_database_session():
     """
-    Get or create a singleton database session.
+    Get a new database session.
 
-    This function creates and caches a single database session for the entire
-    CLI invocation. All repositories and commands share this same session.
+    Each command gets its own session that should be closed after use.
+    This prevents "Session is closed" errors when multiple commands are run.
 
     Returns:
         SQLAlchemy session instance
@@ -83,14 +81,12 @@ def get_database_session():
     return db_manager.get_session()
 
 
-@functools.lru_cache(maxsize=1)
 def get_job_controller() -> JobController:
     """
-    Get or create a singleton JobController instance.
+    Get a new JobController instance.
 
-    This function configures all necessary repositories and returns a fully
-    initialized JobController. It uses caching to ensure only one instance
-    is created per CLI invocation.
+    Each command gets its own controller with a fresh database session.
+    The session should be closed after the command completes.
 
     Returns:
         Configured JobController instance
