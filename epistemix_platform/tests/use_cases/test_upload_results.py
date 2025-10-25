@@ -9,11 +9,8 @@ Based on Gherkin behavioral specifications:
 - Scenario 5: Server-side upload uses IAM credentials (not presigned URLs)
 """
 
-import io
-import zipfile
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -130,7 +127,7 @@ class TestUploadResults:
             zip_content=b"fake zip content",
             file_count=3,
             total_size_bytes=100,
-            directory_name="RUN4"
+            directory_name="RUN4",
         )
         mock_results_repository.upload_results.return_value = Mock(
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
@@ -167,13 +164,19 @@ class TestUploadResults:
         mock_time_provider.now_utc.assert_called_once()
 
         # Verify run was updated
-        assert completed_run.results_url == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        assert (
+            completed_run.results_url
+            == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        )
         assert completed_run.results_uploaded_at == fixed_time
         assert completed_run.status == RunStatus.DONE
         mock_run_repository.save.assert_called_once_with(completed_run)
 
         # Verify return value
-        assert results_url == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        assert (
+            results_url
+            == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        )
 
     def test_upload_fails_when_run_does_not_exist(
         self,
@@ -238,6 +241,7 @@ class TestUploadResults:
         """
         # Arrange
         from epistemix_platform.exceptions import InvalidResultsDirectoryError
+
         mock_job_repository.find_by_id.return_value = sample_job
 
         empty_dir = tmp_path / "EMPTY_DIR"
@@ -334,15 +338,13 @@ class TestUploadResults:
         """
         # Arrange
         from epistemix_platform.exceptions import ResultsMetadataError
+
         mock_job_repository.find_by_id.return_value = sample_job
 
         fixed_time = datetime(2025, 10, 23, 20, 0, 0)
         mock_run_repository.find_by_id.return_value = completed_run
         mock_results_packager.package_directory.return_value = PackagedResults(
-            zip_content=b"fake zip",
-            file_count=1,
-            total_size_bytes=10,
-            directory_name="RUN4"
+            zip_content=b"fake zip", file_count=1, total_size_bytes=10, directory_name="RUN4"
         )
         mock_results_repository.upload_results.return_value = Mock(
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
@@ -364,7 +366,10 @@ class TestUploadResults:
             )
 
         # Verify exception contains orphaned URL
-        assert exc_info.value.orphaned_s3_url == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        assert (
+            exc_info.value.orphaned_s3_url
+            == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
+        )
 
         # Verify upload completed
         mock_results_repository.upload_results.assert_called_once()
@@ -402,7 +407,7 @@ class TestUploadResults:
             zip_content=b"packaged content",
             file_count=5,
             total_size_bytes=1000,
-            directory_name="RUN4"
+            directory_name="RUN4",
         )
         upload_location_mock = Mock(
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
@@ -469,13 +474,14 @@ class TestUploadResultsWithJobS3Prefix:
     @pytest.fixture
     def mock_job_repository(self):
         """Create a mock job repository."""
-        from unittest.mock import MagicMock
+
         return MagicMock()
 
     @pytest.fixture
     def sample_job(self):
         """Create a sample job with known created_at."""
         from datetime import datetime
+
         from epistemix_platform.models.job import Job
 
         return Job(
@@ -489,6 +495,7 @@ class TestUploadResultsWithJobS3Prefix:
     def sample_run(self, sample_job):
         """Create a sample run belonging to the job."""
         from datetime import datetime
+
         from epistemix_platform.models.run import Run, RunStatus
 
         return Run(
@@ -526,6 +533,7 @@ class TestUploadResultsWithJobS3Prefix:
         """
         # Arrange
         from datetime import datetime
+
         from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
         from epistemix_platform.models.upload_location import UploadLocation
         from epistemix_platform.services import PackagedResults
@@ -570,7 +578,9 @@ class TestUploadResultsWithJobS3Prefix:
         prefix = call_kwargs["s3_prefix"]
         assert isinstance(prefix, JobS3Prefix)
         assert prefix.job_id == 12
-        assert prefix.timestamp == datetime(2025, 10, 23, 21, 15, 0)  # job.created_at, NOT run.created_at!
+        assert prefix.timestamp == datetime(
+            2025, 10, 23, 21, 15, 0
+        )  # job.created_at, NOT run.created_at!
 
     # ==========================================================================
     # Scenario 2: Multiple runs use same job timestamp
@@ -594,7 +604,7 @@ class TestUploadResultsWithJobS3Prefix:
         """
         # Arrange
         from datetime import datetime
-        from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
+
         from epistemix_platform.models.run import Run, RunStatus
         from epistemix_platform.models.upload_location import UploadLocation
         from epistemix_platform.services import PackagedResults
@@ -625,7 +635,9 @@ class TestUploadResultsWithJobS3Prefix:
         mock_results_packager.package_directory.return_value = PackagedResults(
             zip_content=b"content", file_count=3, total_size_bytes=500, directory_name="RUN"
         )
-        mock_results_repository.upload_results.return_value = UploadLocation(url="https://example.com/file.zip")
+        mock_results_repository.upload_results.return_value = UploadLocation(
+            url="https://example.com/file.zip"
+        )
         mock_time_provider.now_utc.return_value = datetime(2025, 10, 23, 21, 20, 0)
 
         # Act - Upload for run 4

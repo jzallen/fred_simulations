@@ -29,6 +29,49 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def create_s3_client(region_name: str | None = None, s3_client: Any | None = None) -> Any:
+    """
+    Create or validate an S3 client with proper error handling.
+
+    This function centralizes S3 client creation logic, supporting both:
+    1. Injection of a pre-configured client (for testing)
+    2. Creation of a new client using AWS default credential chain
+
+    AWS Default Credential Chain (when s3_client=None):
+    1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    2. AWS credentials file (~/.aws/credentials)
+    3. AWS config file (~/.aws/config)
+    4. IAM roles for EC2 instances
+    5. IAM roles for containers (ECS, EKS)
+    6. AWS SSO
+
+    Args:
+        region_name: AWS region name (optional, will use default region from config/environment)
+        s3_client: Optional pre-configured S3 client (for testing)
+
+    Returns:
+        Configured boto3 S3 client
+
+    Raises:
+        ValueError: If S3 client initialization fails due to missing credentials or other errors
+    """
+
+    # Initialize S3 client using default credential chain
+    session_kwargs = {}
+    if region_name:
+        session_kwargs["region_name"] = region_name
+
+    try:
+        client = boto3.client("s3", **session_kwargs)
+        # Get the actual region being used
+        actual_region = client.meta.region_name or "default"
+        logger.info(f"S3 client initialized for region: {actual_region}")
+        return client
+    except (NoCredentialsError, BotoCoreError) as e:
+        logger.error(f"Failed to initialize S3 client: {e}")
+        raise ValueError(f"S3 client initialization failed: {e}")
+
+
 class S3UploadLocationRepository:
     """
     S3-based implementation of the upload location repository.
@@ -65,27 +108,8 @@ class S3UploadLocationRepository:
         """
         self.bucket_name = bucket_name
         self.expiration_seconds = expiration_seconds
-
-        if s3_client:
-            # Use the provided S3 client (for testing)
-            self.s3_client = s3_client
-            logger.info(f"Using injected S3 client for bucket: {bucket_name}")
-        else:
-            # Initialize S3 client using default credential chain
-            session_kwargs = {}
-            if region_name:
-                session_kwargs["region_name"] = region_name
-
-            try:
-                self.s3_client = boto3.client("s3", **session_kwargs)
-                # Get the actual region being used
-                actual_region = self.s3_client.meta.region_name or "default"
-                logger.info(
-                    f"S3 client initialized for bucket: {bucket_name}, region: {actual_region}"
-                )
-            except (NoCredentialsError, BotoCoreError) as e:
-                logger.error(f"Failed to initialize S3 client: {e}")
-                raise ValueError(f"S3 client initialization failed: {e}")
+        self.s3_client = create_s3_client(region_name=region_name, s3_client=s3_client)
+        logger.info(f"S3UploadLocationRepository configured for bucket: {bucket_name}")
 
     def get_upload_location(self, job_upload: "JobUpload") -> "UploadLocation":
         """

@@ -257,11 +257,14 @@ class TestJobS3Prefix:
     # Scenario 10: Handle different job IDs
     # ==========================================================================
 
-    @pytest.mark.parametrize("job_id,expected_path_segment", [
-        (1, "jobs/1/"),
-        (99, "jobs/99/"),
-        (12345, "jobs/12345/"),
-    ])
+    @pytest.mark.parametrize(
+        "job_id,expected_path_segment",
+        [
+            (1, "jobs/1/"),
+            (99, "jobs/99/"),
+            (12345, "jobs/12345/"),
+        ],
+    )
     def test_different_job_ids(self, job_id, expected_path_segment):
         """
         Given JobS3Prefix instances with job_ids 1, 99, 12345
