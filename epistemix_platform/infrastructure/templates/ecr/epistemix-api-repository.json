@@ -5,9 +5,9 @@
   "Parameters": {
     "Environment": {
       "Type": "String",
-      "Description": "Environment name",
-      "Default": "dev",
-      "AllowedValues": ["dev", "staging", "production"]
+      "Description": "Environment name (shared across all environments)",
+      "Default": "shared",
+      "AllowedValues": ["shared"]
     }
   },
 
@@ -20,12 +20,8 @@
   "Resources": {
     "ECRRepository": {
       "Type": "AWS::ECR::Repository",
-      "DeletionPolicy": {
-        "Fn::If": ["IsProduction", "Retain", "Delete"]
-      },
-      "UpdateReplacePolicy": {
-        "Fn::If": ["IsProduction", "Retain", "Delete"]
-      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
       "Properties": {
         "RepositoryName": "epistemix-api",
         "ImageTagMutability": "MUTABLE",
@@ -66,6 +62,14 @@
           {
             "Key": "ManagedBy",
             "Value": "CloudFormation"
+          },
+          {
+            "Key": "Protected",
+            "Value": "true"
+          },
+          {
+            "Key": "DeletionProtection",
+            "Value": "Retain"
           }
         ]
       }

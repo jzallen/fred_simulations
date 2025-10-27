@@ -2,18 +2,19 @@ template:
   type: file
   path: ecr/epistemix-api-repository.json
 
-stack_name: epistemix-api-ecr-staging
+stack_name: epistemix-api-ecr
 
 # No dependencies - ECR should be created first
 dependencies: []
 
 # Stack parameters
+# Note: Environment is just for tagging - repository is shared across all environments
 parameters:
-  Environment: staging
+  Environment: shared
 
 # Stack-specific tags
 tags:
   Owner: fred-simulations
-  CostCenter: Staging
   Component: ECR
   Service: EpistemixAPI
+  Shared: "true"

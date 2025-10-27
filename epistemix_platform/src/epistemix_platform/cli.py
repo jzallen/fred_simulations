@@ -551,8 +551,6 @@ def archive_uploads(
             for location in archived_locations:
                 click.echo(f"  - {location.get('url', 'N/A')}")
 
-        session.close()
-
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
@@ -604,8 +602,6 @@ def download_job_uploads(job_id: int, output_dir: str | None, force: bool):
             for file_path in downloaded_files:
                 file_size = file_path.stat().st_size
                 click.echo(f"  - {file_path.name} ({file_size} bytes)")
-
-        session.close()
 
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
