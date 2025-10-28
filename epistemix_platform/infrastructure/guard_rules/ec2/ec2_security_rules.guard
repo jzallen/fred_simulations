@@ -1,0 +1,157 @@
+# EC2 Security Rules
+# CloudFormation Guard policy rules for EC2 instance security validation
+#
+# These rules enforce security best practices for EC2 instances in CloudFormation templates.
+# Documentation: https://docs.aws.amazon.com/cfn-guard/latest/ug/writing-rules.html
+
+# Rule: EC2 instances must have IMDSv2 enabled
+rule ec2_must_use_imdsv2 {
+    let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
+
+    when %ec2_instances !empty {
+        %ec2_instances.Properties.MetadataOptions exists <<
+            Violation: EC2 instance must have MetadataOptions configured
+            Fix: Add MetadataOptions property with HttpTokens set to 'required'
+            Rationale: IMDSv2 prevents SSRF attacks on instance metadata
+            Example:
+              MetadataOptions:
+                HttpTokens: required
+                HttpEndpoint: enabled
+        >>
+
+        %ec2_instances.Properties.MetadataOptions.HttpTokens == "required" <<
+            Violation: EC2 instance must use IMDSv2 (HttpTokens: required)
+            Fix: Set HttpTokens to 'required' in MetadataOptions
+            Rationale: IMDSv2 is session-based and prevents metadata enumeration attacks
+        >>
+    }
+}
+
+# Rule: EC2 instances should have IAM instance profile
+rule ec2_should_have_instance_profile {
+    let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
+
+    when %ec2_instances !empty {
+        %ec2_instances.Properties.IamInstanceProfile exists <<
+            Violation: EC2 instance should have IAM instance profile
+            Fix: Add IamInstanceProfile property referencing instance profile
+            Rationale: Instance profiles provide temporary credentials instead of long-lived keys
+            Example:
+              IamInstanceProfile: !Ref MyInstanceProfile
+        >>
+    }
+}
+
+# Rule: EC2 instances should be in VPC (have security groups)
+rule ec2_should_have_security_groups {
+    let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
+
+    when %ec2_instances !empty {
+        %ec2_instances.Properties.SecurityGroupIds exists <<
+            Violation: EC2 instance should have security groups configured
+            Fix: Add SecurityGroupIds property with at least one security group
+            Rationale: Security groups control network access to the instance
+            Example:
+              SecurityGroupIds:
+                - !Ref InstanceSecurityGroup
+        >>
+    }
+}
+
+# Rule: EC2 instances should be in private subnet (have SubnetId)
+rule ec2_should_have_subnet_id {
+    let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
+
+    when %ec2_instances !empty {
+        %ec2_instances.Properties.SubnetId exists <<
+            Violation: EC2 instance should have subnet ID configured
+            Fix: Add SubnetId property for VPC deployment
+            Rationale: Explicit subnet placement ensures proper network configuration
+            Example:
+              SubnetId: !Ref PrivateSubnet
+        >>
+    }
+}
+
+# Rule: EC2 instances should have tags
+rule ec2_instances_must_be_tagged {
+    let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
+
+    when %ec2_instances !empty {
+        %ec2_instances.Properties.Tags exists <<
+            Violation: EC2 instance must have tags for governance
+            Fix: Add Tags with at least Name and Purpose keys
+            Rationale: Tags enable cost tracking and resource management
+            Example:
+              Tags:
+                - Key: Name
+                  Value: my-instance
+                - Key: Purpose
+                  Value: bastion-host
+        >>
+    }
+}
+
+# Rule: IAM roles for EC2 must have trust policy for EC2 service
+rule ec2_roles_must_trust_ec2_service {
+    let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
+
+    when %iam_roles !empty {
+        %iam_roles.Properties.AssumeRolePolicyDocument exists <<
+            Violation: IAM role must have AssumeRolePolicyDocument
+            Fix: Add AssumeRolePolicyDocument defining trust policy
+            Rationale: Defines which principals can assume the role
+        >>
+    }
+}
+
+# Rule: Security groups should have explicit egress rules
+rule security_groups_should_have_egress {
+    let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
+
+    when %security_groups !empty {
+        %security_groups.Properties.SecurityGroupEgress exists <<
+            Violation: Security group should have explicit egress rules
+            Fix: Add SecurityGroupEgress with specific rules
+            Rationale: Explicit egress rules document allowed outbound traffic
+            Example:
+              SecurityGroupEgress:
+                - IpProtocol: tcp
+                  FromPort: 443
+                  ToPort: 443
+                  CidrIp: "0.0.0.0/0"
+                  Description: "HTTPS outbound"
+        >>
+    }
+}
+
+# Rule: Security groups must be in VPC
+rule security_groups_must_be_in_vpc {
+    let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
+
+    when %security_groups !empty {
+        %security_groups.Properties.VpcId exists <<
+            Violation: Security group must be associated with VPC
+            Fix: Add VpcId property referencing a VPC
+            Rationale: VPC security groups provide better isolation than EC2-Classic
+            Example:
+              VpcId: !Ref VPC
+        >>
+    }
+}
+
+# Rule: IAM instance profiles must reference at least one role
+rule instance_profiles_must_have_roles {
+    let instance_profiles = Resources.*[ Type == 'AWS::IAM::InstanceProfile' ]
+
+    when %instance_profiles !empty {
+        %instance_profiles.Properties.Roles exists <<
+            Violation: Instance profile must reference at least one IAM role
+            Fix: Add Roles property with role reference
+            Rationale: Instance profiles attach IAM roles to EC2 instances
+            Example:
+              Roles:
+                - !Ref InstanceRole
+        >>
+    }
+}
