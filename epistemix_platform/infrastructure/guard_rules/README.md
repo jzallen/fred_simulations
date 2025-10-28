@@ -204,26 +204,28 @@ Create shared rules for organization-wide policies:
 
 ## Installation
 
-### Download Binary
+### Official Installation Method (Recommended)
 
-```bash
-# Linux x86_64
-curl -LO https://github.com/aws-cloudformation/cloudformation-guard/releases/download/3.0.0/cfn-guard-linux-x86_64.tar.gz
-tar -xzf cfn-guard-linux-x86_64.tar.gz
-sudo mv cfn-guard /usr/local/bin/
-cfn-guard --version
-```
-
-### Or use Installation Script
+Use the official AWS installer script which automatically detects your platform and installs the latest version:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf \
   https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
 ```
 
-### Pants Integration (Future)
+This installs cfn-guard to `~/.guard/bin`. Add it to your PATH:
 
-We plan to manage cfn-guard as a Pants-managed binary in the future. For now, install manually.
+```bash
+export PATH="${PATH}:${HOME}/.guard/bin"
+```
+
+**Documentation**: https://docs.aws.amazon.com/cfn-guard/latest/ug/setting-up-linux.html
+
+### Verify Installation
+
+```bash
+cfn-guard --version  # Should show: cfn-guard 3.1.2 (or later)
+```
 
 ## Suppressing Findings
 

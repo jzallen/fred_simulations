@@ -75,23 +75,20 @@ rule ecr_lifecycle_policy_configured {
 }
 
 # Rule: ECR repositories should have immutable tags (for production)
-rule ecr_immutable_tags_for_production {
-    let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
-
-    # Note: This is a recommendation, not a hard requirement
-    # Enable for production environments to prevent tag overwrites
-    when %ecr_repos !empty {
-        when %ecr_repos.Properties.Tags[*] {
-            some Tags[*] {
-                Key == 'Environment'
-                when Value == 'production' {
-                    # For production repos, recommend immutable tags
-                    # This rule is informational - may not be enforced
-                }
-            }
-        }
-    }
-}
+# Note: This is a recommendation, not enforced
+# Uncomment and modify the condition below to enforce for production environments
+# rule ecr_immutable_tags_for_production {
+#     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
+#     let production_repos = %ecr_repos[ some Properties.Tags[*] { Key == 'Environment' Value == 'production' } ]
+#
+#     when %production_repos !empty {
+#         %production_repos.Properties.ImageTagMutability == 'IMMUTABLE' <<
+#             Violation: Production ECR repositories should have immutable tags
+#             Fix: Set ImageTagMutability to 'IMMUTABLE' for production environments
+#             Rationale: Prevents accidental overwrite of production images
+#         >>
+#     }
+# }
 
 # Rule: ECR repositories must have tags for governance
 rule ecr_repositories_must_be_tagged {
