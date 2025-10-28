@@ -1,0 +1,62 @@
+# API Gateway Security Rules
+# Validates current API Gateway configuration
+
+# Rule: API Gateway must exist
+rule api_gateway_rest_api_must_exist {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+
+    %apis !empty <<
+        Violation: API Gateway RestApi must be defined
+        Fix: Create AWS::ApiGateway::RestApi resource
+    >>
+}
+
+# Rule: API Gateway stage must have method settings
+rule api_gateway_stage_must_have_method_settings {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        %stages.Properties.MethodSettings exists <<
+            Violation: API Gateway stage must have MethodSettings configured
+            Fix: Add MethodSettings with throttling and logging configuration
+        >>
+    }
+}
+
+# Rule: API Gateway must have deployment
+rule api_gateway_must_have_deployment {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+    let deployments = Resources.*[ Type == 'AWS::ApiGateway::Deployment' ]
+
+    when %apis !empty {
+        %deployments !empty <<
+            Violation: API Gateway must have deployment resource
+            Fix: Create AWS::ApiGateway::Deployment resource
+        >>
+    }
+}
+
+# Rule: API Gateway stage must reference deployment
+rule api_gateway_stage_must_reference_deployment {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        %stages.Properties.DeploymentId exists <<
+            Violation: API Gateway stage must reference a deployment
+            Fix: Add DeploymentId property referencing deployment
+        >>
+    }
+}
+
+# Rule: API Gateway methods should have authorization
+rule api_gateway_methods_should_have_authorization {
+    let methods = Resources.*[ Type == 'AWS::ApiGateway::Method' ]
+
+    when %methods !empty {
+        %methods.Properties.AuthorizationType exists <<
+            Violation: API Gateway method should have AuthorizationType configured
+            Fix: Add AuthorizationType (NONE, AWS_IAM, CUSTOM, or COGNITO_USER_POOLS)
+            Note: NONE is acceptable for public APIs but review security requirements
+        >>
+    }
+}

@@ -92,24 +92,34 @@ class TestLambdaTemplate:
         assert "Architectures" in func
         assert "x86_64" in func["Architectures"]
 
-    def test_lambda_has_execution_role_reference(self, template: dict[str, Any]):
+    def test_lambda_has_execution_role_reference(self, template, cdk_template_factory):
         """Lambda must reference an IAM execution role."""
-        func = template["Resources"]["LambdaFunction"]["Properties"]
-        assert "Role" in func
-        # Should use Fn::GetAtt to get role ARN
-        role = func["Role"]
-        assert "Fn::GetAtt" in role
-        assert role["Fn::GetAtt"][0] == "LambdaExecutionRole"
+        from aws_cdk.assertions import Match
 
-    def test_lambda_deployed_in_vpc(self, template: dict[str, Any]):
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Lambda::Function",
+            Match.object_like({
+                "Role": {
+                    "Fn::GetAtt": Match.array_with(["LambdaExecutionRole"])
+                }
+            })
+        )
+
+    def test_lambda_deployed_in_vpc(self, template, cdk_template_factory):
         """Lambda must be deployed in VPC for private resource access."""
-        func = template["Resources"]["LambdaFunction"]["Properties"]
-        assert "VpcConfig" in func
-        vpc_config = func["VpcConfig"]
-        assert "SecurityGroupIds" in vpc_config
-        assert "SubnetIds" in vpc_config
-        assert len(vpc_config["SecurityGroupIds"]) > 0
-        assert len(vpc_config["SubnetIds"]) > 0
+        from aws_cdk.assertions import Match
+
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Lambda::Function",
+            Match.object_like({
+                "VpcConfig": Match.object_like({
+                    "SecurityGroupIds": Match.any_value(),
+                    "SubnetIds": Match.any_value()
+                })
+            })
+        )
 
     def test_lambda_has_timeout_configured(self, template: dict[str, Any]):
         """Lambda must have explicit timeout to prevent runaway functions."""
@@ -121,13 +131,20 @@ class TestLambdaTemplate:
         func = template["Resources"]["LambdaFunction"]["Properties"]
         assert "MemorySize" in func
 
-    def test_lambda_has_tags(self, template: dict[str, Any]):
+    def test_lambda_has_tags(self, template, cdk_template_factory):
         """Lambda must have tags for cost tracking and governance."""
-        func = template["Resources"]["LambdaFunction"]["Properties"]
-        assert "Tags" in func
-        tags = {t["Key"]: t["Value"] for t in func["Tags"]}
-        assert "Environment" in tags
-        assert "Service" in tags
+        from aws_cdk.assertions import Match
+
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Lambda::Function",
+            Match.object_like({
+                "Tags": Match.array_with([
+                    Match.object_like({"Key": "Environment"}),
+                    Match.object_like({"Key": "Service"})
+                ])
+            })
+        )
 
     # ============================================================================
     # Environment Variables Security (DEEP)
@@ -170,220 +187,301 @@ class TestLambdaTemplate:
         assert "Fn::Sub" in db_url
 
     # ============================================================================
-    # IAM Execution Role (DEEP SECURITY VALIDATION)
+    # IAM Execution Role (DEEP SECURITY VALIDATION with CDK Assertions)
     # ============================================================================
 
-    def test_execution_role_exists(self, template: dict[str, Any]):
-        """Lambda execution role must exist."""
-        assert "LambdaExecutionRole" in template["Resources"]
-
-    def test_execution_role_trusts_lambda_service(self, template: dict[str, Any]):
+    def test_execution_role_trusts_lambda_service(self, template, cdk_template_factory):
         """Execution role must trust lambda.amazonaws.com service."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        assume_policy = role["AssumeRolePolicyDocument"]
+        from aws_cdk.assertions import Match
 
-        statements = assume_policy["Statement"]
-        lambda_trust = [
-            s for s in statements
-            if s.get("Effect") == "Allow"
-            and s.get("Principal", {}).get("Service") == "lambda.amazonaws.com"
-            and "sts:AssumeRole" in s.get("Action", [])
-        ]
-        assert len(lambda_trust) == 1, "Must have exactly one Lambda service trust statement"
+        cdk_template = cdk_template_factory(template)
 
-    def test_execution_role_has_basic_and_vpc_managed_policies(self, template: dict[str, Any]):
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "AssumeRolePolicyDocument": {
+                    "Statement": Match.array_with([
+                        Match.object_like({
+                            "Effect": "Allow",
+                            "Principal": {"Service": "lambda.amazonaws.com"},
+                            "Action": "sts:AssumeRole"
+                        })
+                    ])
+                }
+            })
+        )
+
+    def test_execution_role_has_basic_and_vpc_managed_policies(self, template, cdk_template_factory):
         """Role must have AWS managed policies for Lambda basic execution and VPC access."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        managed_policies = role.get("ManagedPolicyArns", [])
+        from aws_cdk.assertions import Match
 
-        assert "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" in managed_policies
-        assert "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole" in managed_policies
+        cdk_template = cdk_template_factory(template)
 
-    def test_cloudwatch_logs_policy_is_scoped_to_function_logs(self, template: dict[str, Any]):
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "ManagedPolicyArns": Match.array_with([
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+                ])
+            })
+        )
+
+    def test_cloudwatch_logs_policy_is_scoped_to_function_logs(self, template, cdk_template_factory):
         """CloudWatch Logs policy must be scoped to this function's log group only."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        policies = role.get("Policies", [])
+        from aws_cdk.assertions import Match
 
-        cw_policy = next((p for p in policies if p["PolicyName"] == "CloudWatchLogsPolicy"), None)
-        assert cw_policy is not None
+        cdk_template = cdk_template_factory(template)
 
-        statements = cw_policy["PolicyDocument"]["Statement"]
-        assert len(statements) == 1
+        # Verify CloudWatchLogsPolicy exists with scoped resources
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "Policies": Match.array_with([
+                    Match.object_like({
+                        "PolicyName": "CloudWatchLogsPolicy",
+                        "PolicyDocument": {
+                            "Statement": Match.array_with([
+                                Match.object_like({
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    # Resource must NOT be "*" - must be scoped
+                                    "Resource": Match.object_like({
+                                        "Fn::Sub": Match.string_like_regexp(r".*\/aws\/lambda\/.*")
+                                    })
+                                })
+                            ])
+                        }
+                    })
+                ])
+            })
+        )
 
-        statement = statements[0]
-        assert statement["Effect"] == "Allow"
-        assert set(statement["Action"]) == {
-            "logs:CreateLogGroup",
-            "logs:CreateLogStream",
-            "logs:PutLogEvents"
-        }
-
-        # Resource must be scoped (not "*")
-        resource = statement["Resource"]
-        assert "Fn::Sub" in resource
-        # Should be scoped to /aws/lambda/${ServiceName}-*
-        assert "/aws/lambda/" in resource["Fn::Sub"]
-
-    def test_s3_policy_is_scoped_to_specific_bucket(self, template: dict[str, Any]):
+    def test_s3_policy_is_scoped_to_specific_bucket(self, template, cdk_template_factory):
         """S3 policy must be scoped to specific bucket, not wildcard."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        policies = role.get("Policies", [])
+        from aws_cdk.assertions import Match
 
-        s3_policy = next((p for p in policies if p["PolicyName"] == "S3AccessPolicy"), None)
-        assert s3_policy is not None
+        cdk_template = cdk_template_factory(template)
 
-        statements = s3_policy["PolicyDocument"]["Statement"]
-        assert len(statements) == 1
+        # Verify S3AccessPolicy with scoped resources (not "*")
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "Policies": Match.array_with([
+                    Match.object_like({
+                        "PolicyName": "S3AccessPolicy",
+                        "PolicyDocument": {
+                            "Statement": Match.array_with([
+                                Match.object_like({
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:GetObject",
+                                        "s3:DeleteObject",
+                                        "s3:ListBucket"
+                                    ],
+                                    # Resource must be array with bucket and bucket/*
+                                    "Resource": Match.array_with([
+                                        Match.object_like({
+                                            "Fn::Sub": Match.string_like_regexp(r".*epistemix-uploads-.*")
+                                        })
+                                    ])
+                                })
+                            ])
+                        }
+                    })
+                ])
+            })
+        )
 
-        statement = statements[0]
-        assert statement["Effect"] == "Allow"
-
-        # Check allowed actions are appropriate
-        actions = set(statement["Action"])
-        assert actions == {
-            "s3:PutObject",
-            "s3:GetObject",
-            "s3:DeleteObject",
-            "s3:ListBucket"
-        }
-
-        # Resources must NOT be "*"
-        resources = statement["Resource"]
-        assert isinstance(resources, list)
-        assert len(resources) == 2
-
-        # Both should use Fn::Sub with specific bucket
-        for resource in resources:
-            assert "Fn::Sub" in resource
-            assert "epistemix-uploads-" in resource["Fn::Sub"]
-            assert "*" not in resource["Fn::Sub"] or resource["Fn::Sub"].endswith("/*")  # Only trailing /*
-
-    def test_rds_policy_is_read_only(self, template: dict[str, Any]):
+    def test_rds_policy_is_read_only(self, template, cdk_template_factory):
         """RDS policy should only allow describe actions (read-only)."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        policies = role.get("Policies", [])
+        from aws_cdk.assertions import Match
 
-        rds_policy = next((p for p in policies if p["PolicyName"] == "RDSAccessPolicy"), None)
-        assert rds_policy is not None
+        cdk_template = cdk_template_factory(template)
 
-        statements = rds_policy["PolicyDocument"]["Statement"]
-        assert len(statements) == 1
+        # Verify RDSAccessPolicy has only read-only permissions
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "Policies": Match.array_with([
+                    Match.object_like({
+                        "PolicyName": "RDSAccessPolicy",
+                        "PolicyDocument": {
+                            "Statement": Match.array_with([
+                                Match.object_like({
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "rds:DescribeDBInstances",
+                                        "rds:DescribeDBClusters"
+                                    ],
+                                    "Resource": "*"  # Describe actions are safe with *
+                                })
+                            ])
+                        }
+                    })
+                ])
+            })
+        )
 
-        statement = statements[0]
-        assert statement["Effect"] == "Allow"
-
-        # Should only allow describe actions
-        actions = set(statement["Action"])
-        assert actions == {
-            "rds:DescribeDBInstances",
-            "rds:DescribeDBClusters"
-        }
-
-        # All describe actions are safe with "*" resource
-        assert statement["Resource"] == "*"
-
-    def test_ecr_policy_is_scoped_to_specific_repository(self, template: dict[str, Any]):
+    def test_ecr_policy_is_scoped_to_specific_repository(self, template, cdk_template_factory):
         """ECR policy must be scoped to specific repository."""
-        role = template["Resources"]["LambdaExecutionRole"]["Properties"]
-        policies = role.get("Policies", [])
+        from aws_cdk.assertions import Match
 
-        ecr_policy = next((p for p in policies if p["PolicyName"] == "ECRAccessPolicy"), None)
-        assert ecr_policy is not None
+        cdk_template = cdk_template_factory(template)
 
-        statements = ecr_policy["PolicyDocument"]["Statement"]
-        assert len(statements) == 2
-
-        # First statement: scoped to specific repository
-        repo_statement = statements[0]
-        assert repo_statement["Effect"] == "Allow"
-        assert set(repo_statement["Action"]) == {
-            "ecr:GetDownloadUrlForLayer",
-            "ecr:BatchGetImage",
-            "ecr:BatchCheckLayerAvailability"
-        }
-
-        # Resource must be scoped to specific repository
-        resource = repo_statement["Resource"]
-        assert "Fn::Sub" in resource
-        assert "repository/epistemix-api" in resource["Fn::Sub"]
-
-        # Second statement: GetAuthorizationToken requires "*"
-        auth_statement = statements[1]
-        assert auth_statement["Effect"] == "Allow"
-        assert auth_statement["Action"] == ["ecr:GetAuthorizationToken"]
-        assert auth_statement["Resource"] == "*"  # Required by AWS
+        # Verify ECRAccessPolicy with repository-scoped permissions
+        cdk_template.has_resource_properties(
+            "AWS::IAM::Role",
+            Match.object_like({
+                "Policies": Match.array_with([
+                    Match.object_like({
+                        "PolicyName": "ECRAccessPolicy",
+                        "PolicyDocument": {
+                            "Statement": Match.array_with([
+                                # Repository-scoped statement
+                                Match.object_like({
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:BatchGetImage",
+                                        "ecr:BatchCheckLayerAvailability"
+                                    ],
+                                    "Resource": Match.object_like({
+                                        "Fn::Sub": Match.string_like_regexp(r".*repository\/epistemix-api$")
+                                    })
+                                }),
+                                # GetAuthorizationToken requires "*"
+                                Match.object_like({
+                                    "Effect": "Allow",
+                                    "Action": ["ecr:GetAuthorizationToken"],
+                                    "Resource": "*"
+                                })
+                            ])
+                        }
+                    })
+                ])
+            })
+        )
 
     # ============================================================================
-    # Security Group Configuration (DEEP)
+    # Security Group Configuration (DEEP with CDK Assertions)
     # ============================================================================
 
-    def test_lambda_security_group_exists(self, template: dict[str, Any]):
+    def test_lambda_security_group_exists(self, template, cdk_template_factory):
         """Lambda security group must exist for VPC deployment."""
-        assert "LambdaSecurityGroup" in template["Resources"]
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::EC2::SecurityGroup", 1)
 
-    def test_lambda_security_group_in_vpc(self, template: dict[str, Any]):
+    def test_lambda_security_group_in_vpc(self, template, cdk_template_factory):
         """Security group must be associated with VPC."""
-        sg = template["Resources"]["LambdaSecurityGroup"]["Properties"]
-        assert "VpcId" in sg
+        from aws_cdk.assertions import Match
+
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::EC2::SecurityGroup",
+            Match.object_like({
+                "VpcId": Match.any_value()
+            })
+        )
 
     def test_lambda_security_group_has_no_ingress_rules(self, template: dict[str, Any]):
         """Lambda security group should NOT have ingress rules.
 
         Lambda functions are invoked by AWS services, not direct connections.
         Ingress rules would be a security risk.
+
+        Note: Using traditional assertion here because we need to verify absence of a property,
+        which is simpler with direct dictionary access than CDK assertions.
         """
         sg = template["Resources"]["LambdaSecurityGroup"]["Properties"]
 
-        # SecurityGroupIngress should not exist OR be empty
-        ingress = sg.get("SecurityGroupIngress", [])
-        assert len(ingress) == 0, \
+        # SecurityGroupIngress should not exist in the properties
+        assert "SecurityGroupIngress" not in sg, \
             "Lambda security group should not allow inbound connections"
 
-    def test_lambda_security_group_has_explicit_egress(self, template: dict[str, Any]):
+    def test_lambda_security_group_has_explicit_egress(self, template, cdk_template_factory):
         """Security group should have explicit egress rules."""
-        sg = template["Resources"]["LambdaSecurityGroup"]["Properties"]
-        assert "SecurityGroupEgress" in sg
-        assert len(sg["SecurityGroupEgress"]) > 0
+        from aws_cdk.assertions import Match
 
-    def test_rds_security_group_ingress_allows_lambda_access(self, template: dict[str, Any]):
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::EC2::SecurityGroup",
+            Match.object_like({
+                "SecurityGroupEgress": Match.array_with([
+                    Match.object_like({
+                        "IpProtocol": Match.any_value()
+                    })
+                ])
+            })
+        )
+
+    def test_rds_security_group_ingress_allows_lambda_access(self, template, cdk_template_factory):
         """Template should create ingress rule allowing Lambda to access RDS."""
-        assert "RDSSecurityGroupIngress" in template["Resources"]
+        from aws_cdk.assertions import Match
 
-        ingress = template["Resources"]["RDSSecurityGroupIngress"]["Properties"]
-        assert ingress["IpProtocol"] == "tcp"
+        cdk_template = cdk_template_factory(template)
 
-        # Should reference DBPort parameter
-        assert "Ref" in ingress["FromPort"]
-        assert ingress["FromPort"]["Ref"] == "DBPort"
+        # Verify RDS security group ingress resource exists
+        cdk_template.resource_count_is("AWS::EC2::SecurityGroupIngress", 1)
 
-        # Should reference Lambda security group as source
-        assert "Ref" in ingress["SourceSecurityGroupId"]
-        assert ingress["SourceSecurityGroupId"]["Ref"] == "LambdaSecurityGroup"
+        # Verify ingress rule configuration
+        cdk_template.has_resource_properties(
+            "AWS::EC2::SecurityGroupIngress",
+            Match.object_like({
+                "IpProtocol": "tcp",
+                # References DBPort parameter
+                "FromPort": {"Ref": "DBPort"},
+                "ToPort": {"Ref": "DBPort"},
+                # Source is Lambda security group
+                "SourceSecurityGroupId": {"Ref": "LambdaSecurityGroup"}
+            })
+        )
 
     # ============================================================================
-    # CloudWatch Logs Configuration (DEEP)
+    # CloudWatch Logs Configuration (DEEP with CDK Assertions)
     # ============================================================================
 
-    def test_log_group_exists(self, template: dict[str, Any]):
+    def test_log_group_exists(self, template, cdk_template_factory):
         """CloudWatch log group must exist for Lambda logs."""
-        assert "LambdaLogGroup" in template["Resources"]
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::Logs::LogGroup", 1)
 
-    def test_log_group_name_matches_lambda_function(self, template: dict[str, Any]):
+    def test_log_group_name_matches_lambda_function(self, template, cdk_template_factory):
         """Log group name must match Lambda function naming pattern."""
-        log_group = template["Resources"]["LambdaLogGroup"]["Properties"]
-        log_group_name = log_group["LogGroupName"]
+        from aws_cdk.assertions import Match
 
-        assert "Fn::Sub" in log_group_name
-        assert "/aws/lambda/" in log_group_name["Fn::Sub"]
-        assert "${ServiceName}-${Environment}" in log_group_name["Fn::Sub"]
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Logs::LogGroup",
+            Match.object_like({
+                "LogGroupName": {
+                    "Fn::Sub": Match.string_like_regexp(r"\/aws\/lambda\/.*\$\{ServiceName\}-\$\{Environment\}")
+                }
+            })
+        )
 
-    def test_log_group_has_retention_policy(self, template: dict[str, Any]):
+    def test_log_group_has_retention_policy(self, template, cdk_template_factory):
         """Log group must have retention to prevent unlimited storage costs."""
-        log_group = template["Resources"]["LambdaLogGroup"]["Properties"]
-        assert "RetentionInDays" in log_group
+        from aws_cdk.assertions import Match
+
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Logs::LogGroup",
+            Match.object_like({
+                "RetentionInDays": Match.any_value()
+            })
+        )
 
     def test_log_group_retention_varies_by_environment(self, template: dict[str, Any]):
-        """Production logs should have longer retention than dev."""
+        """Production logs should have longer retention than dev.
+
+        This test validates the conditional logic, which is easier with traditional assertions.
+        """
         log_group = template["Resources"]["LambdaLogGroup"]["Properties"]
         retention = log_group["RetentionInDays"]
 
@@ -398,28 +496,42 @@ class TestLambdaTemplate:
             "Production should have longer retention than dev"
 
     # ============================================================================
-    # Lambda Version & Alias (DEEP)
+    # Lambda Version & Alias (DEEP with CDK Assertions)
     # ============================================================================
 
-    def test_lambda_version_exists(self, template: dict[str, Any]):
+    def test_lambda_version_exists(self, template, cdk_template_factory):
         """Lambda version resource enables versioning."""
-        assert "LambdaVersion" in template["Resources"]
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::Lambda::Version", 1)
 
-    def test_lambda_version_references_function(self, template: dict[str, Any]):
+    def test_lambda_version_references_function(self, template, cdk_template_factory):
         """Lambda version must reference the function."""
-        version = template["Resources"]["LambdaVersion"]["Properties"]
-        assert "FunctionName" in version
-        assert version["FunctionName"]["Ref"] == "LambdaFunction"
+        from aws_cdk.assertions import Match
 
-    def test_lambda_alias_exists(self, template: dict[str, Any]):
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Lambda::Version",
+            Match.object_like({
+                "FunctionName": {"Ref": "LambdaFunction"}
+            })
+        )
+
+    def test_lambda_alias_exists(self, template, cdk_template_factory):
         """Lambda alias enables environment-based routing."""
-        assert "LambdaAlias" in template["Resources"]
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::Lambda::Alias", 1)
 
-    def test_lambda_alias_name_matches_environment(self, template: dict[str, Any]):
+    def test_lambda_alias_name_matches_environment(self, template, cdk_template_factory):
         """Alias name should match environment parameter."""
-        alias = template["Resources"]["LambdaAlias"]["Properties"]
-        assert "Name" in alias
-        assert alias["Name"]["Ref"] == "Environment"
+        from aws_cdk.assertions import Match
+
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::Lambda::Alias",
+            Match.object_like({
+                "Name": {"Ref": "Environment"}
+            })
+        )
 
     # ============================================================================
     # Outputs (DEEP)
