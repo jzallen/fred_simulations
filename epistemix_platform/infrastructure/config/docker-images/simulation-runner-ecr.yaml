@@ -2,16 +2,22 @@ template:
   type: file
   path: ecr/simulation-runner-repository.json
 
+stack_name: fred-simulation-runner-ecr
+
+# No dependencies - ECR should be created first
+dependencies: []
+
 # Stack parameters
+# Note: Environment is just for tagging - repository is shared across all environments
 parameters:
   RepositoryName: fred-simulation-runner
-  Environment: staging
+  Environment: shared
   EnableVulnerabilityScanning: "true"
   EnableCloudWatchLogs: "true"
 
 # Stack-specific tags
 tags:
   Owner: fred-simulations
-  CostCenter: Staging
   Component: ECR
   Service: SimulationRunner
+  Shared: "true"

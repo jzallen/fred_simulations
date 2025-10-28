@@ -1,0 +1,12 @@
+project_code: fred-simulations
+region: us-east-1
+
+# Docker image repositories - shared across all environments
+# Use image tags to differentiate between dev, staging, and production
+
+stack_tags:
+  Project: FREDSimulations
+  Environment: shared
+  ManagedBy: Sceptre
+  CreatedWith: InfrastructureAsCode
+  Purpose: DockerImageRepositories

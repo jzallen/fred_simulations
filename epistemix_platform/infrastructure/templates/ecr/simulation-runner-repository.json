@@ -13,12 +13,10 @@
         },
         "Environment": {
             "Type": "String",
-            "Description": "Environment name for tagging and configuration",
-            "Default": "dev",
+            "Description": "Environment name (shared across all environments)",
+            "Default": "shared",
             "AllowedValues": [
-                "dev",
-                "staging",
-                "production"
+                "shared"
             ]
         },
         "EnableVulnerabilityScanning": {
@@ -49,14 +47,6 @@
                 "true"
             ]
         },
-        "IsProduction": {
-            "Fn::Equals": [
-                {
-                    "Ref": "Environment"
-                },
-                "production"
-            ]
-        },
         "EnableVulnerabilityScanningCondition": {
             "Fn::Equals": [
                 {
@@ -69,20 +59,8 @@
     "Resources": {
         "ECRRepository": {
             "Type": "AWS::ECR::Repository",
-            "DeletionPolicy": {
-                "Fn::If": [
-                    "IsProduction",
-                    "Retain",
-                    "Delete"
-                ]
-            },
-            "UpdateReplacePolicy": {
-                "Fn::If": [
-                    "IsProduction",
-                    "Retain",
-                    "Delete"
-                ]
-            },
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
             "Properties": {
                 "RepositoryName": {
                     "Ref": "RepositoryName"
@@ -117,6 +95,14 @@
                     {
                         "Key": "ManagedBy",
                         "Value": "CloudFormation"
+                    },
+                    {
+                        "Key": "Protected",
+                        "Value": "true"
+                    },
+                    {
+                        "Key": "DeletionProtection",
+                        "Value": "Retain"
                     }
                 ]
             }
@@ -302,13 +288,7 @@
                 "LogGroupName": {
                     "Fn::Sub": "/aws/ecr/${RepositoryName}"
                 },
-                "RetentionInDays": {
-                    "Fn::If": [
-                        "IsProduction",
-                        30,
-                        14
-                    ]
-                },
+                "RetentionInDays": 14,
                 "Tags": [
                     {
                         "Key": "Environment",

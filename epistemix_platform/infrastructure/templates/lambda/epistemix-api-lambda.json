@@ -79,20 +79,12 @@
       "Default": 60,
       "MinValue": 3,
       "MaxValue": 900
-    },
-    "ApiGatewayRestApiId": {
-      "Type": "String",
-      "Description": "ID of the API Gateway REST API (optional, for permission resource)",
-      "Default": ""
     }
   },
 
   "Conditions": {
     "IsProduction": {
       "Fn::Equals": [{"Ref": "Environment"}, "production"]
-    },
-    "HasApiGateway": {
-      "Fn::Not": [{"Fn::Equals": [{"Ref": "ApiGatewayRestApiId"}, ""]}]
     }
   },
 
@@ -379,19 +371,6 @@
         "Name": {"Ref": "Environment"},
         "Description": {
           "Fn::Sub": "Alias for ${Environment} environment"
-        }
-      }
-    },
-
-    "LambdaApiGatewayInvokePermission": {
-      "Type": "AWS::Lambda::Permission",
-      "Condition": "HasApiGateway",
-      "Properties": {
-        "FunctionName": {"Ref": "LambdaFunction"},
-        "Action": "lambda:InvokeFunction",
-        "Principal": "apigateway.amazonaws.com",
-        "SourceArn": {
-          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGatewayRestApiId}/*/*"
         }
       }
     }

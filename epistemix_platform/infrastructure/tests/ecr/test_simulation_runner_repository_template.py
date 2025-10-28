@@ -106,12 +106,12 @@ class TestECRTemplate:
     def test_environment_parameter_has_default_value(self, ecr_template: dict[str, Any]):
         """Test Environment parameter has default value."""
         env_param = ecr_template["Parameters"]["Environment"]
-        assert env_param["Default"] == "dev"
+        assert env_param["Default"] == "shared"
 
     def test_environment_parameter_has_allowed_values(self, ecr_template: dict[str, Any]):
         """Test Environment parameter has correct allowed values."""
         env_param = ecr_template["Parameters"]["Environment"]
-        assert set(env_param["AllowedValues"]) == {"dev", "staging", "production"}
+        assert set(env_param["AllowedValues"]) == {"shared"}
 
     def test_enable_vulnerability_scanning_parameter_defaults_to_true(
         self, ecr_template: dict[str, Any]
@@ -149,17 +149,6 @@ class TestECRTemplate:
         assert (
             condition == expected_condition
         ), "EnableCloudWatchLogsCondition does not match expected logic"
-
-    def test_is_production_condition_defines_true_as_environment_equals_production(
-        self, ecr_template: dict[str, Any]
-    ):
-        """Test IsProduction condition logic."""
-        conditions = ecr_template.get("Conditions", {})
-        condition = conditions["IsProduction"]
-        expected_condition = {"Fn::Equals": [{"Ref": "Environment"}, "production"]}
-        assert (
-            condition == expected_condition
-        ), "IsProduction condition does not match expected logic"
 
     def test_enable_vulnerability_scanning_condition_defines_true_as_enable_vulnerability_scanning_is_true(
         self, ecr_template: dict[str, Any]
@@ -218,6 +207,8 @@ class TestECRTemplate:
             {"Key": "Environment", "Value": {"Ref": "Environment"}},
             {"Key": "Purpose", "Value": "FREDSimulationRunner"},
             {"Key": "ManagedBy", "Value": "CloudFormation"},
+            {"Key": "Protected", "Value": "true"},
+            {"Key": "DeletionProtection", "Value": "Retain"},
         ]
         assert tags == expected_tags, "ECR repository tags do not match expected tags"
 
@@ -432,16 +423,15 @@ class TestECRTemplate:
             log_group_name == expected_log_group_name
         ), "Log Group name does not match expected format"
 
-    def test_ecr_log_group_retention_set_to_30_days_for_production_otherwise_14_days(
+    def test_ecr_log_group_retention_set_to_14_days(
         self, ecr_template: dict[str, Any]
     ):
-        """Test Log Group retention is set correctly based on environment."""
+        """Test Log Group retention is set to 14 days for shared environment."""
         log_group = ecr_template["Resources"]["ECRLogGroup"]
         retention_in_days = log_group["Properties"]["RetentionInDays"]
-        expected_retention = {"Fn::If": ["IsProduction", 30, 14]}
         assert (
-            retention_in_days == expected_retention
-        ), "Log Group retention does not match expected values"
+            retention_in_days == 14
+        ), "Log Group retention should be 14 days for shared environment"
 
     def test_ecr_log_group_has_expected_resource_tags(self, ecr_template: dict[str, Any]):
         """Test Log Group has expected resource tags."""

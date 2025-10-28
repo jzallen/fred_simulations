@@ -48,6 +48,12 @@ class SimulationError(SimulationRunnerError):
     pass
 
 
+class UploadError(SimulationRunnerError):
+    """Failed to upload simulation results to S3."""
+
+    pass
+
+
 class WorkflowError(SimulationRunnerError):
     """General workflow execution error."""
 

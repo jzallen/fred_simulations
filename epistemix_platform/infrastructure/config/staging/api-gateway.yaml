@@ -11,14 +11,17 @@ dependencies: []
 parameters:
   Environment: staging
   ServiceName: epistemix-api
-  # Lambda function ARN (will be resolved from stack: epistemix-api-lambda-staging)
-  LambdaFunctionArn: !stack_output_external epistemix-api-lambda-staging::FunctionArn
+  # Lambda function ARN (using staging alias for version control)
+  LambdaFunctionArn: !stack_output_external epistemix-api-lambda-staging::AliasArn
   # CORS origins for staging
   AllowedOrigins: "https://staging.epistemix.io"
   # Stage configuration
   StageName: v1
   ThrottlingBurstLimit: 200
   ThrottlingRateLimit: 100
+  # Deployment timestamp - set via environment variable to force new deployments
+  # Usage: DEPLOYMENT_TIMESTAMP=$(date +%s) sceptre update staging/api-gateway.yaml
+  DeploymentTimestamp: !environment_variable DEPLOYMENT_TIMESTAMP
 
 # Stack-specific tags
 tags:

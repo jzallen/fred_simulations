@@ -44,6 +44,11 @@
       "Description": "API Gateway throttling rate limit (requests per second)",
       "Default": 500,
       "MinValue": 0
+    },
+    "DeploymentTimestamp": {
+      "Type": "String",
+      "Description": "Timestamp to force new deployment (pass via --var at runtime)",
+      "Default": "initial"
     }
   },
 
@@ -335,7 +340,7 @@
       "Properties": {
         "RestApiId": {"Ref": "ApiGatewayRestApi"},
         "Description": {
-          "Fn::Sub": "Deployment for ${Environment} environment at ${AWS::StackName}"
+          "Fn::Sub": "Deployment for ${Environment} at ${DeploymentTimestamp}"
         }
       }
     },
@@ -393,7 +398,7 @@
         ],
         "AccessLogSetting": {
           "DestinationArn": {"Fn::GetAtt": ["ApiGatewayAccessLogGroup", "Arn"]},
-          "Format": "$context.requestId $context.extendedRequestId $context.identity.sourceIp $context.requestTime $context.routeKey $context.status $context.error.message $context.error.messageString $context.integrationErrorMessage"
+          "Format": "{\"requestId\":\"$context.requestId\",\"extendedRequestId\":\"$context.extendedRequestId\",\"ip\":\"$context.identity.sourceIp\",\"requestTime\":\"$context.requestTime\",\"httpMethod\":\"$context.httpMethod\",\"routeKey\":\"$context.routeKey\",\"path\":\"$context.path\",\"status\":\"$context.status\",\"protocol\":\"$context.protocol\",\"responseLength\":\"$context.responseLength\",\"error.message\":\"$context.error.message\",\"error.messageString\":\"$context.error.messageString\",\"integration.error\":\"$context.integrationErrorMessage\",\"integration.status\":\"$context.integration.status\",\"integration.latency\":\"$context.integration.latency\",\"integration.requestId\":\"$context.integration.requestId\"}"
         },
         "Tags": [
           {
