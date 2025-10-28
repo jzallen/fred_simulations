@@ -12,6 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from aws_cdk.assertions import Template
 from sceptre.config.reader import ConfigReader
 from sceptre.context import SceptreContext
 
@@ -68,6 +69,25 @@ def load_template():
             return json.load(f)
 
     return _load_template
+
+
+@pytest.fixture(scope="session")
+def cdk_template_factory():
+    """Factory function to create CDK Template objects from template dicts.
+
+    Use this fixture to create CDK Template objects for flexible assertions.
+
+    Example:
+        def test_s3_bucket(s3_template, cdk_template_factory):
+            template = cdk_template_factory(s3_template)
+            template.has_resource_properties('AWS::S3::Bucket', {...})
+    """
+
+    def _create_cdk_template(template_dict: dict[str, Any]) -> Template:
+        """Create CDK Template object from template dictionary."""
+        return Template.from_string(json.dumps(template_dict))
+
+    return _create_cdk_template
 
 
 @pytest.fixture(scope="session")

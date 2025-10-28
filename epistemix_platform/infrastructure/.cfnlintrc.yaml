@@ -1,0 +1,39 @@
+# CloudFormation Linter (cfn-lint) Configuration
+# Validates CloudFormation templates for syntax, schema, and best practices
+# Documentation: https://github.com/aws-cloudformation/cfn-lint
+
+# Ignore warnings by default, only show errors
+ignore_checks:
+  - W  # Warnings (informational only)
+  - I  # Informational (best practice suggestions)
+
+# Configure specific rules if needed
+# configure_rules:
+#   E3012:  # Example: Resource property validation
+#     strict: false
+
+# Regions to validate against (CloudFormation features vary by region)
+regions:
+  - us-east-1
+  - us-west-2
+
+# Include additional checks for AWS best practices
+include_checks:
+  - E  # Errors (must fix)
+
+# Override specific rules
+# override_spec:
+#   # Example: Allow custom resource types
+#   # Custom::MyResource:
+#   #   Properties:
+#   #     MyProperty:
+#   #       Type: String
+
+# Append custom rules directory (future enhancement)
+# append_rules:
+#   - custom_rules/
+
+# Configure template parameter values for validation
+# parameter_values:
+#   Environment: dev
+#   BucketName: test-bucket-name
