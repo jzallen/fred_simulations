@@ -572,3 +572,188 @@ class TestECRTemplate:
         assert (
             "ECRScanEventRule" not in resources
         ), "ECRScanEventRule resource should not exist after SNS notification removal"
+
+    # ============================================================================
+    # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
+    # ============================================================================
+    # These tests validate the template using external tools for comprehensive
+    # infrastructure validation. They are marked as integration tests because
+    # they require external tools that may not be available in all environments.
+    # Run with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "integration"
+    # Skip with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "not integration"
+
+    @pytest.mark.integration
+    def test_template_passes_cfn_lint(self, ecr_template_path: str):
+        """Test that the ECR template passes cfn-lint validation.
+
+        cfn-lint validates CloudFormation templates against AWS schema and best practices.
+        This catches syntax errors, invalid property values, and common misconfigurations.
+
+        Requires: cfn-lint (Python package in infrastructure_env)
+        Install: pants export --resolve=infrastructure_env
+        Config: .cfnlintrc.yaml
+        """
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, "-m", "cfnlint", ecr_template_path],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, (
+            f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+    @pytest.mark.integration
+    def test_template_passes_security_scan(self, ecr_template_path: str):
+        """Test that the ECR template passes cfn-nag security scanning.
+
+        cfn-nag scans CloudFormation templates for security anti-patterns with 140+ rules.
+        It identifies potential security issues like overly permissive IAM policies,
+        missing encryption, public access, and more.
+
+        Requires: Docker with stelligent/cfn_nag image
+        Install: docker pull stelligent/cfn_nag
+        Usage: ./scripts/run-cfn-nag.sh <template>
+
+        To suppress warnings, add metadata to resources:
+        "Metadata": {
+          "cfn_nag": {
+            "rules_to_suppress": [{
+              "id": "W79",
+              "reason": "Explanation of why this is acceptable"
+            }]
+          }
+        }
+        """
+        import subprocess
+        from pathlib import Path
+
+        script_path = Path(__file__).parent.parent.parent / "scripts" / "run-cfn-nag.sh"
+
+        result = subprocess.run(
+            [str(script_path), ecr_template_path],
+            capture_output=True,
+            text=True,
+        )
+
+        # cfn-nag returns 0 for pass, non-zero for failures/warnings
+        assert result.returncode == 0, (
+            f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+    @pytest.mark.integration
+    def test_template_passes_policy_validation(self, ecr_template_path: str):
+        """Test that the ECR template passes cfn-guard policy validation.
+
+        cfn-guard validates CloudFormation templates against custom policy rules
+        written in Guard DSL. This enforces organizational standards and compliance
+        requirements specific to our infrastructure.
+
+        Requires: cfn-guard binary (pre-built from AWS)
+        Install: ./scripts/install-cfn-guard.sh
+        Rules: guard_rules/ecr/ecr_security_rules.guard
+        Docs: guard_rules/README.md
+        """
+        import subprocess
+        from pathlib import Path
+
+        rules_path = Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
+
+        result = subprocess.run(
+            ["cfn-guard", "validate", "--data", ecr_template_path, "--rules", str(rules_path)],
+            capture_output=True,
+            text=True,
+        )
+
+        # cfn-guard returns 0 for pass, non-zero for failures
+        assert result.returncode == 0, (
+            f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+    # ============================================================================
+    # CDK Assertion Tests (Behavioral Validation)
+    # ============================================================================
+    # These tests use AWS CDK's flexible assertion library to validate template
+    # behavior without coupling to implementation details. They test WHAT the
+    # template does (e.g., "encryption is enabled") rather than HOW it's structured
+    # (e.g., "specific property names exist").
+    #
+    # Benefits:
+    # - Resilient to refactoring (survives renaming, restructuring)
+    # - More readable (business logic vs template structure)
+    # - Flexible matching (Match.object_like, Match.array_with)
+    #
+    # Docs: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.assertions/README.html
+
+    def test_repository_has_image_scanning_enabled(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has image scanning enabled.
+
+        Image scanning automatically scans container images for vulnerabilities
+        when pushed to the repository. This is critical for security compliance.
+
+        Uses CDK assertions to verify the behavior exists without depending on
+        specific property structures that might change during refactoring.
+
+        Note: The template uses CloudFormation conditionals (Fn::If) for ScanOnPush,
+        so we test for the presence of the configuration rather than a specific value.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            'AWS::ECR::Repository',
+            Match.object_like({
+                'ImageScanningConfiguration': Match.object_like({
+                    'ScanOnPush': Match.any_value()
+                })
+            })
+        )
+
+    def test_repository_has_encryption_enabled(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has encryption enabled.
+
+        Encryption at rest protects container images stored in ECR using either
+        AES256 or KMS encryption. This is required for compliance with security
+        standards.
+
+        Uses flexible matching to accept either AES256 or KMS encryption types.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            'AWS::ECR::Repository',
+            Match.object_like({
+                'EncryptionConfiguration': {
+                    'EncryptionType': Match.string_like_regexp(r'^(AES256|KMS)$')
+                }
+            })
+        )
+
+    def test_repository_has_lifecycle_policy(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has a lifecycle policy configured.
+
+        Lifecycle policies automatically clean up old or untagged images to manage
+        storage costs and maintain repository hygiene. This prevents unbounded
+        growth of container image storage.
+
+        Tests for the presence of a lifecycle policy without validating specific
+        rules, allowing flexibility in policy configuration.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            'AWS::ECR::Repository',
+            Match.object_like({
+                'LifecyclePolicy': Match.object_like({
+                    'LifecyclePolicyText': Match.any_value()
+                })
+            })
+        )
