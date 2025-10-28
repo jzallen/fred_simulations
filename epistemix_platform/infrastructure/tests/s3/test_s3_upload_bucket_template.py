@@ -761,20 +761,18 @@ class TestS3Template:
     # with: pants test :: -m "not integration"
 
     @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, s3_template_path: Path):
+    def test_template_passes_cfn_lint(self, s3_template_path: Path, cfnlint_config_path: str):
         """Verify S3 template passes CloudFormation linting (syntax/schema validation).
 
         Requires: cfn-lint (available in exported venv at dist/export/python/virtualenvs/infrastructure_env/)
         Run manually: dist/export/python/virtualenvs/infrastructure_env/3.11.13/bin/cfn-lint <template>
         """
         import subprocess
-        import sys
 
-        # Use Python module execution to access cfn-lint from current environment
         result = subprocess.run(
-            [sys.executable, '-m', 'cfnlint', str(s3_template_path)],
+            ["cfn-lint", "--config-file", cfnlint_config_path, str(s3_template_path)],
             capture_output=True,
-            text=True
+            text=True,
         )
         assert result.returncode == 0, (
             f"cfn-lint found errors in template:\n"
@@ -783,7 +781,7 @@ class TestS3Template:
         )
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, s3_template_path: Path, infrastructure_root: Path):
+    def test_template_passes_security_scan(self, s3_template_path: Path, cfn_nag_script_path: str):
         """Verify S3 template passes security scanning (cfn-nag - 140+ security rules).
 
         Requires: Docker + cfn-nag image (stelligent/cfn_nag)
@@ -791,11 +789,8 @@ class TestS3Template:
         """
         import subprocess
 
-        script = infrastructure_root / "scripts" / "run-cfn-nag.sh"
         result = subprocess.run(
-            [str(script), str(s3_template_path)],
-            capture_output=True,
-            text=True
+            [cfn_nag_script_path, str(s3_template_path)], capture_output=True, text=True
         )
 
         # cfn-nag returns 0 for pass, non-zero for violations
@@ -809,7 +804,9 @@ class TestS3Template:
         )
 
     @pytest.mark.integration
-    def test_template_passes_policy_validation(self, s3_template_path: Path, infrastructure_root: Path):
+    def test_template_passes_policy_validation(
+        self, s3_template_path: Path, infrastructure_root: Path
+    ):
         """Verify S3 template passes organizational policy validation (cfn-guard).
 
         Requires: cfn-guard binary (install via scripts/install-cfn-guard.sh)
@@ -820,11 +817,9 @@ class TestS3Template:
         rules = infrastructure_root / "guard_rules" / "s3" / "s3_security_rules.guard"
 
         result = subprocess.run(
-            ['cfn-guard', 'validate',
-             '--data', str(s3_template_path),
-             '--rules', str(rules)],
+            ["cfn-guard", "validate", "--data", str(s3_template_path), "--rules", str(rules)],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0, (
@@ -850,21 +845,25 @@ class TestS3Template:
 
         # Verify bucket has encryption configuration
         template.has_resource_properties(
-            'AWS::S3::Bucket',
-            Match.object_like({
-                'BucketEncryption': {
-                    'ServerSideEncryptionConfiguration': Match.array_with([
-                        Match.object_like({
-                            'ServerSideEncryptionByDefault': {
-                                'SSEAlgorithm': 'AES256'
-                            }
-                        })
-                    ])
+            "AWS::S3::Bucket",
+            Match.object_like(
+                {
+                    "BucketEncryption": {
+                        "ServerSideEncryptionConfiguration": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
+                                )
+                            ]
+                        )
+                    }
                 }
-            })
+            ),
         )
 
-    def test_bucket_policy_enforces_https_only(self, s3_template: dict[str, Any], cdk_template_factory):
+    def test_bucket_policy_enforces_https_only(
+        self, s3_template: dict[str, Any], cdk_template_factory
+    ):
         """Verify bucket policy enforces HTTPS-only connections (flexible CDK assertion).
 
         This test replaces brittle Sid-based tests with flexible behavioral validation.
@@ -877,17 +876,21 @@ class TestS3Template:
 
         # Verify bucket policy denies insecure connections (however implemented)
         template.has_resource_properties(
-            'AWS::S3::BucketPolicy',
-            Match.object_like({
-                'PolicyDocument': {
-                    'Statement': Match.array_with([
-                        Match.object_like({
-                            'Effect': 'Deny',
-                            'Condition': {
-                                'Bool': {'aws:SecureTransport': 'false'}
-                            }
-                        })
-                    ])
+            "AWS::S3::BucketPolicy",
+            Match.object_like(
+                {
+                    "PolicyDocument": {
+                        "Statement": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {
+                                        "Effect": "Deny",
+                                        "Condition": {"Bool": {"aws:SecureTransport": "false"}},
+                                    }
+                                )
+                            ]
+                        )
+                    }
                 }
-            })
+            ),
         )

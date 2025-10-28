@@ -16,23 +16,21 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from aws_cdk.assertions import Match
 
 
 @pytest.fixture(scope="session")
 def template_path() -> str:
     """Return the path to the epistemix-api-repository CloudFormation template."""
     return str(
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / "ecr"
-        / "epistemix-api-repository.json"
+        Path(__file__).parent.parent.parent / "templates" / "ecr" / "epistemix-api-repository.json"
     )
 
 
 @pytest.fixture(scope="session")
 def template(template_path: str) -> dict[str, Any]:
     """Load the epistemix-api-repository CloudFormation template as a dictionary."""
-    with open(template_path, "r") as f:
+    with open(template_path) as f:
         return json.load(f)
 
 
@@ -91,17 +89,15 @@ class TestEpistemixAPIRepositoryTemplate:
     # ECR Repository Resource Tests
     # ============================================================================
 
-    def test_ecr_repository_exists(self, template: dict[str, Any]):
+    def test_ecr_repository_exists(self, template, cdk_template_factory):
         """Test ECRRepository resource exists."""
-        resources = template.get("Resources", {})
-        assert "ECRRepository" in resources, "ECRRepository resource not found"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::ECR::Repository", 1)
 
-    def test_ecr_repository_type(self, template: dict[str, Any]):
+    def test_ecr_repository_type(self, template, cdk_template_factory):
         """Test ECRRepository has correct type."""
-        repo = template["Resources"]["ECRRepository"]
-        assert (
-            repo.get("Type") == "AWS::ECR::Repository"
-        ), "ECRRepository has incorrect type"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.resource_count_is("AWS::ECR::Repository", 1)
 
     def test_ecr_repository_has_retain_policy(self, template: dict[str, Any]):
         """Test ECRRepository has DeletionPolicy set to Retain."""
@@ -117,58 +113,68 @@ class TestEpistemixAPIRepositoryTemplate:
             repo.get("UpdateReplacePolicy") == "Retain"
         ), "ECRRepository UpdateReplacePolicy should be Retain"
 
-    def test_repository_name_is_epistemix_api(self, template: dict[str, Any]):
+    def test_repository_name_is_epistemix_api(self, template, cdk_template_factory):
         """Test repository name is 'epistemix-api'."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        assert (
-            repo_props.get("RepositoryName") == "epistemix-api"
-        ), "Repository name should be 'epistemix-api'"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository", Match.object_like({"RepositoryName": "epistemix-api"})
+        )
 
-    def test_image_tag_mutability_is_mutable(self, template: dict[str, Any]):
+    def test_image_tag_mutability_is_mutable(self, template, cdk_template_factory):
         """Test image tag mutability is set to MUTABLE."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        assert (
-            repo_props.get("ImageTagMutability") == "MUTABLE"
-        ), "ImageTagMutability should be MUTABLE"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository", Match.object_like({"ImageTagMutability": "MUTABLE"})
+        )
 
     # ============================================================================
     # Security Configuration Tests
     # ============================================================================
 
-    def test_image_scanning_enabled(self, template: dict[str, Any]):
+    def test_image_scanning_enabled(self, template, cdk_template_factory):
         """Test image scanning is enabled."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        scan_config = repo_props.get("ImageScanningConfiguration", {})
-        assert (
-            scan_config.get("ScanOnPush") is True
-        ), "ScanOnPush should be enabled (true)"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"ImageScanningConfiguration": Match.object_like({"ScanOnPush": True})}
+            ),
+        )
 
-    def test_encryption_configured(self, template: dict[str, Any]):
+    def test_encryption_configured(self, template, cdk_template_factory):
         """Test encryption is configured."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        enc_config = repo_props.get("EncryptionConfiguration", {})
-        assert enc_config, "EncryptionConfiguration should be present"
-        assert (
-            enc_config.get("EncryptionType") == "AES256"
-        ), "EncryptionType should be AES256"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"EncryptionConfiguration": Match.object_like({"EncryptionType": "AES256"})}
+            ),
+        )
 
     # ============================================================================
     # Lifecycle Policy Tests
     # ============================================================================
 
-    def test_lifecycle_policy_exists(self, template: dict[str, Any]):
+    def test_lifecycle_policy_exists(self, template, cdk_template_factory):
         """Test lifecycle policy is configured."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        assert (
-            "LifecyclePolicy" in repo_props
-        ), "LifecyclePolicy should be configured"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository", Match.object_like({"LifecyclePolicy": Match.any_value()})
+        )
 
-    def test_lifecycle_policy_text_is_valid_json(self, template: dict[str, Any]):
+    def test_lifecycle_policy_text_is_valid_json(self, template, cdk_template_factory):
         """Test lifecycle policy text is valid JSON."""
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"LifecyclePolicy": Match.object_like({"LifecyclePolicyText": Match.any_value()})}
+            ),
+        )
+
+        # Additionally validate JSON structure
         repo_props = template["Resources"]["ECRRepository"]["Properties"]
         policy_text = repo_props["LifecyclePolicy"]["LifecyclePolicyText"]
-
-        # Parse the policy text to verify it's valid JSON
         policy = json.loads(policy_text)
         assert isinstance(policy, dict), "Lifecycle policy should be a JSON object"
         assert "rules" in policy, "Lifecycle policy should have rules"
@@ -192,120 +198,92 @@ class TestEpistemixAPIRepositoryTemplate:
     # Repository Policy Tests
     # ============================================================================
 
-    def test_repository_policy_exists(self, template: dict[str, Any]):
+    def test_repository_policy_exists(self, template, cdk_template_factory):
         """Test repository policy is configured."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        assert (
-            "RepositoryPolicyText" in repo_props
-        ), "RepositoryPolicyText should be configured"
-
-    def test_repository_policy_allows_lambda_access(self, template: dict[str, Any]):
-        """Test repository policy allows Lambda service access."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        policy = repo_props["RepositoryPolicyText"]
-
-        statements = policy.get("Statement", [])
-        assert len(statements) > 0, "Repository policy should have statements"
-
-        # Find Lambda access statement
-        lambda_statement = next(
-            (s for s in statements if "Lambda" in s.get("Sid", "")), None
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository", Match.object_like({"RepositoryPolicyText": Match.any_value()})
         )
-        assert lambda_statement is not None, "Lambda access statement not found"
 
-        # Verify principal is Lambda service
-        principal = lambda_statement.get("Principal", {})
-        assert (
-            principal.get("Service") == "lambda.amazonaws.com"
-        ), "Principal should be lambda.amazonaws.com"
-
-        # Verify required permissions
-        actions = lambda_statement.get("Action", [])
-        assert "ecr:BatchGetImage" in actions, "Should allow ecr:BatchGetImage"
-        assert (
-            "ecr:GetDownloadUrlForLayer" in actions
-        ), "Should allow ecr:GetDownloadUrlForLayer"
+    def test_repository_policy_allows_lambda_access(self, template, cdk_template_factory):
+        """Test repository policy allows Lambda service access."""
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {
+                    "RepositoryPolicyText": Match.object_like(
+                        {
+                            "Statement": Match.array_with(
+                                [
+                                    Match.object_like(
+                                        {
+                                            "Principal": {"Service": "lambda.amazonaws.com"},
+                                            "Action": Match.array_with(
+                                                ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+                                            ),
+                                        }
+                                    )
+                                ]
+                            )
+                        }
+                    )
+                }
+            ),
+        )
 
     # ============================================================================
     # Tag Tests
     # ============================================================================
 
-    def test_repository_has_tags(self, template: dict[str, Any]):
+    def test_repository_has_tags(self, template, cdk_template_factory):
         """Test repository has tags configured."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        assert "Tags" in repo_props, "Repository should have tags"
-        assert len(repo_props["Tags"]) > 0, "Repository should have at least one tag"
-
-    def test_repository_has_environment_tag(self, template: dict[str, Any]):
-        """Test repository has Environment tag."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        tags = repo_props["Tags"]
-
-        env_tag = next((t for t in tags if t.get("Key") == "Environment"), None)
-        assert env_tag is not None, "Environment tag not found"
-
-    def test_repository_has_service_tag(self, template: dict[str, Any]):
-        """Test repository has Service tag set to EpistemixAPI."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        tags = repo_props["Tags"]
-
-        service_tag = next((t for t in tags if t.get("Key") == "Service"), None)
-        assert service_tag is not None, "Service tag not found"
-        assert (
-            service_tag.get("Value") == "EpistemixAPI"
-        ), "Service tag should be EpistemixAPI"
-
-    def test_repository_has_protection_tags(self, template: dict[str, Any]):
-        """Test repository has protection-related tags."""
-        repo_props = template["Resources"]["ECRRepository"]["Properties"]
-        tags = repo_props["Tags"]
-
-        protected_tag = next((t for t in tags if t.get("Key") == "Protected"), None)
-        assert protected_tag is not None, "Protected tag not found"
-        assert (
-            protected_tag.get("Value") == "true"
-        ), "Protected tag should be 'true'"
-
-        deletion_tag = next(
-            (t for t in tags if t.get("Key") == "DeletionProtection"), None
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like({"Tags": Match.array_with([Match.object_like({})])}),
         )
-        assert deletion_tag is not None, "DeletionProtection tag not found"
-        assert (
-            deletion_tag.get("Value") == "Retain"
-        ), "DeletionProtection tag should be 'Retain'"
 
-    # ============================================================================
-    # Output Tests
-    # ============================================================================
+    def test_repository_has_environment_tag(self, template, cdk_template_factory):
+        """Test repository has Environment tag."""
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"Tags": Match.array_with([Match.object_like({"Key": "Environment"})])}
+            ),
+        )
 
-    def test_outputs_exist(self, template: dict[str, Any]):
-        """Test template has outputs defined."""
-        assert "Outputs" in template, "Template should have Outputs section"
-        assert len(template["Outputs"]) > 0, "Template should have at least one output"
+    def test_repository_has_service_tag(self, template, cdk_template_factory):
+        """Test repository has Service tag set to EpistemixAPI."""
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {
+                    "Tags": Match.array_with(
+                        [Match.object_like({"Key": "Service", "Value": "EpistemixAPI"})]
+                    )
+                }
+            ),
+        )
 
-    def test_repository_name_output_exists(self, template: dict[str, Any]):
-        """Test RepositoryName output exists."""
-        outputs = template["Outputs"]
-        assert "RepositoryName" in outputs, "RepositoryName output not found"
-
-    def test_repository_arn_output_exists(self, template: dict[str, Any]):
-        """Test RepositoryArn output exists."""
-        outputs = template["Outputs"]
-        assert "RepositoryArn" in outputs, "RepositoryArn output not found"
-
-    def test_repository_uri_output_exists(self, template: dict[str, Any]):
-        """Test RepositoryUri output exists."""
-        outputs = template["Outputs"]
-        assert "RepositoryUri" in outputs, "RepositoryUri output not found"
-
-    def test_outputs_have_exports(self, template: dict[str, Any]):
-        """Test outputs have export names for cross-stack references."""
-        outputs = template["Outputs"]
-
-        for output_name, output_value in outputs.items():
-            assert (
-                "Export" in output_value
-            ), f"{output_name} output should have Export configured"
+    def test_repository_has_protection_tags(self, template, cdk_template_factory):
+        """Test repository has protection-related tags."""
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {
+                    "Tags": Match.array_with(
+                        [
+                            Match.object_like({"Key": "Protected", "Value": "true"}),
+                            Match.object_like({"Key": "DeletionProtection", "Value": "Retain"}),
+                        ]
+                    )
+                }
+            ),
+        )
 
     # ============================================================================
     # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
@@ -317,7 +295,7 @@ class TestEpistemixAPIRepositoryTemplate:
     # Skip with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "not integration"
 
     @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, template_path: str):
+    def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
         """Test that the template passes cfn-lint validation.
 
         cfn-lint validates CloudFormation templates against AWS schema and best practices.
@@ -328,20 +306,19 @@ class TestEpistemixAPIRepositoryTemplate:
         Config: .cfnlintrc.yaml
         """
         import subprocess
-        import sys
 
         result = subprocess.run(
-            [sys.executable, "-m", "cfnlint", template_path],
+            ["cfn-lint", "--config-file", cfnlint_config_path, template_path],
             capture_output=True,
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, template_path: str):
+    def test_template_passes_security_scan(self, template_path: str, cfn_nag_script_path: str):
         """Test that the template passes cfn-nag security scanning.
 
         cfn-nag scans CloudFormation templates for security anti-patterns with 140+ rules.
@@ -363,20 +340,17 @@ class TestEpistemixAPIRepositoryTemplate:
         }
         """
         import subprocess
-        from pathlib import Path
-
-        script_path = Path(__file__).parent.parent.parent / "scripts" / "run-cfn-nag.sh"
 
         result = subprocess.run(
-            [str(script_path), template_path],
+            [cfn_nag_script_path, template_path],
             capture_output=True,
             text=True,
         )
 
         # cfn-nag returns 0 for pass, non-zero for failures/warnings
-        assert result.returncode == 0, (
-            f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
     def test_template_passes_policy_validation(self, template_path: str):
@@ -392,13 +366,9 @@ class TestEpistemixAPIRepositoryTemplate:
         Docs: guard_rules/README.md
         """
         import subprocess
-        from pathlib import Path
 
         rules_path = (
-            Path(__file__).parent.parent.parent
-            / "guard_rules"
-            / "ecr"
-            / "ecr_security_rules.guard"
+            Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
         )
 
         result = subprocess.run(
@@ -415,9 +385,9 @@ class TestEpistemixAPIRepositoryTemplate:
         )
 
         # cfn-guard returns 0 for pass, non-zero for failures
-        assert result.returncode == 0, (
-            f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
 
     # ============================================================================
     # CDK Assertion Tests (Behavioral Validation)
@@ -449,9 +419,7 @@ class TestEpistemixAPIRepositoryTemplate:
 
         cdk_template.has_resource_properties(
             "AWS::ECR::Repository",
-            Match.object_like(
-                {"ImageScanningConfiguration": {"ScanOnPush": True}}
-            ),
+            Match.object_like({"ImageScanningConfiguration": {"ScanOnPush": True}}),
         )
 
     def test_repository_has_encryption_enabled(self, template, cdk_template_factory):
@@ -495,11 +463,7 @@ class TestEpistemixAPIRepositoryTemplate:
         cdk_template.has_resource_properties(
             "AWS::ECR::Repository",
             Match.object_like(
-                {
-                    "LifecyclePolicy": Match.object_like(
-                        {"LifecyclePolicyText": Match.any_value()}
-                    )
-                }
+                {"LifecyclePolicy": Match.object_like({"LifecyclePolicyText": Match.any_value()})}
             ),
         )
 

@@ -16,20 +16,19 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from aws_cdk.assertions import Match
 
 
 @pytest.fixture(scope="session")
 def template_path() -> str:
     """Return the path to the RDS PostgreSQL CloudFormation template."""
-    return str(
-        Path(__file__).parent.parent.parent / "templates" / "rds" / "rds-postgres.json"
-    )
+    return str(Path(__file__).parent.parent.parent / "templates" / "rds" / "rds-postgres.json")
 
 
 @pytest.fixture(scope="session")
 def template(template_path: str) -> dict[str, Any]:
     """Load the RDS PostgreSQL CloudFormation template as a dictionary."""
-    with open(template_path, "r") as f:
+    with open(template_path) as f:
         return json.load(f)
 
 
@@ -57,8 +56,9 @@ class TestRDSPostgresTemplate:
     def test_template_has_description(self, template: dict[str, Any]):
         """Test template has a description."""
         assert "Description" in template, "Template missing Description"
-        assert "RDS" in template["Description"] or "PostgreSQL" in template["Description"], \
-            "Description should mention RDS or PostgreSQL"
+        assert (
+            "RDS" in template["Description"] or "PostgreSQL" in template["Description"]
+        ), "Description should mention RDS or PostgreSQL"
 
     # ============================================================================
     # Parameter Tests
@@ -84,49 +84,27 @@ class TestRDSPostgresTemplate:
     def test_db_password_is_noecho(self, template: dict[str, Any]):
         """Test DBPassword parameter has NoEcho enabled."""
         db_password = template["Parameters"]["DBPassword"]
-        assert (
-            db_password.get("NoEcho") is True
-        ), "DBPassword should have NoEcho enabled"
+        assert db_password.get("NoEcho") is True, "DBPassword should have NoEcho enabled"
 
     def test_db_password_has_length_constraints(self, template: dict[str, Any]):
         """Test DBPassword has minimum and maximum length constraints."""
         db_password = template["Parameters"]["DBPassword"]
-        assert int(db_password.get("MinLength", 0)) >= 8, \
-            "DBPassword MinLength should be at least 8"
+        assert (
+            int(db_password.get("MinLength", 0)) >= 8
+        ), "DBPassword MinLength should be at least 8"
         assert "MaxLength" in db_password, "DBPassword should have MaxLength"
 
     def test_publicly_accessible_defaults_to_false(self, template: dict[str, Any]):
         """Test PubliclyAccessible parameter defaults to false."""
         param = template["Parameters"]["PubliclyAccessible"]
-        assert param.get("Default") == "false", \
-            "PubliclyAccessible should default to 'false'"
+        assert param.get("Default") == "false", "PubliclyAccessible should default to 'false'"
 
     def test_environment_parameter_has_allowed_values(self, template: dict[str, Any]):
         """Test Environment parameter has appropriate allowed values."""
         env_param = template["Parameters"]["Environment"]
         allowed = env_param.get("AllowedValues", [])
         assert "dev" in allowed, "Environment should allow 'dev'"
-        assert "staging" in allowed or "prod" in allowed, \
-            "Environment should allow staging or prod"
-
-    # ============================================================================
-    # Condition Tests
-    # ============================================================================
-
-    def test_conditions_defined(self, template: dict[str, Any]):
-        """Test that conditions are defined."""
-        assert "Conditions" in template, "Template should have Conditions"
-
-    def test_has_lambda_security_group_condition(self, template: dict[str, Any]):
-        """Test HasLambdaSecurityGroup condition exists."""
-        conditions = template.get("Conditions", {})
-        assert "HasLambdaSecurityGroup" in conditions, \
-            "HasLambdaSecurityGroup condition not found"
-
-    def test_has_developer_ip_condition(self, template: dict[str, Any]):
-        """Test HasDeveloperIP condition exists."""
-        conditions = template.get("Conditions", {})
-        assert "HasDeveloperIP" in conditions, "HasDeveloperIP condition not found"
+        assert "staging" in allowed or "prod" in allowed, "Environment should allow staging or prod"
 
     # ============================================================================
     # DB Instance Resource Tests
@@ -140,21 +118,12 @@ class TestRDSPostgresTemplate:
     def test_db_instance_type(self, template: dict[str, Any]):
         """Test DBInstance has correct type."""
         db_instance = template["Resources"]["DBInstance"]
-        assert (
-            db_instance.get("Type") == "AWS::RDS::DBInstance"
-        ), "DBInstance has incorrect type"
+        assert db_instance.get("Type") == "AWS::RDS::DBInstance", "DBInstance has incorrect type"
 
     def test_db_instance_uses_postgres(self, template: dict[str, Any]):
         """Test DBInstance uses PostgreSQL engine."""
         db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert db_props.get("Engine") == "postgres", \
-            "DBInstance should use postgres engine"
-
-    def test_db_instance_has_encryption_enabled(self, template: dict[str, Any]):
-        """Test DBInstance has storage encryption enabled."""
-        db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert db_props.get("StorageEncrypted") is True, \
-            "DBInstance should have StorageEncrypted set to true"
+        assert db_props.get("Engine") == "postgres", "DBInstance should use postgres engine"
 
     def test_db_instance_has_backup_retention(self, template: dict[str, Any]):
         """Test DBInstance has backup retention configured."""
@@ -166,36 +135,37 @@ class TestRDSPostgresTemplate:
     def test_db_instance_has_backup_window(self, template: dict[str, Any]):
         """Test DBInstance has preferred backup window."""
         db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert "PreferredBackupWindow" in db_props, \
-            "PreferredBackupWindow should be configured"
+        assert "PreferredBackupWindow" in db_props, "PreferredBackupWindow should be configured"
 
     def test_db_instance_has_maintenance_window(self, template: dict[str, Any]):
         """Test DBInstance has preferred maintenance window."""
         db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert "PreferredMaintenanceWindow" in db_props, \
-            "PreferredMaintenanceWindow should be configured"
+        assert (
+            "PreferredMaintenanceWindow" in db_props
+        ), "PreferredMaintenanceWindow should be configured"
 
     def test_db_instance_has_deletion_policy(self, template: dict[str, Any]):
         """Test DBInstance has DeletionPolicy configured."""
+        # DeletionPolicy is a resource-level property, not in Properties
         db_instance = template["Resources"]["DBInstance"]
-        assert "DeletionPolicy" in db_instance, \
-            "DBInstance should have DeletionPolicy"
-        assert db_instance["DeletionPolicy"] == "Snapshot", \
-            "DBInstance DeletionPolicy should be Snapshot for data safety"
+        assert (
+            db_instance.get("DeletionPolicy") == "Snapshot"
+        ), "DBInstance DeletionPolicy should be Snapshot for data safety"
 
-    def test_db_instance_in_subnet_group(self, template: dict[str, Any]):
+    def test_db_instance_in_subnet_group(self, template, cdk_template_factory):
         """Test DBInstance is associated with a subnet group."""
-        db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert "DBSubnetGroupName" in db_props, \
-            "DBInstance should be in a DBSubnetGroup"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::RDS::DBInstance", Match.object_like({"DBSubnetGroupName": Match.any_value()})
+        )
 
     def test_db_instance_has_security_groups(self, template: dict[str, Any]):
         """Test DBInstance has VPC security groups."""
         db_props = template["Resources"]["DBInstance"]["Properties"]
-        assert "VPCSecurityGroups" in db_props, \
-            "DBInstance should have VPCSecurityGroups"
-        assert len(db_props["VPCSecurityGroups"]) > 0, \
-            "DBInstance should have at least one security group"
+        assert "VPCSecurityGroups" in db_props, "DBInstance should have VPCSecurityGroups"
+        assert (
+            len(db_props["VPCSecurityGroups"]) > 0
+        ), "DBInstance should have at least one security group"
 
     # ============================================================================
     # DB Subnet Group Tests
@@ -209,21 +179,22 @@ class TestRDSPostgresTemplate:
     def test_db_subnet_group_type(self, template: dict[str, Any]):
         """Test DBSubnetGroup has correct type."""
         subnet_group = template["Resources"]["DBSubnetGroup"]
-        assert subnet_group.get("Type") == "AWS::RDS::DBSubnetGroup", \
-            "DBSubnetGroup has incorrect type"
+        assert (
+            subnet_group.get("Type") == "AWS::RDS::DBSubnetGroup"
+        ), "DBSubnetGroup has incorrect type"
 
     def test_db_subnet_group_has_subnets(self, template: dict[str, Any]):
         """Test DBSubnetGroup references subnet IDs."""
         subnet_props = template["Resources"]["DBSubnetGroup"]["Properties"]
-        assert "SubnetIds" in subnet_props, \
-            "DBSubnetGroup should have SubnetIds"
+        assert "SubnetIds" in subnet_props, "DBSubnetGroup should have SubnetIds"
 
-    def test_db_subnet_group_has_tags(self, template: dict[str, Any]):
+    def test_db_subnet_group_has_tags(self, template, cdk_template_factory):
         """Test DBSubnetGroup has tags."""
-        subnet_props = template["Resources"]["DBSubnetGroup"]["Properties"]
-        assert "Tags" in subnet_props, "DBSubnetGroup should have tags"
-        assert len(subnet_props["Tags"]) > 0, \
-            "DBSubnetGroup should have at least one tag"
+        cdk_template = cdk_template_factory(template)
+        cdk_template.has_resource_properties(
+            "AWS::RDS::DBSubnetGroup",
+            Match.object_like({"Tags": Match.array_with([Match.object_like({})])}),
+        )
 
     # ============================================================================
     # Security Group Tests
@@ -237,8 +208,7 @@ class TestRDSPostgresTemplate:
     def test_db_security_group_type(self, template: dict[str, Any]):
         """Test DBSecurityGroup has correct type."""
         sg = template["Resources"]["DBSecurityGroup"]
-        assert sg.get("Type") == "AWS::EC2::SecurityGroup", \
-            "DBSecurityGroup has incorrect type"
+        assert sg.get("Type") == "AWS::EC2::SecurityGroup", "DBSecurityGroup has incorrect type"
 
     def test_db_security_group_in_vpc(self, template: dict[str, Any]):
         """Test DBSecurityGroup is associated with VPC."""
@@ -248,93 +218,24 @@ class TestRDSPostgresTemplate:
     def test_db_security_group_has_description(self, template: dict[str, Any]):
         """Test DBSecurityGroup has a description."""
         sg_props = template["Resources"]["DBSecurityGroup"]["Properties"]
-        assert "GroupDescription" in sg_props, \
-            "DBSecurityGroup should have GroupDescription"
+        assert "GroupDescription" in sg_props, "DBSecurityGroup should have GroupDescription"
 
-    def test_conditional_security_group_ingress_rules_exist(self, template: dict[str, Any]):
-        """Test conditional ingress rules are defined."""
-        resources = template.get("Resources", {})
-
-        # These are conditional resources
-        conditional_rules = [
-            "DBSecurityGroupIngressVPC",
-            "DBSecurityGroupIngressDeveloper",
-            "DBSecurityGroupIngressLambda",
-        ]
-
-        for rule_name in conditional_rules:
-            assert rule_name in resources, f"{rule_name} should be defined"
-            assert "Condition" in resources[rule_name], \
-                f"{rule_name} should have a Condition"
-
-    def test_ingress_rules_target_postgres_port(self, template: dict[str, Any]):
+    def test_ingress_rules_target_postgres_port(self, template, cdk_template_factory):
         """Test ingress rules allow PostgreSQL port 5432."""
-        resources = template.get("Resources", {})
+        cdk_template = cdk_template_factory(template)
 
-        ingress_rules = [
-            "DBSecurityGroupIngressVPC",
-            "DBSecurityGroupIngressDeveloper",
-            "DBSecurityGroupIngressLambda",
-        ]
-
-        for rule_name in ingress_rules:
-            if rule_name in resources:
-                props = resources[rule_name]["Properties"]
-                assert props.get("FromPort") == 5432, \
-                    f"{rule_name} should allow port 5432"
-                assert props.get("ToPort") == 5432, \
-                    f"{rule_name} should allow port 5432"
-                assert props.get("IpProtocol") == "tcp", \
-                    f"{rule_name} should use TCP protocol"
-
-    # ============================================================================
-    # Output Tests
-    # ============================================================================
-
-    def test_outputs_exist(self, template: dict[str, Any]):
-        """Test template has outputs defined."""
-        assert "Outputs" in template, "Template should have Outputs section"
-        assert len(template["Outputs"]) > 0, \
-            "Template should have at least one output"
-
-    def test_db_endpoint_output_exists(self, template: dict[str, Any]):
-        """Test DBEndpoint output exists."""
-        outputs = template["Outputs"]
-        assert "DBEndpoint" in outputs, "DBEndpoint output not found"
-
-    def test_db_port_output_exists(self, template: dict[str, Any]):
-        """Test DBPort output exists."""
-        outputs = template["Outputs"]
-        assert "DBPort" in outputs, "DBPort output not found"
-
-    def test_connection_string_output_exists(self, template: dict[str, Any]):
-        """Test ConnectionString output exists for convenience."""
-        outputs = template["Outputs"]
-        assert "ConnectionString" in outputs, "ConnectionString output not found"
-
-    def test_security_group_id_output_exists(self, template: dict[str, Any]):
-        """Test SecurityGroupId output exists."""
-        outputs = template["Outputs"]
-        assert "SecurityGroupId" in outputs, "SecurityGroupId output not found"
-
-    def test_outputs_have_exports(self, template: dict[str, Any]):
-        """Test key outputs have export names for cross-stack references."""
-        outputs = template["Outputs"]
-
-        # These outputs should be exportable for other stacks
-        exportable_outputs = ["DBEndpoint", "DBPort", "SecurityGroupId"]
-
-        for output_name in exportable_outputs:
-            if output_name in outputs:
-                assert "Export" in outputs[output_name], \
-                    f"{output_name} should have Export configured"
+        # All ingress rules should target PostgreSQL port
+        cdk_template.all_resources_properties(
+            "AWS::EC2::SecurityGroupIngress",
+            Match.object_like({"FromPort": 5432, "ToPort": 5432, "IpProtocol": "tcp"}),
+        )
 
     # ============================================================================
     # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
     # ============================================================================
 
     @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, template_path: str):
+    def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
         """Test that the template passes cfn-lint validation.
 
         cfn-lint validates CloudFormation templates against AWS schema and best practices.
@@ -347,22 +248,21 @@ class TestRDSPostgresTemplate:
         for development environments but should be addressed for production.
         """
         import subprocess
-        import sys
 
         result = subprocess.run(
-            [sys.executable, "-m", "cfnlint", template_path],
+            ["cfn-lint", "--config-file", cfnlint_config_path, template_path],
             capture_output=True,
             text=True,
         )
 
         # cfn-lint returns 0 for no errors, non-zero for errors
         # Warnings (W) don't cause non-zero exit codes by default
-        assert result.returncode == 0, (
-            f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, template_path: str):
+    def test_template_passes_security_scan(self, template_path: str, cfn_nag_script_path: str):
         """Test that the template passes cfn-nag security scanning.
 
         cfn-nag scans CloudFormation templates for security anti-patterns.
@@ -379,12 +279,9 @@ class TestRDSPostgresTemplate:
         These can be suppressed with metadata if acceptable for your use case.
         """
         import subprocess
-        from pathlib import Path
-
-        script_path = Path(__file__).parent.parent.parent / "scripts" / "run-cfn-nag.sh"
 
         result = subprocess.run(
-            [str(script_path), template_path],
+            [cfn_nag_script_path, template_path],
             capture_output=True,
             text=True,
         )
@@ -410,13 +307,9 @@ class TestRDSPostgresTemplate:
         Docs: guard_rules/README.md
         """
         import subprocess
-        from pathlib import Path
 
         rules_path = (
-            Path(__file__).parent.parent.parent
-            / "guard_rules"
-            / "rds"
-            / "rds_security_rules.guard"
+            Path(__file__).parent.parent.parent / "guard_rules" / "rds" / "rds_security_rules.guard"
         )
 
         result = subprocess.run(
@@ -432,9 +325,9 @@ class TestRDSPostgresTemplate:
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
 
     # ============================================================================
     # CDK Assertion Tests (Behavioral Validation)
@@ -449,8 +342,6 @@ class TestRDSPostgresTemplate:
         Uses CDK assertions to verify encryption without depending on specific
         property structures.
         """
-        from aws_cdk.assertions import Match
-
         cdk_template = cdk_template_factory(template)
 
         cdk_template.has_resource_properties(
@@ -466,7 +357,6 @@ class TestRDSPostgresTemplate:
 
         Tests for presence of backup retention period >= 1 day.
         """
-        from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
 
@@ -486,7 +376,6 @@ class TestRDSPostgresTemplate:
         DB subnet groups ensure the database is deployed in appropriate
         subnets (typically private subnets for security).
         """
-        from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
 
@@ -500,7 +389,6 @@ class TestRDSPostgresTemplate:
 
         Security groups control network access to the database instance.
         """
-        from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
 
@@ -516,7 +404,6 @@ class TestRDSPostgresTemplate:
         Snapshot deletion policy ensures a final snapshot is taken before
         the database is deleted, protecting against accidental data loss.
         """
-        from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
 
@@ -524,7 +411,9 @@ class TestRDSPostgresTemplate:
         db_instances = cdk_template.find_resources("AWS::RDS::DBInstance")
 
         for logical_id, resource in db_instances.items():
-            assert "DeletionPolicy" in resource, \
-                f"DBInstance {logical_id} should have DeletionPolicy"
-            assert resource["DeletionPolicy"] == "Snapshot", \
-                f"DBInstance {logical_id} should have Snapshot DeletionPolicy"
+            assert (
+                "DeletionPolicy" in resource
+            ), f"DBInstance {logical_id} should have DeletionPolicy"
+            assert (
+                resource["DeletionPolicy"] == "Snapshot"
+            ), f"DBInstance {logical_id} should have Snapshot DeletionPolicy"

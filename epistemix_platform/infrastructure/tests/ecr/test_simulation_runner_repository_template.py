@@ -423,9 +423,7 @@ class TestECRTemplate:
             log_group_name == expected_log_group_name
         ), "Log Group name does not match expected format"
 
-    def test_ecr_log_group_retention_set_to_14_days(
-        self, ecr_template: dict[str, Any]
-    ):
+    def test_ecr_log_group_retention_set_to_14_days(self, ecr_template: dict[str, Any]):
         """Test Log Group retention is set to 14 days for shared environment."""
         log_group = ecr_template["Resources"]["ECRLogGroup"]
         retention_in_days = log_group["Properties"]["RetentionInDays"]
@@ -583,7 +581,7 @@ class TestECRTemplate:
     # Skip with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "not integration"
 
     @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, ecr_template_path: str):
+    def test_template_passes_cfn_lint(self, ecr_template_path: str, cfnlint_config_path: str):
         """Test that the ECR template passes cfn-lint validation.
 
         cfn-lint validates CloudFormation templates against AWS schema and best practices.
@@ -594,20 +592,19 @@ class TestECRTemplate:
         Config: .cfnlintrc.yaml
         """
         import subprocess
-        import sys
 
         result = subprocess.run(
-            [sys.executable, "-m", "cfnlint", ecr_template_path],
+            ["cfn-lint", "--config-file", cfnlint_config_path, ecr_template_path],
             capture_output=True,
             text=True,
         )
 
-        assert result.returncode == 0, (
-            f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, ecr_template_path: str):
+    def test_template_passes_security_scan(self, ecr_template_path: str, cfn_nag_script_path: str):
         """Test that the ECR template passes cfn-nag security scanning.
 
         cfn-nag scans CloudFormation templates for security anti-patterns with 140+ rules.
@@ -629,20 +626,17 @@ class TestECRTemplate:
         }
         """
         import subprocess
-        from pathlib import Path
-
-        script_path = Path(__file__).parent.parent.parent / "scripts" / "run-cfn-nag.sh"
 
         result = subprocess.run(
-            [str(script_path), ecr_template_path],
+            [cfn_nag_script_path, ecr_template_path],
             capture_output=True,
             text=True,
         )
 
         # cfn-nag returns 0 for pass, non-zero for failures/warnings
-        assert result.returncode == 0, (
-            f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
     def test_template_passes_policy_validation(self, ecr_template_path: str):
@@ -658,9 +652,10 @@ class TestECRTemplate:
         Docs: guard_rules/README.md
         """
         import subprocess
-        from pathlib import Path
 
-        rules_path = Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
+        rules_path = (
+            Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
+        )
 
         result = subprocess.run(
             ["cfn-guard", "validate", "--data", ecr_template_path, "--rules", str(rules_path)],
@@ -669,9 +664,9 @@ class TestECRTemplate:
         )
 
         # cfn-guard returns 0 for pass, non-zero for failures
-        assert result.returncode == 0, (
-            f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
 
     # ============================================================================
     # CDK Assertion Tests (Behavioral Validation)
@@ -705,12 +700,10 @@ class TestECRTemplate:
         template = cdk_template_factory(ecr_template)
 
         template.has_resource_properties(
-            'AWS::ECR::Repository',
-            Match.object_like({
-                'ImageScanningConfiguration': Match.object_like({
-                    'ScanOnPush': Match.any_value()
-                })
-            })
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"ImageScanningConfiguration": Match.object_like({"ScanOnPush": Match.any_value()})}
+            ),
         )
 
     def test_repository_has_encryption_enabled(self, ecr_template, cdk_template_factory):
@@ -727,12 +720,14 @@ class TestECRTemplate:
         template = cdk_template_factory(ecr_template)
 
         template.has_resource_properties(
-            'AWS::ECR::Repository',
-            Match.object_like({
-                'EncryptionConfiguration': {
-                    'EncryptionType': Match.string_like_regexp(r'^(AES256|KMS)$')
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {
+                    "EncryptionConfiguration": {
+                        "EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")
+                    }
                 }
-            })
+            ),
         )
 
     def test_repository_has_lifecycle_policy(self, ecr_template, cdk_template_factory):
@@ -750,10 +745,8 @@ class TestECRTemplate:
         template = cdk_template_factory(ecr_template)
 
         template.has_resource_properties(
-            'AWS::ECR::Repository',
-            Match.object_like({
-                'LifecyclePolicy': Match.object_like({
-                    'LifecyclePolicyText': Match.any_value()
-                })
-            })
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"LifecyclePolicy": Match.object_like({"LifecyclePolicyText": Match.any_value()})}
+            ),
         )
