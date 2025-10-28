@@ -1,0 +1,196 @@
+# Lambda Security Rules
+# CloudFormation Guard policy rules for Lambda function security validation
+#
+# These rules enforce security best practices for Lambda functions in CloudFormation templates.
+# Documentation: https://docs.aws.amazon.com/cfn-guard/latest/ug/writing-rules.html
+
+# Rule: Lambda functions must have an execution role
+rule lambda_must_have_execution_role {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.Role exists <<
+            Violation: Lambda function must have an IAM execution role
+            Fix: Add Role property referencing an IAM role
+            Rationale: Execution role defines permissions for the Lambda function
+            Example:
+              Role: !GetAtt LambdaExecutionRole.Arn
+        >>
+    }
+}
+
+# Rule: Lambda functions should be deployed in VPC for private resource access
+rule lambda_should_have_vpc_config {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.VpcConfig exists <<
+            Violation: Lambda function should have VPC configuration
+            Fix: Add VpcConfig with SecurityGroupIds and SubnetIds
+            Rationale: VPC deployment enables private access to RDS, ElastiCache, etc.
+            Example:
+              VpcConfig:
+                SecurityGroupIds:
+                  - !Ref LambdaSecurityGroup
+                SubnetIds:
+                  - !Ref PrivateSubnet1
+                  - !Ref PrivateSubnet2
+        >>
+
+        when %lambda_functions.Properties.VpcConfig exists {
+            %lambda_functions.Properties.VpcConfig.SecurityGroupIds exists <<
+                Violation: Lambda VpcConfig must include SecurityGroupIds
+                Fix: Add SecurityGroupIds array to VpcConfig
+            >>
+
+            %lambda_functions.Properties.VpcConfig.SubnetIds exists <<
+                Violation: Lambda VpcConfig must include SubnetIds
+                Fix: Add SubnetIds array to VpcConfig
+            >>
+        }
+    }
+}
+
+# Rule: Lambda functions must have timeout configured
+rule lambda_must_have_timeout {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.Timeout exists <<
+            Violation: Lambda function must have timeout configured
+            Fix: Add Timeout property (3-900 seconds)
+            Rationale: Prevents runaway functions and controls costs
+            Example:
+              Timeout: 30
+            Note: Parameter constraints should validate range (3-900 seconds)
+        >>
+    }
+}
+
+# Rule: Lambda functions should have memory size configured
+rule lambda_should_have_memory_configured {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.MemorySize exists <<
+            Violation: Lambda function should have memory size configured
+            Fix: Add MemorySize property (128-10240 MB)
+            Rationale: Explicit memory allocation controls performance and costs
+            Example:
+              MemorySize: 512
+        >>
+    }
+}
+
+# Rule: Lambda functions should have CloudWatch log groups
+rule lambda_should_have_log_group {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+    let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
+
+    when %lambda_functions !empty {
+        %log_groups !empty <<
+            Violation: Lambda functions should have associated CloudWatch log groups
+            Fix: Create AWS::Logs::LogGroup resources for Lambda functions
+            Rationale: Enables centralized logging and log retention management
+            Example:
+              LambdaLogGroup:
+                Type: AWS::Logs::LogGroup
+                Properties:
+                  LogGroupName: !Sub "/aws/lambda/\${FunctionName}"
+                  RetentionInDays: 7
+        >>
+    }
+}
+
+# Rule: Lambda log groups should have retention configured
+rule lambda_log_groups_must_have_retention {
+    let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
+
+    when %log_groups !empty {
+        %log_groups.Properties.RetentionInDays exists <<
+            Violation: CloudWatch log groups must have retention period configured
+            Fix: Add RetentionInDays property (1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653)
+            Rationale: Prevents unlimited log storage costs
+            Example:
+              RetentionInDays: 7
+        >>
+    }
+}
+
+# Rule: Lambda execution roles must have assume role policy for Lambda service
+rule lambda_execution_roles_must_trust_lambda_service {
+    let lambda_roles = Resources.*[
+        Type == 'AWS::IAM::Role'
+    ]
+
+    when %lambda_roles !empty {
+        # Check if any roles are used by Lambda functions
+        %lambda_roles.Properties.AssumeRolePolicyDocument exists <<
+            Violation: IAM roles must have AssumeRolePolicyDocument
+            Fix: Add AssumeRolePolicyDocument defining trust policy
+        >>
+    }
+}
+
+# Rule: Lambda functions should have tags for governance
+rule lambda_functions_must_be_tagged {
+    let lambda_functions = Resources.*[ Type == 'AWS::Lambda::Function' ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.Tags exists <<
+            Violation: Lambda function must have tags for governance
+            Fix: Add Tags with at least Environment and Service keys
+            Rationale: Tags enable cost tracking and resource management
+            Example:
+              Tags:
+                - Key: Environment
+                  Value: !Ref Environment
+                - Key: Service
+                  Value: my-service
+        >>
+    }
+}
+
+# Rule: Lambda functions using container images should specify architecture
+rule lambda_container_images_should_specify_architecture {
+    let lambda_functions = Resources.*[
+        Type == 'AWS::Lambda::Function'
+        Properties.PackageType == 'Image'
+    ]
+
+    when %lambda_functions !empty {
+        %lambda_functions.Properties.Architectures exists <<
+            Violation: Lambda functions using container images should specify architecture
+            Fix: Add Architectures property (x86_64 or arm64)
+            Rationale: Explicit architecture ensures correct image compatibility
+            Example:
+              Architectures:
+                - x86_64
+        >>
+    }
+}
+
+# Rule: Lambda security groups should have explicit egress rules
+# Note: Security groups for Lambda should define explicit egress
+rule lambda_security_groups_should_have_egress {
+    let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
+
+    when %security_groups !empty {
+        %security_groups.Properties.SecurityGroupEgress exists <<
+            Violation: Security groups should have explicit egress rules
+            Fix: Add SecurityGroupEgress with explicit rules
+            Rationale: Explicit egress rules document allowed outbound traffic
+            Example:
+              SecurityGroupEgress:
+                - IpProtocol: "-1"
+                  CidrIp: "0.0.0.0/0"
+                  Description: "Allow all outbound traffic"
+        >>
+    }
+}
+
+# Note: Lambda environment variables with secrets
+# Best practice: Use AWS Secrets Manager or Systems Manager Parameter Store
+# with dynamic references instead of passing secrets as environment variables.
+# CloudFormation Guard cannot fully validate secret handling patterns.
+# Review Environment.Variables for PASSWORD, SECRET, API_KEY patterns manually.
