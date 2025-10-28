@@ -11,12 +11,6 @@
     }
   },
 
-  "Conditions": {
-    "IsProduction": {
-      "Fn::Equals": [{"Ref": "Environment"}, "production"]
-    }
-  },
-
   "Resources": {
     "ECRRepository": {
       "Type": "AWS::ECR::Repository",
