@@ -3,6 +3,11 @@
 #
 # These rules enforce security best practices for Lambda functions in CloudFormation templates.
 # Documentation: https://docs.aws.amazon.com/cfn-guard/latest/ug/writing-rules.html
+# AWS Lambda Security Best Practices: https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html
+
+# ============================================================================
+# IAM AND EXECUTION ROLES
+# ============================================================================
 
 # Rule: Lambda functions must have an execution role
 rule lambda_must_have_execution_role {
@@ -13,11 +18,16 @@ rule lambda_must_have_execution_role {
             Violation: Lambda function must have an IAM execution role
             Fix: Add Role property referencing an IAM role
             Rationale: Execution role defines permissions for the Lambda function
+            Reference: 62% of Lambda security incidents involve credential exposure
             Example:
               Role: !GetAtt LambdaExecutionRole.Arn
         >>
     }
 }
+
+# ============================================================================
+# NETWORK SECURITY
+# ============================================================================
 
 # Rule: Lambda functions should be deployed in VPC for private resource access
 rule lambda_should_have_vpc_config {
