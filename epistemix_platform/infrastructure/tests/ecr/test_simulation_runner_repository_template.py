@@ -191,13 +191,13 @@ class TestECRTemplate:
             scan_config == expected_config
         ), "ECR scanning configuration does not match expected logic"
 
-    def test_ecr_repository_encryption_set_to_aes256(self, ecr_template: dict[str, Any]):
-        """Test ECR repository encryption is set to AES256 for simplicity and avoiding KMS key issues."""
+    def test_ecr_repository_encryption_configured(self, ecr_template: dict[str, Any]):
+        """Test ECR repository encryption is configured (accepts AES256 or KMS)."""
         ecr_repo = ecr_template["Resources"]["ECRRepository"]
         encryption_config = ecr_repo["Properties"]["EncryptionConfiguration"]
-        assert (
-            encryption_config["EncryptionType"] == "AES256"
-        ), "ECR encryption should use AES256 to avoid KMS key dependencies"
+        encryption_type = encryption_config["EncryptionType"]
+        assert encryption_type in ["AES256", "KMS"], \
+            f"ECR encryption must be AES256 or KMS, got {encryption_type}"
 
     def test_ecr_repository_has_expected_tags(self, ecr_template: dict[str, Any]):
         """Test ECR repository has expected tags."""

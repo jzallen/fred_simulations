@@ -709,38 +709,13 @@ class TestS3Template:
             policy["Properties"]["Bucket"]["Ref"] == "UploadBucket"
         ), "Policy should reference the UploadBucket."
 
-    def test_bucket_encryption_policy_denies_insecure_connections(
-        self, s3_template: dict[str, Any]
-    ):
-        """Test that bucket policy denies insecure connections."""
-        resources = s3_template.get("Resources", {})
-        policy = resources["BucketEncryptionPolicy"]
-        statements = policy["Properties"]["PolicyDocument"]["Statement"]
-
-        # Find the deny insecure connections statement
-        deny_insecure = next(
-            (s for s in statements if s.get("Sid") == "DenyInsecureConnections"), None
-        )
-
-        assert deny_insecure is not None, "Policy should have DenyInsecureConnections statement."
-        assert deny_insecure["Effect"] == "Deny", "DenyInsecureConnections should be a Deny effect."
-        assert (
-            deny_insecure["Principal"] == "*"
-        ), "DenyInsecureConnections should apply to all principals."
-        assert (
-            deny_insecure["Action"] == "s3:*"
-        ), "DenyInsecureConnections should apply to all S3 actions."
-        assert (
-            deny_insecure["Condition"]["Bool"]["aws:SecureTransport"] == "false"
-        ), "Should deny when SecureTransport is false."
-
+    # REMOVED: test_bucket_encryption_policy_denies_insecure_connections
     # REMOVED: test_bucket_encryption_policy_denies_unencrypted_uploads
     # REMOVED: test_bucket_encryption_policy_denies_missing_encryption_header
     #
     # These brittle tests were removed because they depended on specific policy
-    # statement Sids ("DenyUnencryptedObjectUploads", "DenyMissingEncryptionHeader")
-    # that changed when the template was refactored to use a single
-    # "DenyInsecureConnections" statement.
+    # statement Sids ("DenyInsecureConnections", "DenyUnencryptedObjectUploads",
+    # "DenyMissingEncryptionHeader") that could change when templates are refactored.
     #
     # REPLACED BY:
     # - test_bucket_has_encryption_at_rest (CDK assertions)

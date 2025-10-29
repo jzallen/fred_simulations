@@ -59,7 +59,8 @@ class TestLambdaTemplate:
 
     def test_db_password_has_minimum_length(self, template: dict[str, Any]):
         """DBPassword must enforce minimum length >= 8."""
-        assert template["Parameters"]["DBPassword"].get("MinLength") == 8
+        min_length = template["Parameters"]["DBPassword"].get("MinLength")
+        assert int(min_length) >= 8, f"DBPassword MinLength must be at least 8, got {min_length}"
 
     def test_memory_size_within_valid_range(self, template: dict[str, Any]):
         """Memory size must be within AWS Lambda limits."""

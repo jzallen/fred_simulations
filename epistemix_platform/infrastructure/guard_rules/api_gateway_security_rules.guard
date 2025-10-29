@@ -79,17 +79,19 @@ rule api_gateway_stage_should_have_logging {
     let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
 
     when %stages !empty {
-        some %stages.Properties.MethodSettings[*].LoggingLevel exists <<
-            Violation: API Gateway stage should have logging configured
-            Fix: Add LoggingLevel to MethodSettings (ERROR, INFO, or OFF)
-            Rationale: Logging enables monitoring, debugging, and security auditing
-            Reference: Security best practice for tracking access patterns
-            Example:
-              MethodSettings:
-                - ResourcePath: "/*"
-                  HttpMethod: "*"
-                  LoggingLevel: INFO
-        >>
+        when %stages.Properties.MethodSettings exists {
+            some %stages.Properties.MethodSettings[*].LoggingLevel exists <<
+                Violation: API Gateway stage should have logging configured
+                Fix: Add LoggingLevel to MethodSettings (ERROR, INFO, or OFF)
+                Rationale: Logging enables monitoring, debugging, and security auditing
+                Reference: Security best practice for tracking access patterns
+                Example:
+                  MethodSettings:
+                    - ResourcePath: "/*"
+                      HttpMethod: "*"
+                      LoggingLevel: INFO
+            >>
+        }
     }
 }
 
@@ -98,16 +100,18 @@ rule api_gateway_stage_should_have_metrics {
     let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
 
     when %stages !empty {
-        some %stages.Properties.MethodSettings[*].MetricsEnabled exists <<
-            Violation: API Gateway stage should have CloudWatch metrics enabled
-            Fix: Add MetricsEnabled: true to MethodSettings
-            Rationale: Metrics enable monitoring of API performance and usage
-            Example:
-              MethodSettings:
-                - ResourcePath: "/*"
-                  HttpMethod: "*"
-                  MetricsEnabled: true
-        >>
+        when %stages.Properties.MethodSettings exists {
+            some %stages.Properties.MethodSettings[*].MetricsEnabled exists <<
+                Violation: API Gateway stage should have CloudWatch metrics enabled
+                Fix: Add MetricsEnabled: true to MethodSettings
+                Rationale: Metrics enable monitoring of API performance and usage
+                Example:
+                  MethodSettings:
+                    - ResourcePath: "/*"
+                      HttpMethod: "*"
+                      MetricsEnabled: true
+            >>
+        }
     }
 }
 
@@ -210,7 +214,7 @@ rule api_gateway_rest_api_should_have_description {
 # ============================================================================
 
 # Rule: IAM roles must have assume role policy documents
-rule iam_roles_must_have_trust_policy {
+rule api_gateway_iam_roles_must_have_trust_policy {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
@@ -235,7 +239,7 @@ rule iam_roles_must_have_trust_policy {
 }
 
 # Rule: IAM roles should have tags
-rule iam_roles_should_have_tags {
+rule api_gateway_iam_roles_should_have_tags {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {

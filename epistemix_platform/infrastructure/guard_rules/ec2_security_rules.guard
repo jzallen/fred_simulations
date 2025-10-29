@@ -99,7 +99,7 @@ rule ec2_roles_must_trust_ec2_service {
 }
 
 # Rule: IAM instance profiles must reference at least one role
-rule instance_profiles_must_have_roles {
+rule ec2_instance_profiles_must_have_roles {
     let instance_profiles = Resources.*[ Type == 'AWS::IAM::InstanceProfile' ]
 
     when %instance_profiles !empty {
@@ -122,7 +122,7 @@ rule instance_profiles_must_have_roles {
 }
 
 # Rule: IAM roles should have tags
-rule iam_roles_should_have_tags {
+rule ec2_iam_roles_should_have_tags {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
@@ -182,7 +182,7 @@ rule ec2_should_have_subnet_id {
 }
 
 # Rule: Security groups must be in VPC
-rule security_groups_must_be_in_vpc {
+rule ec2_security_groups_must_be_in_vpc {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -197,7 +197,7 @@ rule security_groups_must_be_in_vpc {
 }
 
 # Rule: Security groups should have descriptive group descriptions
-rule security_groups_should_have_description {
+rule ec2_security_groups_should_have_description {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -227,7 +227,7 @@ rule security_groups_with_egress_should_have_rules {
 }
 
 # Rule: Security groups should have tags
-rule security_groups_should_have_tags {
+rule ec2_security_groups_should_have_tags {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -244,7 +244,7 @@ rule security_groups_should_have_tags {
 }
 
 # Rule: Security group ingress rules should have descriptions
-rule security_group_ingress_should_have_description {
+rule ec2_security_group_ingress_should_have_description {
     let sg_ingress = Resources.*[ Type == 'AWS::EC2::SecurityGroupIngress' ]
 
     when %sg_ingress !empty {
@@ -259,7 +259,7 @@ rule security_group_ingress_should_have_description {
 }
 
 # Rule: Security group egress rules should have descriptions
-rule security_group_egress_should_have_description {
+rule ec2_security_group_egress_should_have_description {
     let sg_egress = Resources.*[ Type == 'AWS::EC2::SecurityGroupEgress' ]
 
     when %sg_egress !empty {

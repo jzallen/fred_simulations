@@ -168,7 +168,7 @@ rule ecr_update_replace_policy_configured {
 # ============================================================================
 
 # Rule: IAM roles must have assume role policy documents
-rule iam_roles_must_have_trust_policy {
+rule ecr_iam_roles_must_have_trust_policy {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
@@ -210,7 +210,7 @@ rule iam_roles_must_have_trust_policy {
 }
 
 # Rule: IAM roles should have tags for governance
-rule iam_roles_must_be_tagged {
+rule ecr_iam_roles_must_be_tagged {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
@@ -229,7 +229,7 @@ rule iam_roles_must_be_tagged {
 }
 
 # Rule: IAM instance profiles must reference roles
-rule instance_profiles_must_have_roles {
+rule ecr_instance_profiles_must_have_roles {
     let instance_profiles = Resources.*[ Type == 'AWS::IAM::InstanceProfile' ]
 
     when %instance_profiles !empty {
@@ -256,7 +256,7 @@ rule instance_profiles_must_have_roles {
 # ============================================================================
 
 # Rule: CloudWatch log groups should have retention configured
-rule cloudwatch_log_retention_configured {
+rule ecr_cloudwatch_log_retention_configured {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {
@@ -278,7 +278,7 @@ rule cloudwatch_log_retention_configured {
 }
 
 # Rule: CloudWatch log groups should have tags
-rule cloudwatch_log_groups_must_be_tagged {
+rule ecr_cloudwatch_log_groups_must_be_tagged {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {

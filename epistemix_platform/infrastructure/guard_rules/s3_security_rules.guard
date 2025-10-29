@@ -134,16 +134,25 @@ rule s3_https_only {
     let bucket_policies = Resources.*[ Type == 'AWS::S3::BucketPolicy' ]
 
     when %bucket_policies !empty {
-        %bucket_policies.Properties.PolicyDocument.Statement[*] {
-            # At least one Deny statement should enforce SecureTransport
-            when Effect == 'Deny' {
-                Condition.Bool.'aws:SecureTransport' == 'false' <<
-                    Violation: Bucket policy should deny requests without SecureTransport
-                    Fix: Add Deny statement with Condition.Bool."aws:SecureTransport": "false"
-                    Rationale: Ensures all data in transit is encrypted using TLS
-                >>
-            }
-        }
+        some %bucket_policies.Properties.PolicyDocument.Statement[*] {
+            Effect == 'Deny'
+            Condition.Bool.'aws:SecureTransport' == 'false'
+        } <<
+            Violation: Bucket policy must deny requests without SecureTransport
+            Fix: Add Deny statement with Condition.Bool."aws:SecureTransport": "false"
+            Rationale: Ensures all data in transit is encrypted using TLS
+            Reference: Security Hub control [S3.5]
+            Example:
+              Effect: Deny
+              Principal: "*"
+              Action: "s3:*"
+              Resource:
+                - !Sub "${Bucket.Arn}/*"
+                - !GetAtt Bucket.Arn
+              Condition:
+                Bool:
+                  aws:SecureTransport: "false"
+        >>
     }
 }
 
@@ -324,7 +333,7 @@ rule s3_policies_enforce_encryption {
 # ============================================================================
 
 # Rule: CloudWatch log groups should have retention configured
-rule cloudwatch_log_retention_configured {
+rule s3_cloudwatch_log_retention_configured {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {

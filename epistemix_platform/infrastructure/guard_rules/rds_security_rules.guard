@@ -287,7 +287,7 @@ rule rds_subnet_groups_must_have_subnets {
 # ============================================================================
 
 # Rule: Security groups must be in VPC
-rule security_groups_must_be_in_vpc {
+rule rds_security_groups_must_be_in_vpc {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -302,7 +302,7 @@ rule security_groups_must_be_in_vpc {
 }
 
 # Rule: Security groups should have descriptive group descriptions
-rule security_groups_should_have_description {
+rule rds_security_groups_should_have_description {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -317,7 +317,7 @@ rule security_groups_should_have_description {
 }
 
 # Rule: Security groups should have tags
-rule security_groups_must_be_tagged {
+rule rds_security_groups_must_be_tagged {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
@@ -334,7 +334,7 @@ rule security_groups_must_be_tagged {
 }
 
 # Rule: Security group ingress rules should have descriptions
-rule security_group_ingress_should_have_description {
+rule rds_security_group_ingress_should_have_description {
     let sg_ingress = Resources.*[ Type == 'AWS::EC2::SecurityGroupIngress' ]
 
     when %sg_ingress !empty {

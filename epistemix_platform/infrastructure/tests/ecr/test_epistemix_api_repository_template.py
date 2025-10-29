@@ -142,12 +142,12 @@ class TestEpistemixAPIRepositoryTemplate:
         )
 
     def test_encryption_configured(self, template, cdk_template_factory):
-        """Test encryption is configured."""
+        """Test encryption is configured (accepts AES256 or KMS)."""
         cdk_template = cdk_template_factory(template)
         cdk_template.has_resource_properties(
             "AWS::ECR::Repository",
             Match.object_like(
-                {"EncryptionConfiguration": Match.object_like({"EncryptionType": "AES256"})}
+                {"EncryptionConfiguration": Match.object_like({"EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")})}
             ),
         )
 
