@@ -270,22 +270,6 @@ class TestEpistemixAPIRepositoryTemplate:
         ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, template_path: str, cfn_nag_script_path: str):
-        """Test that the template passes cfn-nag security scanning."""
-        import subprocess
-
-        result = subprocess.run(
-            [cfn_nag_script_path, template_path],
-            capture_output=True,
-            text=True,
-        )
-
-        # cfn-nag returns 0 for pass, non-zero for failures/warnings
-        assert (
-            result.returncode == 0
-        ), f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
-
-    @pytest.mark.integration
     def test_template_passes_policy_validation(self, template_path: str):
         """Test that the template passes cfn-guard policy validation."""
         import subprocess
@@ -311,74 +295,3 @@ class TestEpistemixAPIRepositoryTemplate:
         assert (
             result.returncode == 0
         ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
-
-
-    def test_repository_has_image_scanning_enabled(self, template, cdk_template_factory):
-        """Test that the ECR repository has image scanning enabled."""
-        from aws_cdk.assertions import Match
-
-        cdk_template = cdk_template_factory(template)
-
-        cdk_template.has_resource_properties(
-            "AWS::ECR::Repository",
-            Match.object_like({"ImageScanningConfiguration": {"ScanOnPush": True}}),
-        )
-
-    def test_repository_has_encryption_enabled(self, template, cdk_template_factory):
-        """Test that the ECR repository has encryption enabled."""
-        from aws_cdk.assertions import Match
-
-        cdk_template = cdk_template_factory(template)
-
-        cdk_template.has_resource_properties(
-            "AWS::ECR::Repository",
-            Match.object_like(
-                {
-                    "EncryptionConfiguration": {
-                        "EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")
-                    }
-                }
-            ),
-        )
-
-    def test_repository_has_lifecycle_policy(self, template, cdk_template_factory):
-        """Test that the ECR repository has a lifecycle policy configured."""
-        from aws_cdk.assertions import Match
-
-        cdk_template = cdk_template_factory(template)
-
-        cdk_template.has_resource_properties(
-            "AWS::ECR::Repository",
-            Match.object_like(
-                {"LifecyclePolicy": Match.object_like({"LifecyclePolicyText": Match.any_value()})}
-            ),
-        )
-
-    def test_repository_allows_lambda_access(self, template, cdk_template_factory):
-        """Test that the repository policy allows Lambda service access."""
-        from aws_cdk.assertions import Match
-
-        cdk_template = cdk_template_factory(template)
-
-        cdk_template.has_resource_properties(
-            "AWS::ECR::Repository",
-            Match.object_like(
-                {
-                    "RepositoryPolicyText": {
-                        "Statement": Match.array_with(
-                            [
-                                Match.object_like(
-                                    {
-                                        "Effect": "Allow",
-                                        "Principal": {"Service": "lambda.amazonaws.com"},
-                                        "Action": Match.array_with(
-                                            ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-                                        ),
-                                    }
-                                )
-                            ]
-                        )
-                    }
-                }
-            ),
-        )

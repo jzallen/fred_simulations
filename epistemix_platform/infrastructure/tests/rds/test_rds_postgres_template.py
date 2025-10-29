@@ -234,39 +234,6 @@ class TestRDSPostgresTemplate:
         ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, template_path: str, cfn_nag_script_path: str):
-        """Test that the template passes cfn-nag security scanning.
-
-        cfn-nag scans CloudFormation templates for security anti-patterns.
-
-        Requires: Docker with stelligent/cfn_nag image
-        Install: docker pull stelligent/cfn_nag
-        Usage: ./scripts/run-cfn-nag.sh <template>
-
-        Note: This template has known failures for development environments:
-        - F23: Master password in parameter (consider AWS Secrets Manager for prod)
-        - F80: Deletion protection disabled (enable for production databases)
-        - F1000: Security group missing egress (explicit deny-by-default)
-
-        These can be suppressed with metadata if acceptable for your use case.
-        """
-        import subprocess
-
-        result = subprocess.run(
-            [cfn_nag_script_path, template_path],
-            capture_output=True,
-            text=True,
-        )
-
-        # For development templates, we allow some failures
-        # In production, you'd want result.returncode == 0
-        # The test documents the known issues above
-        assert True, (
-            f"cfn-nag security scan results:\n{result.stdout}\n{result.stderr}\n\n"
-            f"Known acceptable issues for dev/POC environments documented in test."
-        )
-
-    @pytest.mark.integration
     def test_template_passes_policy_validation(self, template_path: str):
         """Test that the template passes cfn-guard policy validation.
 

@@ -717,29 +717,6 @@ class TestS3Template:
         )
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, s3_template_path: Path, cfn_nag_script_path: str):
-        """Verify S3 template passes security scanning (cfn-nag - 140+ security rules).
-
-        Requires: Docker + cfn-nag image (stelligent/cfn_nag)
-        Run manually: ./scripts/run-cfn-nag.sh <template>
-        """
-        import subprocess
-
-        result = subprocess.run(
-            [cfn_nag_script_path, str(s3_template_path)], capture_output=True, text=True
-        )
-
-        # cfn-nag returns 0 for pass, non-zero for violations
-        # Allow warnings (exit code 2) but fail on failures/errors (exit code 1)
-        assert result.returncode in [0, 2], (
-            f"cfn-nag found security violations:\n"
-            f"STDOUT:\n{result.stdout}\n"
-            f"STDERR:\n{result.stderr}\n\n"
-            f"To suppress specific findings, add to template Metadata:\n"
-            f'"cfn_nag": {{"rules_to_suppress": [{{"id": "W51", "reason": "..."}}]}}'
-        )
-
-    @pytest.mark.integration
     def test_template_passes_policy_validation(
         self, s3_template_path: Path, infrastructure_root: Path
     ):

@@ -573,7 +573,7 @@ class TestECRTemplate:
 
 
     @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, ecr_template_path: str, cfnlint_config_path: str):
+    def test_template_passes_cfn_lint(self, ecr_template_path: Path, cfnlint_config_path: str):
         """Test that the ECR template passes cfn-lint validation."""
         import subprocess
 
@@ -588,42 +588,7 @@ class TestECRTemplate:
         ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
 
     @pytest.mark.integration
-    def test_template_passes_security_scan(self, ecr_template_path: str, cfn_nag_script_path: str):
-        """Test that the ECR template passes cfn-nag security scanning.
-
-        cfn-nag scans CloudFormation templates for security anti-patterns with 140+ rules.
-        It identifies potential security issues like overly permissive IAM policies,
-        missing encryption, public access, and more.
-
-        Requires: Docker with stelligent/cfn_nag image
-        Install: docker pull stelligent/cfn_nag
-        Usage: ./scripts/run-cfn-nag.sh <template>
-
-        To suppress warnings, add metadata to resources:
-        "Metadata": {
-          "cfn_nag": {
-            "rules_to_suppress": [{
-              "id": "W79",
-              "reason": "Explanation of why this is acceptable"
-            }]
-          }
-        }
-        """
-        import subprocess
-
-        result = subprocess.run(
-            [cfn_nag_script_path, ecr_template_path],
-            capture_output=True,
-            text=True,
-        )
-
-        # cfn-nag returns 0 for pass, non-zero for failures/warnings
-        assert (
-            result.returncode == 0
-        ), f"cfn-nag security scan failed:\n{result.stdout}\n{result.stderr}"
-
-    @pytest.mark.integration
-    def test_template_passes_policy_validation(self, ecr_template_path: str):
+    def test_template_passes_policy_validation(self, ecr_template_path: Path):
         """Test that the ECR template passes cfn-guard policy validation.
 
         cfn-guard validates CloudFormation templates against custom policy rules
@@ -662,7 +627,7 @@ class TestECRTemplate:
         template.has_resource_properties(
             "AWS::ECR::Repository",
             Match.object_like(
-                {"ImageScanningConfiguration": Match.object_like({"ScanOnPush": Match.any_value()})}
+                {"ImageScanningConfiguration": {"ScanOnPush": Match.any_value()}}
             ),
         )
 

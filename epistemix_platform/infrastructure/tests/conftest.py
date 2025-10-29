@@ -278,9 +278,3 @@ def assert_resource_property_exists(cdk_template: Template, resource_type: str, 
 def cfnlint_config_path(infrastructure_root: Path) -> str:
     """Return path to cfn-lint configuration file."""
     return str(infrastructure_root / ".cfnlintrc.yaml")
-
-
-@pytest.fixture(scope="session")
-def cfn_nag_script_path(infrastructure_root: Path) -> str:
-    """Return path to cfn-nag Docker wrapper script."""
-    return str(infrastructure_root / "scripts" / "run-cfn-nag.sh")
