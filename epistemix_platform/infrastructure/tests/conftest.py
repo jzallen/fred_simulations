@@ -20,13 +20,8 @@ from sceptre.context import SceptreContext
 @pytest.fixture(scope="session")
 def infrastructure_root() -> Path:
     """Return the path to the infrastructure root directory."""
-    # Start from the current file's directory
     current_file = Path(__file__)
-
-    # Go up from conftest.py to tests/, then to infrastructure/
-    # conftest.py is in infrastructure/tests/, so parent.parent gives us infrastructure/
     infrastructure_dir = current_file.parent.parent
-
     return infrastructure_dir
 
 
@@ -73,18 +68,9 @@ def load_template():
 
 @pytest.fixture(scope="session")
 def cdk_template_factory():
-    """Factory function to create CDK Template objects from template dicts.
-
-    Use this fixture to create CDK Template objects for flexible assertions.
-
-    Example:
-        def test_s3_bucket(s3_template, cdk_template_factory):
-            template = cdk_template_factory(s3_template)
-            template.has_resource_properties('AWS::S3::Bucket', {...})
-    """
+    """Factory function to create CDK Template objects from template dicts."""
 
     def _create_cdk_template(template_dict: dict[str, Any]) -> Template:
-        """Create CDK Template object from template dictionary."""
         return Template.from_string(json.dumps(template_dict))
 
     return _create_cdk_template
@@ -153,7 +139,6 @@ def expected_tags() -> dict[str, dict[str, str]]:
     }
 
 
-# Helper functions
 def create_mock_stack(
     stack_name: str, template: dict[str, Any], parameters: dict[str, str] = None
 ) -> Mock:
@@ -219,7 +204,6 @@ def validate_parameter_constraints(
     return True
 
 
-# CDK Assertion Helpers
 def assert_resource_has_properties(cdk_template: Template, resource_type: str, **properties):
     """Assert resource has specific properties using CDK Match.
 
@@ -290,7 +274,6 @@ def assert_resource_property_exists(cdk_template: Template, resource_type: str, 
     )
 
 
-# Integration Test Helpers
 @pytest.fixture(scope="session")
 def cfnlint_config_path(infrastructure_root: Path) -> str:
     """Return path to cfn-lint configuration file."""

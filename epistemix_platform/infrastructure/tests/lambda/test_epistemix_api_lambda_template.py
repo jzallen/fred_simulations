@@ -1,14 +1,4 @@
-"""Tests for Epistemix API Lambda CloudFormation template.
-
-This test suite validates the Lambda template with DEEP validation of:
-- IAM policy permissions and scoping
-- Security group configurations
-- Environment variable handling
-- VPC configurations
-- CloudWatch log retention
-
-Integration tests marked with @pytest.mark.integration can be skipped.
-"""
+"""Tests for Epistemix API Lambda CloudFormation template."""
 
 import json
 from pathlib import Path
@@ -36,9 +26,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestLambdaTemplate:
     """Test suite for Lambda CloudFormation template with deep security validation."""
 
-    # ============================================================================
-    # Template Structure Tests
-    # ============================================================================
 
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
@@ -49,9 +36,7 @@ class TestLambdaTemplate:
     def test_template_format_version(self, template: dict[str, Any]):
         assert template.get("AWSTemplateFormatVersion") == "2010-09-09"
 
-    # ============================================================================
     # Parameter Validation
-    # ============================================================================
 
     def test_db_password_is_noecho(self, template: dict[str, Any]):
         """DBPassword must have NoEcho to prevent exposure in console/API."""
@@ -80,9 +65,7 @@ class TestLambdaTemplate:
         default = timeout.get("Default", 3)
         assert default <= 300, "Default timeout should be reasonable (<5 min)"
 
-    # ============================================================================
     # Lambda Function Configuration
-    # ============================================================================
 
     def test_lambda_has_execution_role_reference(self, template, cdk_template_factory):
         """Lambda must reference an IAM execution role."""
@@ -140,9 +123,7 @@ class TestLambdaTemplate:
             ),
         )
 
-    # ============================================================================
     # Environment Variables Security
-    # ============================================================================
 
     def test_lambda_environment_variables_defined(self, template: dict[str, Any]):
         """Lambda should have environment variables for configuration."""
@@ -181,9 +162,7 @@ class TestLambdaTemplate:
         db_url = env_vars["DATABASE_URL"]
         assert "Fn::Sub" in db_url
 
-    # ============================================================================
     # IAM Execution Role
-    # ============================================================================
 
     def test_execution_role_trusts_lambda_service(self, template, cdk_template_factory):
         """Execution role must trust lambda.amazonaws.com service."""
@@ -427,9 +406,7 @@ class TestLambdaTemplate:
             ),
         )
 
-    # ============================================================================
     # Security Group Configuration
-    # ============================================================================
 
     def test_lambda_security_group_exists(self, template, cdk_template_factory):
         """Lambda security group must exist for VPC deployment."""
@@ -493,9 +470,7 @@ class TestLambdaTemplate:
             ),
         )
 
-    # ============================================================================
     # CloudWatch Logs Configuration
-    # ============================================================================
 
     def test_log_group_exists(self, template, cdk_template_factory):
         """CloudWatch log group must exist for Lambda logs."""
@@ -527,9 +502,7 @@ class TestLambdaTemplate:
             "AWS::Logs::LogGroup", Match.object_like({"RetentionInDays": Match.any_value()})
         )
 
-    # ============================================================================
     # Lambda Version & Alias
-    # ============================================================================
 
     def test_lambda_version_exists(self, template, cdk_template_factory):
         """Lambda version resource enables versioning."""
@@ -557,9 +530,7 @@ class TestLambdaTemplate:
             "AWS::Lambda::Alias", Match.object_like({"Name": {"Ref": "Environment"}})
         )
 
-    # ============================================================================
     # Integration Tests (External Tools)
-    # ============================================================================
 
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
@@ -593,9 +564,7 @@ class TestLambdaTemplate:
         )
         assert result.returncode == 0, f"cfn-guard failed:\n{result.stdout}\n{result.stderr}"
 
-    # ============================================================================
     # CDK Assertions (Behavioral Validation)
-    # ============================================================================
 
     def test_lambda_deployed_in_vpc_cdk(self, template, cdk_template_factory):
         """CDK assertion: Lambda must be in VPC."""

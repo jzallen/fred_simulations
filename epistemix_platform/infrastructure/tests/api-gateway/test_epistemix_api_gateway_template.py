@@ -1,15 +1,4 @@
-"""Tests for Epistemix API Gateway CloudFormation template.
-
-This test suite validates the API Gateway template with DEEP validation of:
-- REST API configuration and resources
-- Method settings (throttling, logging, metrics)
-- Access logging and CloudWatch integration
-- Stage configuration with environment-specific settings
-- Usage plan and throttling limits
-- Lambda integration and permissions
-
-Integration tests marked with @pytest.mark.integration can be skipped.
-"""
+"""Tests for Epistemix API Gateway CloudFormation template."""
 
 import json
 from pathlib import Path
@@ -40,9 +29,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestApiGatewayTemplate:
     """Test suite for API Gateway CloudFormation template with deep security validation."""
 
-    # ============================================================================
-    # Template Structure Tests
-    # ============================================================================
 
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
@@ -53,9 +39,7 @@ class TestApiGatewayTemplate:
     def test_template_format_version(self, template: dict[str, Any]):
         assert template.get("AWSTemplateFormatVersion") == "2010-09-09"
 
-    # ============================================================================
     # Parameter Validation
-    # ============================================================================
 
     def test_throttling_parameters_have_minimum_values(self, template: dict[str, Any]):
         """Throttling parameters must have MinValue constraint."""
@@ -76,9 +60,7 @@ class TestApiGatewayTemplate:
         assert "Description" in param
         assert "force" in param["Description"].lower() or "runtime" in param["Description"].lower()
 
-    # ============================================================================
     # REST API Configuration
-    # ============================================================================
 
     def test_rest_api_exists(self, template, cdk_template_factory):
         """REST API resource must exist."""
@@ -113,9 +95,7 @@ class TestApiGatewayTemplate:
             ),
         )
 
-    # ============================================================================
     # API Resources and Methods
-    # ============================================================================
 
     def test_api_has_health_endpoint(self, template, cdk_template_factory):
         """API must have /health endpoint for monitoring."""
@@ -204,9 +184,7 @@ class TestApiGatewayTemplate:
             "AWS::ApiGateway::Resource", Match.object_like({"PathPart": "{proxy+}"})
         )
 
-    # ============================================================================
     # Deployment Configuration
-    # ============================================================================
 
     def test_deployment_exists(self, template, cdk_template_factory):
         """Deployment resource must exist."""
@@ -222,9 +200,7 @@ class TestApiGatewayTemplate:
             Match.object_like({"RestApiId": {"Ref": "ApiGatewayRestApi"}}),
         )
 
-    # ============================================================================
     # Stage Configuration
-    # ============================================================================
 
     def test_stage_exists(self, template, cdk_template_factory):
         """Stage resource must exist."""
@@ -333,9 +309,7 @@ class TestApiGatewayTemplate:
             ),
         )
 
-    # ============================================================================
     # CloudWatch Logging
-    # ============================================================================
 
     def test_log_group_exists(self, template, cdk_template_factory):
         """CloudWatch log group must exist for access logs."""
@@ -408,9 +382,7 @@ class TestApiGatewayTemplate:
             ),
         )
 
-    # ============================================================================
     # Usage Plan and Throttling
-    # ============================================================================
 
     def test_usage_plan_exists(self, template, cdk_template_factory):
         """Usage plan must exist for throttling control."""
@@ -457,9 +429,7 @@ class TestApiGatewayTemplate:
             ),
         )
 
-    # ============================================================================
     # Lambda Integration
-    # ============================================================================
 
     def test_lambda_invoke_permission_exists(self, template, cdk_template_factory):
         """Lambda permission for API Gateway invocation must exist."""
@@ -488,9 +458,7 @@ class TestApiGatewayTemplate:
             ),
         )
 
-    # ============================================================================
     # Integration Tests (External Tools)
-    # ============================================================================
 
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):

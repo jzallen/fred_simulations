@@ -1,13 +1,4 @@
-"""
-Tests for S3 CloudFormation template validation.
-
-This module tests the S3 upload bucket template for compliance with:
-- CloudFormation syntax and schema validation
-- Parameter constraints and validation
-- Security configurations (public access blocks, CORS)
-- Lifecycle policies and versioning
-- Output definitions and exports
-"""
+"""Tests for S3 CloudFormation template validation."""
 
 import json
 import re
@@ -203,11 +194,7 @@ class TestS3Template:
         ), "CORS should use AllowedOrigins parameter."
 
     def test_s3__cors_rules__only_etag_header_exposed_to_client(self, s3_template: dict[str, Any]):
-        """Test that CORS rules expose the ETag header to the client.
-
-        The ETag header is important for clients to manage caching and verify object integrity.
-        The tag value is a hash of the object contents.
-        """
+        """Test that CORS rules expose the ETag header to the client."""
         bucket = s3_template["Resources"]["UploadBucket"]
         cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
         assert cors_rule["ExposedHeaders"] == ["ETag"], "CORS should expose the ETag header."
@@ -709,32 +696,6 @@ class TestS3Template:
             policy["Properties"]["Bucket"]["Ref"] == "UploadBucket"
         ), "Policy should reference the UploadBucket."
 
-    # REMOVED: test_bucket_encryption_policy_denies_insecure_connections
-    # REMOVED: test_bucket_encryption_policy_denies_unencrypted_uploads
-    # REMOVED: test_bucket_encryption_policy_denies_missing_encryption_header
-    #
-    # These brittle tests were removed because they depended on specific policy
-    # statement Sids ("DenyInsecureConnections", "DenyUnencryptedObjectUploads",
-    # "DenyMissingEncryptionHeader") that could change when templates are refactored.
-    #
-    # REPLACED BY:
-    # - test_bucket_has_encryption_at_rest (CDK assertions)
-    # - test_bucket_policy_enforces_https_only (CDK assertions)
-    #
-    # The new tests verify the same security behavior but are resilient to
-    # template structure changes.
-
-    # ====================================================================
-    # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
-    # ====================================================================
-    # NOTE: These tests require external tools to be installed:
-    # - cfn-lint: Run `pants export --resolve=infrastructure_env` then use exported venv
-    # - cfn-nag: Requires Docker - run via scripts/run-cfn-nag.sh
-    # - cfn-guard: Install binary via scripts/install-cfn-guard.sh
-    #
-    # These tests are marked with @pytest.mark.integration and can be skipped
-    # with: pants test :: -m "not integration"
-
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, s3_template_path: Path, cfnlint_config_path: str):
         """Verify S3 template passes CloudFormation linting (syntax/schema validation).
@@ -804,9 +765,7 @@ class TestS3Template:
             f"See guard_rules/s3/s3_security_rules.guard for policy definitions"
         )
 
-    # ====================================================================
     # CDK Assertion Tests (Flexible Behavioral Testing)
-    # ====================================================================
 
     def test_bucket_has_encryption_at_rest(self, s3_template: dict[str, Any], cdk_template_factory):
         """Verify S3 bucket has encryption configuration (flexible CDK assertion).

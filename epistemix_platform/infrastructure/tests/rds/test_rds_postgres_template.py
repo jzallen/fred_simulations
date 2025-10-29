@@ -1,15 +1,4 @@
-"""Tests for RDS PostgreSQL CloudFormation template.
-
-This test suite validates the rds-postgres.json CloudFormation template
-using multiple approaches:
-- Traditional unit tests for template structure and properties
-- Integration tests with external validation tools (cfn-lint, cfn-nag, cfn-guard)
-- CDK assertions for flexible behavioral validation
-
-Integration tests are marked with @pytest.mark.integration and can be skipped:
-    pytest -m "not integration"  # Skip integration tests
-    pytest -m "integration"      # Run only integration tests
-"""
+"""Tests for RDS PostgreSQL CloudFormation template."""
 
 import json
 from pathlib import Path
@@ -35,9 +24,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestRDSPostgresTemplate:
     """Test suite for RDS PostgreSQL CloudFormation template."""
 
-    # ============================================================================
-    # Template Structure Tests
-    # ============================================================================
 
     def test_template_exists(self, template_path: str):
         """Test that the template file exists."""
@@ -60,9 +46,6 @@ class TestRDSPostgresTemplate:
             "RDS" in template["Description"] or "PostgreSQL" in template["Description"]
         ), "Description should mention RDS or PostgreSQL"
 
-    # ============================================================================
-    # Parameter Tests
-    # ============================================================================
 
     def test_parameters_defined(self, template: dict[str, Any]):
         """Test that parameters are defined in the template."""
@@ -106,9 +89,6 @@ class TestRDSPostgresTemplate:
         assert "dev" in allowed, "Environment should allow 'dev'"
         assert "staging" in allowed or "prod" in allowed, "Environment should allow staging or prod"
 
-    # ============================================================================
-    # DB Instance Resource Tests
-    # ============================================================================
 
     def test_db_instance_exists(self, template: dict[str, Any]):
         """Test DBInstance resource exists."""
@@ -167,9 +147,6 @@ class TestRDSPostgresTemplate:
             len(db_props["VPCSecurityGroups"]) > 0
         ), "DBInstance should have at least one security group"
 
-    # ============================================================================
-    # DB Subnet Group Tests
-    # ============================================================================
 
     def test_db_subnet_group_exists(self, template: dict[str, Any]):
         """Test DBSubnetGroup resource exists."""
@@ -196,9 +173,6 @@ class TestRDSPostgresTemplate:
             Match.object_like({"Tags": Match.array_with([Match.object_like({})])}),
         )
 
-    # ============================================================================
-    # Security Group Tests
-    # ============================================================================
 
     def test_db_security_group_exists(self, template: dict[str, Any]):
         """Test DBSecurityGroup resource exists."""
@@ -230,9 +204,7 @@ class TestRDSPostgresTemplate:
             Match.object_like({"FromPort": 5432, "ToPort": 5432, "IpProtocol": "tcp"}),
         )
 
-    # ============================================================================
     # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
-    # ============================================================================
 
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
@@ -329,9 +301,7 @@ class TestRDSPostgresTemplate:
             result.returncode == 0
         ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
 
-    # ============================================================================
     # CDK Assertion Tests (Behavioral Validation)
-    # ============================================================================
 
     def test_db_instance_has_encryption_enabled(self, template, cdk_template_factory):
         """Test that the RDS instance has storage encryption enabled.

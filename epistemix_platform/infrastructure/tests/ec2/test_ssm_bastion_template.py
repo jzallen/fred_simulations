@@ -1,15 +1,4 @@
-"""Tests for SSM Bastion CloudFormation template.
-
-This test suite validates the SSM bastion template with DEEP validation of:
-- EC2 instance configuration (IMDSv2, instance type)
-- Security group configuration (no ingress, specific egress)
-- IAM role and instance profile for SSM access
-- Network configuration (private subnet, security groups)
-- SSM-based access (no SSH keys required)
-- RDS connectivity (PostgreSQL port forwarding)
-
-Integration tests marked with @pytest.mark.integration can be skipped.
-"""
+"""Tests for SSM Bastion CloudFormation template."""
 
 import json
 from pathlib import Path
@@ -35,9 +24,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestSSMBastionTemplate:
     """Test suite for SSM Bastion CloudFormation template with deep security validation."""
 
-    # ============================================================================
-    # Template Structure Tests
-    # ============================================================================
 
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
@@ -48,9 +34,7 @@ class TestSSMBastionTemplate:
     def test_template_format_version(self, template: dict[str, Any]):
         assert template.get("AWSTemplateFormatVersion") == "2010-09-09"
 
-    # ============================================================================
     # Parameter Validation
-    # ============================================================================
 
     def test_instance_type_has_allowed_values(self, template: dict[str, Any]):
         """Instance type parameter must be constrained to small instance types."""
@@ -74,9 +58,7 @@ class TestSSMBastionTemplate:
             "private" in subnet_desc.lower()
         ), "Bastion should be deployed in private subnet for security"
 
-    # ============================================================================
     # EC2 Instance Configuration
-    # ============================================================================
 
     def test_bastion_instance_exists(self, template, cdk_template_factory):
         """Bastion EC2 instance must exist."""
@@ -160,9 +142,7 @@ class TestSSMBastionTemplate:
             ),
         )
 
-    # ============================================================================
     # Security Group Configuration
-    # ============================================================================
 
     def test_bastion_security_group_exists(self, template, cdk_template_factory):
         """Bastion security group must exist."""
@@ -256,9 +236,7 @@ class TestSSMBastionTemplate:
             ),
         )
 
-    # ============================================================================
     # IAM Role and Instance Profile
-    # ============================================================================
 
     def test_bastion_role_exists(self, template, cdk_template_factory):
         """IAM role for bastion must exist."""
@@ -318,9 +296,7 @@ class TestSSMBastionTemplate:
             "AWS::IAM::InstanceProfile", Match.object_like({"Roles": [{"Ref": "BastionRole"}]})
         )
 
-    # ============================================================================
     # Resource Count Validation
-    # ============================================================================
 
     def test_template_has_minimal_resources(self, template, cdk_template_factory):
         """Template should have minimal resources for bastion functionality."""
@@ -338,9 +314,7 @@ class TestSSMBastionTemplate:
         for resource_type, expected_count in expected_resource_types.items():
             cdk_template.resource_count_is(resource_type, expected_count)
 
-    # ============================================================================
     # Security Best Practices Validation
-    # ============================================================================
 
     def test_no_public_ip_assignment(self, template, cdk_template_factory):
         """Bastion should NOT have public IP (private subnet + SSM access)."""
@@ -393,9 +367,7 @@ class TestSSMBastionTemplate:
             Match.object_like({"Description": Match.string_like_regexp(".+")}),
         )
 
-    # ============================================================================
     # Integration Tests (External Tools)
-    # ============================================================================
 
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):

@@ -1,15 +1,4 @@
-"""Tests for Epistemix API ECR Repository CloudFormation template.
-
-This test suite validates the epistemix-api-repository.json CloudFormation template
-using multiple approaches:
-- Traditional unit tests for template structure and properties
-- Integration tests with external validation tools (cfn-lint, cfn-nag, cfn-guard)
-- CDK assertions for flexible behavioral validation
-
-Integration tests are marked with @pytest.mark.integration and can be skipped:
-    pytest -m "not integration"  # Skip integration tests
-    pytest -m "integration"      # Run only integration tests
-"""
+"""Tests for Epistemix API ECR Repository CloudFormation template."""
 
 import json
 from pathlib import Path
@@ -37,9 +26,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestEpistemixAPIRepositoryTemplate:
     """Test suite for Epistemix API ECR repository CloudFormation template."""
 
-    # ============================================================================
-    # Template Structure Tests
-    # ============================================================================
 
     def test_template_exists(self, template_path: str):
         """Test that the template file exists."""
@@ -62,9 +48,6 @@ class TestEpistemixAPIRepositoryTemplate:
             "Epistemix API" in template["Description"]
         ), "Description does not mention Epistemix API"
 
-    # ============================================================================
-    # Parameter Tests
-    # ============================================================================
 
     def test_environment_parameter_exists(self, template: dict[str, Any]):
         """Test Environment parameter is defined."""
@@ -85,9 +68,6 @@ class TestEpistemixAPIRepositoryTemplate:
             "shared"
         ], "Environment parameter should only allow 'shared'"
 
-    # ============================================================================
-    # ECR Repository Resource Tests
-    # ============================================================================
 
     def test_ecr_repository_exists(self, template, cdk_template_factory):
         """Test ECRRepository resource exists."""
@@ -127,9 +107,6 @@ class TestEpistemixAPIRepositoryTemplate:
             "AWS::ECR::Repository", Match.object_like({"ImageTagMutability": "MUTABLE"})
         )
 
-    # ============================================================================
-    # Security Configuration Tests
-    # ============================================================================
 
     def test_image_scanning_enabled(self, template, cdk_template_factory):
         """Test image scanning is enabled."""
@@ -151,9 +128,6 @@ class TestEpistemixAPIRepositoryTemplate:
             ),
         )
 
-    # ============================================================================
-    # Lifecycle Policy Tests
-    # ============================================================================
 
     def test_lifecycle_policy_exists(self, template, cdk_template_factory):
         """Test lifecycle policy is configured."""
@@ -194,9 +168,6 @@ class TestEpistemixAPIRepositoryTemplate:
             retention_rule.get("selection", {}).get("countNumber") == 10
         ), "Should keep last 10 images"
 
-    # ============================================================================
-    # Repository Policy Tests
-    # ============================================================================
 
     def test_repository_policy_exists(self, template, cdk_template_factory):
         """Test repository policy is configured."""
@@ -232,9 +203,6 @@ class TestEpistemixAPIRepositoryTemplate:
             ),
         )
 
-    # ============================================================================
-    # Tag Tests
-    # ============================================================================
 
     def test_repository_has_tags(self, template, cdk_template_factory):
         """Test repository has tags configured."""
@@ -285,26 +253,10 @@ class TestEpistemixAPIRepositoryTemplate:
             ),
         )
 
-    # ============================================================================
-    # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
-    # ============================================================================
-    # These tests validate the template using external tools for comprehensive
-    # infrastructure validation. They are marked as integration tests because
-    # they require external tools that may not be available in all environments.
-    # Run with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "integration"
-    # Skip with: pants test epistemix_platform/infrastructure/tests/ecr/ -- -m "not integration"
 
     @pytest.mark.integration
     def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
-        """Test that the template passes cfn-lint validation.
-
-        cfn-lint validates CloudFormation templates against AWS schema and best practices.
-        This catches syntax errors, invalid property values, and common misconfigurations.
-
-        Requires: cfn-lint (Python package in infrastructure_env)
-        Install: pants export --resolve=infrastructure_env
-        Config: .cfnlintrc.yaml
-        """
+        """Test that the template passes cfn-lint validation."""
         import subprocess
 
         result = subprocess.run(
@@ -319,26 +271,7 @@ class TestEpistemixAPIRepositoryTemplate:
 
     @pytest.mark.integration
     def test_template_passes_security_scan(self, template_path: str, cfn_nag_script_path: str):
-        """Test that the template passes cfn-nag security scanning.
-
-        cfn-nag scans CloudFormation templates for security anti-patterns with 140+ rules.
-        It identifies potential security issues like overly permissive IAM policies,
-        missing encryption, public access, and more.
-
-        Requires: Docker with stelligent/cfn_nag image
-        Install: docker pull stelligent/cfn_nag
-        Usage: ./scripts/run-cfn-nag.sh <template>
-
-        To suppress warnings, add metadata to resources:
-        "Metadata": {
-          "cfn_nag": {
-            "rules_to_suppress": [{
-              "id": "W79",
-              "reason": "Explanation of why this is acceptable"
-            }]
-          }
-        }
-        """
+        """Test that the template passes cfn-nag security scanning."""
         import subprocess
 
         result = subprocess.run(
@@ -354,17 +287,7 @@ class TestEpistemixAPIRepositoryTemplate:
 
     @pytest.mark.integration
     def test_template_passes_policy_validation(self, template_path: str):
-        """Test that the template passes cfn-guard policy validation.
-
-        cfn-guard validates CloudFormation templates against custom policy rules
-        written in Guard DSL. This enforces organizational standards and compliance
-        requirements specific to our infrastructure.
-
-        Requires: cfn-guard binary (pre-built from AWS)
-        Install: ./scripts/install-cfn-guard.sh
-        Rules: guard_rules/ecr/ecr_security_rules.guard
-        Docs: guard_rules/README.md
-        """
+        """Test that the template passes cfn-guard policy validation."""
         import subprocess
 
         rules_path = (
@@ -389,30 +312,9 @@ class TestEpistemixAPIRepositoryTemplate:
             result.returncode == 0
         ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
 
-    # ============================================================================
-    # CDK Assertion Tests (Behavioral Validation)
-    # ============================================================================
-    # These tests use AWS CDK's flexible assertion library to validate template
-    # behavior without coupling to implementation details. They test WHAT the
-    # template does (e.g., "encryption is enabled") rather than HOW it's structured
-    # (e.g., "specific property names exist").
-    #
-    # Benefits:
-    # - Resilient to refactoring (survives renaming, restructuring)
-    # - More readable (business logic vs template structure)
-    # - Flexible matching (Match.object_like, Match.array_with)
-    #
-    # Docs: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.assertions/README.html
 
     def test_repository_has_image_scanning_enabled(self, template, cdk_template_factory):
-        """Test that the ECR repository has image scanning enabled.
-
-        Image scanning automatically scans container images for vulnerabilities
-        when pushed to the repository. This is critical for security compliance.
-
-        Uses CDK assertions to verify the behavior exists without depending on
-        specific property structures that might change during refactoring.
-        """
+        """Test that the ECR repository has image scanning enabled."""
         from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
@@ -423,14 +325,7 @@ class TestEpistemixAPIRepositoryTemplate:
         )
 
     def test_repository_has_encryption_enabled(self, template, cdk_template_factory):
-        """Test that the ECR repository has encryption enabled.
-
-        Encryption at rest protects container images stored in ECR using either
-        AES256 or KMS encryption. This is required for compliance with security
-        standards.
-
-        Uses flexible matching to accept either AES256 or KMS encryption types.
-        """
+        """Test that the ECR repository has encryption enabled."""
         from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
@@ -447,15 +342,7 @@ class TestEpistemixAPIRepositoryTemplate:
         )
 
     def test_repository_has_lifecycle_policy(self, template, cdk_template_factory):
-        """Test that the ECR repository has a lifecycle policy configured.
-
-        Lifecycle policies automatically clean up old or untagged images to manage
-        storage costs and maintain repository hygiene. This prevents unbounded
-        growth of container image storage.
-
-        Tests for the presence of a lifecycle policy without validating specific
-        rules, allowing flexibility in policy configuration.
-        """
+        """Test that the ECR repository has a lifecycle policy configured."""
         from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
@@ -468,12 +355,7 @@ class TestEpistemixAPIRepositoryTemplate:
         )
 
     def test_repository_allows_lambda_access(self, template, cdk_template_factory):
-        """Test that the repository policy allows Lambda service access.
-
-        The Epistemix API runs as a Lambda function and needs permission to pull
-        container images from this ECR repository. This test verifies the repository
-        policy grants the necessary permissions to the Lambda service.
-        """
+        """Test that the repository policy allows Lambda service access."""
         from aws_cdk.assertions import Match
 
         cdk_template = cdk_template_factory(template)
