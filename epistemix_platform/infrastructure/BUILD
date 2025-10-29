@@ -26,7 +26,6 @@ target(
     name="lib",
     dependencies=[
         "./config:config",
-        "./hooks:hooks",
         "./templates:templates",
         ":scripts",
         ":guard_rules",
