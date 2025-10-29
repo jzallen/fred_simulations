@@ -14,23 +14,10 @@ rule s3_encryption_enabled {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.BucketEncryption exists <<
-            Violation: S3 bucket must have encryption enabled
-            Fix: Add BucketEncryption configuration with AES256 or aws:kms
-            Rationale: Protects data at rest from unauthorized access
-            Example:
-              BucketEncryption:
-                ServerSideEncryptionConfiguration:
-                  - ServerSideEncryptionByDefault:
-                      SSEAlgorithm: AES256
-        >>
+        %s3_buckets.Properties.BucketEncryption exists
 
         %s3_buckets.Properties.BucketEncryption.ServerSideEncryptionConfiguration[*] {
-            ServerSideEncryptionByDefault.SSEAlgorithm in ['AES256', 'aws:kms'] <<
-                Violation: Encryption algorithm must be AES256 or aws:kms
-                Fix: Set SSEAlgorithm to 'AES256' or 'aws:kms'
-                Rationale: Only AWS-managed encryption methods provide adequate protection
-            >>
+            ServerSideEncryptionByDefault.SSEAlgorithm in ['AES256', 'aws:kms']
         }
     }
 }
@@ -40,20 +27,9 @@ rule s3_versioning_enabled {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.VersioningConfiguration exists <<
-            Violation: S3 bucket must have versioning enabled
-            Fix: Add VersioningConfiguration with Status: Enabled
-            Rationale: Protects against accidental deletion and enables point-in-time recovery
-            Example:
-              VersioningConfiguration:
-                Status: Enabled
-        >>
+        %s3_buckets.Properties.VersioningConfiguration exists
 
-        %s3_buckets.Properties.VersioningConfiguration.Status == 'Enabled' <<
-            Violation: Versioning status must be 'Enabled'
-            Fix: Set Status: Enabled in VersioningConfiguration
-            Rationale: Suspended versioning does not provide data protection benefits
-        >>
+        %s3_buckets.Properties.VersioningConfiguration.Status == 'Enabled'
     }
 }
 
@@ -66,36 +42,16 @@ rule s3_public_access_blocked {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.PublicAccessBlockConfiguration exists <<
-            Violation: S3 bucket must have PublicAccessBlockConfiguration
-            Fix: Add PublicAccessBlockConfiguration with all 4 settings enabled
-            Rationale: Prevents accidental public exposure of sensitive data
-        >>
+        %s3_buckets.Properties.PublicAccessBlockConfiguration exists
 
         %s3_buckets.Properties.PublicAccessBlockConfiguration {
-            BlockPublicAcls == true <<
-                Violation: BlockPublicAcls must be true
-                Fix: Set BlockPublicAcls: true
-                Rationale: Prevents creation of new public ACLs
-            >>
+            BlockPublicAcls == true
 
-            BlockPublicPolicy == true <<
-                Violation: BlockPublicPolicy must be true
-                Fix: Set BlockPublicPolicy: true
-                Rationale: Prevents public bucket policies from being applied
-            >>
+            BlockPublicPolicy == true
 
-            IgnorePublicAcls == true <<
-                Violation: IgnorePublicAcls must be true
-                Fix: Set IgnorePublicAcls: true
-                Rationale: Ignores existing public ACLs
-            >>
+            IgnorePublicAcls == true
 
-            RestrictPublicBuckets == true <<
-                Violation: RestrictPublicBuckets must be true
-                Fix: Set RestrictPublicBuckets: true
-                Rationale: Restricts cross-account access to only authorized users
-            >>
+            RestrictPublicBuckets == true
         }
     }
 }
@@ -105,22 +61,10 @@ rule s3_ownership_controls_enforced {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.OwnershipControls exists <<
-            Violation: S3 bucket should have OwnershipControls configured
-            Fix: Add OwnershipControls with BucketOwnerEnforced
-            Rationale: Disables ACLs and ensures bucket owner owns all objects
-            Example:
-              OwnershipControls:
-                Rules:
-                  - ObjectOwnership: BucketOwnerEnforced
-        >>
+        %s3_buckets.Properties.OwnershipControls exists
 
         when %s3_buckets.Properties.OwnershipControls exists {
-            %s3_buckets.Properties.OwnershipControls.Rules[*].ObjectOwnership == 'BucketOwnerEnforced' <<
-                Violation: ObjectOwnership should be set to BucketOwnerEnforced
-                Fix: Set ObjectOwnership: BucketOwnerEnforced
-                Rationale: Simplifies access management and disables ACLs
-            >>
+            %s3_buckets.Properties.OwnershipControls.Rules[*].ObjectOwnership == 'BucketOwnerEnforced'
         }
     }
 }
@@ -137,22 +81,7 @@ rule s3_https_only {
         some %bucket_policies.Properties.PolicyDocument.Statement[*] {
             Effect == 'Deny'
             Condition.Bool.'aws:SecureTransport' == 'false'
-        } <<
-            Violation: Bucket policy must deny requests without SecureTransport
-            Fix: Add Deny statement with Condition.Bool."aws:SecureTransport": "false"
-            Rationale: Ensures all data in transit is encrypted using TLS
-            Reference: Security Hub control [S3.5]
-            Example:
-              Effect: Deny
-              Principal: "*"
-              Action: "s3:*"
-              Resource:
-                - !Sub "${Bucket.Arn}/*"
-                - !GetAtt Bucket.Arn
-              Condition:
-                Bool:
-                  aws:SecureTransport: "false"
-        >>
+        }
     }
 }
 
@@ -161,11 +90,7 @@ rule s3_bucket_policy_has_deny {
     let bucket_policies = Resources.*[ Type == 'AWS::S3::BucketPolicy' ]
 
     when %bucket_policies !empty {
-        some %bucket_policies.Properties.PolicyDocument.Statement[*].Effect == 'Deny' <<
-            Violation: Bucket policy should include at least one explicit Deny statement
-            Fix: Add Deny statements for security enforcement (e.g., deny unencrypted transport)
-            Rationale: Explicit deny statements cannot be overridden and enforce security controls
-        >>
+        some %bucket_policies.Properties.PolicyDocument.Statement[*].Effect == 'Deny'
     }
 }
 
@@ -178,18 +103,7 @@ rule s3_lifecycle_configured {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.LifecycleConfiguration exists <<
-            Violation: S3 bucket should have lifecycle policies configured
-            Fix: Add LifecycleConfiguration with appropriate rules
-            Rationale: Lifecycle policies help manage storage costs and data retention
-            Example:
-              LifecycleConfiguration:
-                Rules:
-                  - Id: AbortIncompleteMultipartUploads
-                    Status: Enabled
-                    AbortIncompleteMultipartUpload:
-                      DaysAfterInitiation: 7
-        >>
+        %s3_buckets.Properties.LifecycleConfiguration exists
     }
 }
 
@@ -200,11 +114,7 @@ rule s3_lifecycle_rules_enabled {
 
     when %buckets_with_lifecycle !empty {
         %buckets_with_lifecycle.Properties.LifecycleConfiguration.Rules[*] {
-            Status == 'Enabled' <<
-                Violation: Lifecycle rules must have Status set to 'Enabled'
-                Fix: Set Status: Enabled for all lifecycle rules
-                Rationale: Disabled rules don't execute and provide no cost management benefit
-            >>
+            Status == 'Enabled'
         }
     }
 }
@@ -215,16 +125,7 @@ rule s3_abort_incomplete_multipart_uploads {
     let buckets_with_lifecycle = %s3_buckets[ Properties.LifecycleConfiguration exists ]
 
     when %buckets_with_lifecycle !empty {
-        some %buckets_with_lifecycle.Properties.LifecycleConfiguration.Rules[*].AbortIncompleteMultipartUpload exists <<
-            Violation: S3 bucket should have rule to abort incomplete multipart uploads
-            Fix: Add lifecycle rule with AbortIncompleteMultipartUpload
-            Rationale: Prevents storage costs from abandoned multipart uploads
-            Example:
-              - Id: AbortIncompleteMultipartUploads
-                Status: Enabled
-                AbortIncompleteMultipartUpload:
-                  DaysAfterInitiation: 7
-        >>
+        some %buckets_with_lifecycle.Properties.LifecycleConfiguration.Rules[*].AbortIncompleteMultipartUpload exists
     }
 }
 
@@ -237,23 +138,10 @@ rule s3_buckets_must_be_tagged {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.Properties.Tags exists <<
-            Violation: S3 bucket must have tags for governance and cost tracking
-            Fix: Add Tags with at least Environment and Purpose keys
-            Rationale: Tags enable cost allocation, resource management, and compliance tracking
-            Example:
-              Tags:
-                - Key: Environment
-                  Value: production
-                - Key: Purpose
-                  Value: FileUploads
-        >>
+        %s3_buckets.Properties.Tags exists
 
         when %s3_buckets.Properties.Tags exists {
-            some %s3_buckets.Properties.Tags[*].Key == 'Environment' <<
-                Violation: S3 bucket must have an 'Environment' tag
-                Fix: Add Environment tag to bucket
-            >>
+            some %s3_buckets.Properties.Tags[*].Key == 'Environment'
         }
     }
 }
@@ -263,12 +151,7 @@ rule s3_deletion_policy_configured {
     let s3_buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
 
     when %s3_buckets !empty {
-        %s3_buckets.DeletionPolicy exists <<
-            Violation: S3 bucket should have DeletionPolicy configured
-            Fix: Add DeletionPolicy (Retain for production, Delete for dev/test)
-            Rationale: Prevents accidental data loss during stack deletion
-            Example: DeletionPolicy: Retain
-        >>
+        %s3_buckets.DeletionPolicy exists
     }
 }
 
@@ -281,27 +164,14 @@ rule s3_roles_must_have_trust_policy {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
-        %iam_roles.Properties.AssumeRolePolicyDocument exists <<
-            Violation: IAM role must have AssumeRolePolicyDocument
-            Fix: Add AssumeRolePolicyDocument defining trusted principals
-            Rationale: Trust policies define which services or accounts can assume the role
-        >>
+        %iam_roles.Properties.AssumeRolePolicyDocument exists
 
         when %iam_roles.Properties.AssumeRolePolicyDocument exists {
-            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Effect == 'Allow' <<
-                Violation: AssumeRolePolicyDocument must have Allow effect in trust statements
-                Fix: Set Effect: Allow in AssumeRolePolicyDocument statements
-            >>
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Effect == 'Allow'
 
-            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Action exists <<
-                Violation: AssumeRolePolicyDocument statements must specify Action
-                Fix: Add Action: sts:AssumeRole to trust policy statements
-            >>
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Action exists
 
-            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Principal exists <<
-                Violation: AssumeRolePolicyDocument statements must specify Principal
-                Fix: Add Principal with Service or AWS account to trust policy
-            >>
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*].Principal exists
         }
     }
 }
@@ -314,15 +184,7 @@ rule s3_policies_enforce_encryption {
     when %roles_with_policies !empty {
         %roles_with_policies.Properties.Policies[*].PolicyDocument.Statement[*] {
             when Action[*] == 's3:PutObject' or Action == 's3:PutObject' {
-                Condition exists <<
-                    Violation: PutObject permissions should have encryption conditions
-                    Fix: Add Condition requiring s3:x-amz-server-side-encryption
-                    Rationale: Ensures all uploaded objects are encrypted
-                    Example:
-                      Condition:
-                        StringEquals:
-                          s3:x-amz-server-side-encryption: AES256
-                >>
+                Condition exists
             }
         }
     }
@@ -337,19 +199,10 @@ rule s3_cloudwatch_log_retention_configured {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {
-        %log_groups.Properties.RetentionInDays exists <<
-            Violation: CloudWatch log groups must have retention period configured
-            Fix: Add RetentionInDays property (recommended: 30, 60, 90, or 365)
-            Rationale: Prevents unlimited log storage costs and ensures compliance
-            Example: RetentionInDays: 30
-        >>
+        %log_groups.Properties.RetentionInDays exists
 
         when %log_groups.Properties.RetentionInDays exists {
-            %log_groups.Properties.RetentionInDays >= 7 <<
-                Violation: CloudWatch log retention should be at least 7 days
-                Fix: Set RetentionInDays to 7 or more
-                Rationale: Short retention periods may not allow adequate incident investigation
-            >>
+            %log_groups.Properties.RetentionInDays >= 7
         }
     }
 }

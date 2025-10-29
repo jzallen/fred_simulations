@@ -21,3 +21,12 @@ tags:
   Component: ECR
   Service: SimulationRunner
   Shared: "true"
+
+# Sceptre hooks for template validation
+hooks:
+  before_create:
+    - !cmd "cfn-lint templates/ecr/simulation-runner-repository.json"
+    - !cmd "cfn-guard validate --data templates/ecr/simulation-runner-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail"
+  before_update:
+    - !cmd "cfn-lint templates/ecr/simulation-runner-repository.json"
+    - !cmd "cfn-guard validate --data templates/ecr/simulation-runner-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail"

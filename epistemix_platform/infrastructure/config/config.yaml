@@ -4,6 +4,13 @@ region: us-east-1
 # Global template bucket for large templates and remote state (optional)
 # template_bucket_name: fred-simulations-sceptre-templates
 
+# Custom hooks directory
+# Sceptre will look for custom hooks in the hooks/ directory
+# Hooks are loaded as: hooks.validate_templates.ValidateTemplate
+# Add the infrastructure directory to sys.path for custom hooks
+sceptre_user_data:
+  hooks_path: hooks
+
 # Default tags applied to all stacks
 stack_tags:
   Project: FREDSimulations

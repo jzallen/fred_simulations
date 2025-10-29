@@ -572,52 +572,6 @@ class TestECRTemplate:
         ), "ECRScanEventRule resource should not exist after SNS notification removal"
 
 
-    @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, ecr_template_path: Path, cfnlint_config_path: str):
-        """Test that the ECR template passes cfn-lint validation."""
-        import subprocess
-
-        result = subprocess.run(
-            ["cfn-lint", "--config-file", cfnlint_config_path, ecr_template_path],
-            capture_output=True,
-            text=True,
-        )
-
-        assert (
-            result.returncode == 0
-        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
-
-    @pytest.mark.integration
-    def test_template_passes_policy_validation(self, ecr_template_path: Path):
-        """Test that the ECR template passes cfn-guard policy validation.
-
-        cfn-guard validates CloudFormation templates against custom policy rules
-        written in Guard DSL. This enforces organizational standards and compliance
-        requirements specific to our infrastructure.
-
-        Requires: cfn-guard binary (pre-built from AWS)
-        Install: ./scripts/install-cfn-guard.sh
-        Rules: guard_rules/ecr/ecr_security_rules.guard
-        Docs: guard_rules/README.md
-        """
-        import subprocess
-
-        rules_path = (
-            Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
-        )
-
-        result = subprocess.run(
-            ["cfn-guard", "validate", "--data", ecr_template_path, "--rules", str(rules_path)],
-            capture_output=True,
-            text=True,
-        )
-
-        # cfn-guard returns 0 for pass, non-zero for failures
-        assert (
-            result.returncode == 0
-        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
-
-
     def test_repository_has_image_scanning_enabled(self, ecr_template, cdk_template_factory):
         """Test that the ECR repository has image scanning enabled."""
         from aws_cdk.assertions import Match

@@ -15,22 +15,9 @@ rule ecr_image_scanning_enabled {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.Properties.ImageScanningConfiguration exists <<
-            Violation: ECR repository must have image scanning configured
-            Fix: Add ImageScanningConfiguration to repository properties
-            Rationale: Image scanning identifies vulnerabilities in container images
-            Reference: Security Hub control [ECR.1]
-            Example:
-              ImageScanningConfiguration:
-                ScanOnPush: true
-        >>
+        %ecr_repos.Properties.ImageScanningConfiguration exists
 
-        %ecr_repos.Properties.ImageScanningConfiguration.ScanOnPush exists <<
-            Violation: ECR repository must configure scan on push
-            Fix: Set ScanOnPush to true or false (explicit configuration required)
-            Rationale: Automatically scans images for vulnerabilities when pushed
-            Reference: Integrates with Amazon Inspector for vulnerability detection
-        >>
+        %ecr_repos.Properties.ImageScanningConfiguration.ScanOnPush exists
     }
 }
 
@@ -43,21 +30,9 @@ rule ecr_encryption_enabled {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.Properties.EncryptionConfiguration exists <<
-            Violation: ECR repository must have encryption configured
-            Fix: Add EncryptionConfiguration with AES256 or KMS
-            Rationale: Protects container images at rest from unauthorized access
-            Reference: Security Hub control [ECR.5] recommends KMS for enhanced control
-            Example:
-              EncryptionConfiguration:
-                EncryptionType: AES256
-        >>
+        %ecr_repos.Properties.EncryptionConfiguration exists
 
-        %ecr_repos.Properties.EncryptionConfiguration.EncryptionType in ['AES256', 'KMS'] <<
-            Violation: Encryption type must be AES256 or KMS
-            Fix: Set EncryptionType to 'AES256' or 'KMS'
-            Rationale: Only AWS-managed encryption methods provide adequate protection
-        >>
+        %ecr_repos.Properties.EncryptionConfiguration.EncryptionType in ['AES256', 'KMS']
     }
 }
 
@@ -70,35 +45,10 @@ rule ecr_lifecycle_policy_configured {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.Properties.LifecyclePolicy exists <<
-            Violation: ECR repository must have lifecycle policy configured
-            Fix: Add LifecyclePolicy to manage image retention and storage costs
-            Rationale: Lifecycle policies automate cleanup of unused images and reduce attack surface
-            Reference: Security Hub control [ECR.3]
-            Example:
-              LifecyclePolicy:
-                LifecyclePolicyText: |
-                  {
-                    "rules": [{
-                      "rulePriority": 1,
-                      "description": "Expire untagged images",
-                      "selection": {
-                        "tagStatus": "untagged",
-                        "countType": "sinceImagePushed",
-                        "countUnit": "days",
-                        "countNumber": 30
-                      },
-                      "action": {"type": "expire"}
-                    }]
-                  }
-        >>
+        %ecr_repos.Properties.LifecyclePolicy exists
 
         when %ecr_repos.Properties.LifecyclePolicy exists {
-            %ecr_repos.Properties.LifecyclePolicy.LifecyclePolicyText exists <<
-                Violation: LifecyclePolicy must include LifecyclePolicyText
-                Fix: Add LifecyclePolicyText with policy rules in JSON format
-                Rationale: Policy text defines the actual lifecycle rules
-            >>
+            %ecr_repos.Properties.LifecyclePolicy.LifecyclePolicyText exists
         }
     }
 }
@@ -112,25 +62,10 @@ rule ecr_repositories_must_be_tagged {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.Properties.Tags exists <<
-            Violation: ECR repository must have tags for governance
-            Fix: Add Tags with at least Environment and Purpose keys
-            Rationale: Tags enable cost tracking, resource management, and compliance
-            Reference: Security Hub control [ECR.4]
-            Example:
-              Tags:
-                - Key: Environment
-                  Value: production
-                - Key: Purpose
-                  Value: ApplicationImages
-        >>
+        %ecr_repos.Properties.Tags exists
 
         when %ecr_repos.Properties.Tags exists {
-            some %ecr_repos.Properties.Tags[*].Key == 'Environment' <<
-                Violation: ECR repository must have an 'Environment' tag
-                Fix: Add Environment tag to repository
-                Rationale: Environment tagging is essential for cost allocation and access control
-            >>
+            some %ecr_repos.Properties.Tags[*].Key == 'Environment'
         }
     }
 }
@@ -140,12 +75,7 @@ rule ecr_deletion_policy_configured {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.DeletionPolicy exists <<
-            Violation: ECR repository should have DeletionPolicy configured
-            Fix: Add DeletionPolicy (Retain for production/shared, Delete for ephemeral)
-            Rationale: Prevents accidental loss of container images during stack deletion
-            Example: DeletionPolicy: Retain
-        >>
+        %ecr_repos.DeletionPolicy exists
     }
 }
 
@@ -154,12 +84,7 @@ rule ecr_update_replace_policy_configured {
     let ecr_repos = Resources.*[ Type == 'AWS::ECR::Repository' ]
 
     when %ecr_repos !empty {
-        %ecr_repos.UpdateReplacePolicy exists <<
-            Violation: ECR repository should have UpdateReplacePolicy configured
-            Fix: Add UpdateReplacePolicy (Retain for production/shared, Delete for ephemeral)
-            Rationale: Prevents accidental loss of container images during resource replacement
-            Example: UpdateReplacePolicy: Retain
-        >>
+        %ecr_repos.UpdateReplacePolicy exists
     }
 }
 
@@ -172,38 +97,19 @@ rule ecr_iam_roles_must_have_trust_policy {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
-        %iam_roles.Properties.AssumeRolePolicyDocument exists <<
-            Violation: IAM role must have AssumeRolePolicyDocument
-            Fix: Add AssumeRolePolicyDocument defining trusted principals
-            Rationale: Trust policies control which entities can assume the role
-        >>
+        %iam_roles.Properties.AssumeRolePolicyDocument exists
 
         when %iam_roles.Properties.AssumeRolePolicyDocument exists {
-            %iam_roles.Properties.AssumeRolePolicyDocument.Version exists <<
-                Violation: AssumeRolePolicyDocument must specify Version
-                Fix: Add Version: "2012-10-17" to trust policy
-            >>
+            %iam_roles.Properties.AssumeRolePolicyDocument.Version exists
 
-            %iam_roles.Properties.AssumeRolePolicyDocument.Statement exists <<
-                Violation: AssumeRolePolicyDocument must have Statement array
-                Fix: Add Statement array with trust policy statements
-            >>
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement exists
 
             %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*] {
-                Effect == 'Allow' <<
-                    Violation: Trust policy statements must have Effect: Allow
-                    Fix: Set Effect to 'Allow' in trust policy statements
-                >>
+                Effect == 'Allow'
 
-                Action exists <<
-                    Violation: Trust policy statements must specify Action
-                    Fix: Add Action (e.g., sts:AssumeRole or sts:AssumeRoleWithWebIdentity)
-                >>
+                Action exists
 
-                Principal exists <<
-                    Violation: Trust policy statements must specify Principal
-                    Fix: Add Principal with Service, AWS, or Federated entity
-                >>
+                Principal exists
             }
         }
     }
@@ -214,17 +120,7 @@ rule ecr_iam_roles_must_be_tagged {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
-        %iam_roles.Properties.Tags exists <<
-            Violation: IAM role must have tags for governance
-            Fix: Add Tags with at least Environment and Purpose keys
-            Rationale: Tags enable IAM resource tracking and access analysis
-            Example:
-              Tags:
-                - Key: Environment
-                  Value: production
-                - Key: Purpose
-                  Value: ECRAccess
-        >>
+        %iam_roles.Properties.Tags exists
     }
 }
 
@@ -233,20 +129,10 @@ rule ecr_instance_profiles_must_have_roles {
     let instance_profiles = Resources.*[ Type == 'AWS::IAM::InstanceProfile' ]
 
     when %instance_profiles !empty {
-        %instance_profiles.Properties.Roles exists <<
-            Violation: IAM instance profile must reference at least one role
-            Fix: Add Roles property with role reference
-            Rationale: Instance profiles attach IAM roles to EC2 instances
-            Example:
-              Roles:
-                - !Ref EC2Role
-        >>
+        %instance_profiles.Properties.Roles exists
 
         when %instance_profiles.Properties.Roles exists {
-            %instance_profiles.Properties.Roles !empty <<
-                Violation: IAM instance profile Roles array cannot be empty
-                Fix: Add at least one role reference to the Roles array
-            >>
+            %instance_profiles.Properties.Roles !empty
         }
     }
 }
@@ -260,19 +146,10 @@ rule ecr_cloudwatch_log_retention_configured {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {
-        %log_groups.Properties.RetentionInDays exists <<
-            Violation: CloudWatch log groups must have retention period configured
-            Fix: Add RetentionInDays property (recommended: 7, 14, 30, 60, or 90)
-            Rationale: Prevents unlimited log storage costs and ensures compliance
-            Example: RetentionInDays: 14
-        >>
+        %log_groups.Properties.RetentionInDays exists
 
         when %log_groups.Properties.RetentionInDays exists {
-            %log_groups.Properties.RetentionInDays >= 7 <<
-                Violation: CloudWatch log retention should be at least 7 days
-                Fix: Set RetentionInDays to 7 or more
-                Rationale: Short retention periods may not allow adequate incident investigation
-            >>
+            %log_groups.Properties.RetentionInDays >= 7
         }
     }
 }
@@ -282,14 +159,6 @@ rule ecr_cloudwatch_log_groups_must_be_tagged {
     let log_groups = Resources.*[ Type == 'AWS::Logs::LogGroup' ]
 
     when %log_groups !empty {
-        %log_groups.Properties.Tags exists <<
-            Violation: CloudWatch log group should have tags for governance
-            Fix: Add Tags with at least Environment key
-            Rationale: Tags enable cost tracking for logging resources
-            Example:
-              Tags:
-                - Key: Environment
-                  Value: production
-        >>
+        %log_groups.Properties.Tags exists
     }
 }

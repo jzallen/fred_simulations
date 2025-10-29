@@ -35,3 +35,12 @@ tags:
   CostCenter: Staging
   Component: Lambda
   Service: EpistemixAPI
+
+# Sceptre hooks for template validation
+hooks:
+  before_create:
+    - !cmd "cfn-lint templates/lambda/epistemix-api-lambda.json"
+    - !cmd "cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail"
+  before_update:
+    - !cmd "cfn-lint templates/lambda/epistemix-api-lambda.json"
+    - !cmd "cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail"

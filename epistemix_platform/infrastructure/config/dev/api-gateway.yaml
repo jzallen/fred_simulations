@@ -27,3 +27,12 @@ tags:
   CostCenter: Development
   Component: APIGateway
   Service: EpistemixAPI
+
+# Sceptre hooks for template validation
+hooks:
+  before_create:
+    - !cmd "cfn-lint templates/api-gateway/epistemix-api-gateway.json"
+    - !cmd "cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail"
+  before_update:
+    - !cmd "cfn-lint templates/api-gateway/epistemix-api-gateway.json"
+    - !cmd "cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail"

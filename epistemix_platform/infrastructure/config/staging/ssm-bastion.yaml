@@ -18,3 +18,12 @@ stack_tags:
   Environment: staging
   ManagedBy: sceptre
   Purpose: SSM Bastion for RDS Access
+
+# Sceptre hooks for template validation
+hooks:
+  before_create:
+    - !cmd "cfn-lint templates/ec2/ssm-bastion.json"
+    - !cmd "cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail"
+  before_update:
+    - !cmd "cfn-lint templates/ec2/ssm-bastion.json"
+    - !cmd "cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail"
