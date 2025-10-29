@@ -1,0 +1,256 @@
+# API Gateway Security Rules
+# CloudFormation Guard policy rules for API Gateway security validation
+#
+# These rules enforce security best practices for API Gateway in CloudFormation templates.
+# Documentation: https://docs.aws.amazon.com/cfn-guard/latest/ug/writing-rules.html
+# AWS API Gateway Security Best Practices: https://docs.aws.amazon.com/apigateway/latest/developerguide/security-best-practices.html
+
+# ============================================================================
+# API GATEWAY CONFIGURATION
+# ============================================================================
+
+# Rule: API Gateway REST API must exist
+rule api_gateway_rest_api_must_exist {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+
+    %apis !empty <<
+        Violation: API Gateway RestApi must be defined
+        Fix: Create AWS::ApiGateway::RestApi resource
+        Rationale: REST API is the core resource for API Gateway
+    >>
+}
+
+# Rule: API Gateway must have deployment
+rule api_gateway_must_have_deployment {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+    let deployments = Resources.*[ Type == 'AWS::ApiGateway::Deployment' ]
+
+    when %apis !empty {
+        %deployments !empty <<
+            Violation: API Gateway must have deployment resource
+            Fix: Create AWS::ApiGateway::Deployment resource
+            Rationale: Deployments are required to make API accessible
+        >>
+    }
+}
+
+# ============================================================================
+# STAGE CONFIGURATION AND SECURITY
+# ============================================================================
+
+# Rule: API Gateway stage must reference deployment
+rule api_gateway_stage_must_reference_deployment {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        %stages.Properties.DeploymentId exists <<
+            Violation: API Gateway stage must reference a deployment
+            Fix: Add DeploymentId property referencing deployment
+            Rationale: Stages require deployment association to serve traffic
+            Example:
+              DeploymentId: !Ref ApiDeployment
+        >>
+    }
+}
+
+# Rule: API Gateway stage must have method settings for throttling
+rule api_gateway_stage_must_have_method_settings {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        %stages.Properties.MethodSettings exists <<
+            Violation: API Gateway stage must have MethodSettings configured
+            Fix: Add MethodSettings with throttling and logging configuration
+            Rationale: Prevents resource exhaustion and enables monitoring
+            Reference: Throttling protects against traffic spikes and DDoS
+            Example:
+              MethodSettings:
+                - ResourcePath: "/*"
+                  HttpMethod: "*"
+                  ThrottlingRateLimit: 1000
+                  ThrottlingBurstLimit: 2000
+                  LoggingLevel: INFO
+        >>
+    }
+}
+
+# Rule: API Gateway stage should have logging enabled
+rule api_gateway_stage_should_have_logging {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        when %stages.Properties.MethodSettings exists {
+            some %stages.Properties.MethodSettings[*].LoggingLevel exists <<
+                Violation: API Gateway stage should have logging configured
+                Fix: Add LoggingLevel to MethodSettings (ERROR, INFO, or OFF)
+                Rationale: Logging enables monitoring, debugging, and security auditing
+                Reference: Security best practice for tracking access patterns
+                Example:
+                  MethodSettings:
+                    - ResourcePath: "/*"
+                      HttpMethod: "*"
+                      LoggingLevel: INFO
+            >>
+        }
+    }
+}
+
+# Rule: API Gateway stage should have CloudWatch metrics enabled
+rule api_gateway_stage_should_have_metrics {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        when %stages.Properties.MethodSettings exists {
+            some %stages.Properties.MethodSettings[*].MetricsEnabled exists <<
+                Violation: API Gateway stage should have CloudWatch metrics enabled
+                Fix: Add MetricsEnabled: true to MethodSettings
+                Rationale: Metrics enable monitoring of API performance and usage
+                Example:
+                  MethodSettings:
+                    - ResourcePath: "/*"
+                      HttpMethod: "*"
+                      MetricsEnabled: true
+            >>
+        }
+    }
+}
+
+# Rule: API Gateway stage should have tags
+rule api_gateway_stage_should_have_tags {
+    let stages = Resources.*[ Type == 'AWS::ApiGateway::Stage' ]
+
+    when %stages !empty {
+        %stages.Properties.Tags exists <<
+            Violation: API Gateway stage should have tags for governance
+            Fix: Add Tags with at least Environment key
+            Rationale: Tags enable cost tracking and resource management
+            Example:
+              Tags:
+                - Key: Environment
+                  Value: production
+                - Key: Service
+                  Value: my-api
+        >>
+    }
+}
+
+# ============================================================================
+# AUTHORIZATION AND ACCESS CONTROL
+# ============================================================================
+
+# Rule: API Gateway methods should have authorization configured
+rule api_gateway_methods_should_have_authorization {
+    let methods = Resources.*[ Type == 'AWS::ApiGateway::Method' ]
+
+    when %methods !empty {
+        %methods.Properties.AuthorizationType exists <<
+            Violation: API Gateway method should have AuthorizationType configured
+            Fix: Add AuthorizationType (AWS_IAM, CUSTOM, COGNITO_USER_POOLS, or NONE)
+            Rationale: Authorization controls access to API endpoints
+            Reference: NONE should only be used for public APIs after security review
+            Note: Use AWS_IAM, Lambda authorizers, or Cognito for secure APIs
+        >>
+    }
+}
+
+# ============================================================================
+# LOGGING AND MONITORING
+# ============================================================================
+
+# Rule: API Gateway accounts should have CloudWatch role configured
+rule api_gateway_account_should_have_cloudwatch_role {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+    let accounts = Resources.*[ Type == 'AWS::ApiGateway::Account' ]
+
+    when %apis !empty {
+        when %accounts !empty {
+            %accounts.Properties.CloudWatchRoleArn exists <<
+                Violation: API Gateway account should have CloudWatchRoleArn configured
+                Fix: Add CloudWatchRoleArn property referencing IAM role
+                Rationale: Enables API Gateway to write logs to CloudWatch
+                Example:
+                  CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchRole.Arn
+            >>
+        }
+    }
+}
+
+# ============================================================================
+# GOVERNANCE AND COMPLIANCE
+# ============================================================================
+
+# Rule: API Gateway REST APIs should have names
+rule api_gateway_rest_api_should_have_name {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+
+    when %apis !empty {
+        %apis.Properties.Name exists <<
+            Violation: API Gateway REST API should have Name property
+            Fix: Add Name property with descriptive API name
+            Rationale: Names improve resource identification and management
+            Example:
+              Name: epistemix-api
+        >>
+    }
+}
+
+# Rule: API Gateway REST APIs should have descriptions
+rule api_gateway_rest_api_should_have_description {
+    let apis = Resources.*[ Type == 'AWS::ApiGateway::RestApi' ]
+
+    when %apis !empty {
+        %apis.Properties.Description exists <<
+            Violation: API Gateway REST API should have Description property
+            Fix: Add Description property explaining API purpose
+            Rationale: Descriptions document API purpose and usage
+            Example:
+              Description: "Epistemix Platform API for simulation management"
+        >>
+    }
+}
+
+# ============================================================================
+# IAM ROLES
+# ============================================================================
+
+# Rule: IAM roles must have assume role policy documents
+rule api_gateway_iam_roles_must_have_trust_policy {
+    let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
+
+    when %iam_roles !empty {
+        %iam_roles.Properties.AssumeRolePolicyDocument exists <<
+            Violation: IAM role must have AssumeRolePolicyDocument
+            Fix: Add AssumeRolePolicyDocument defining trusted principals
+            Rationale: Trust policies control which entities can assume the role
+        >>
+
+        when %iam_roles.Properties.AssumeRolePolicyDocument exists {
+            %iam_roles.Properties.AssumeRolePolicyDocument.Version exists <<
+                Violation: AssumeRolePolicyDocument must specify Version
+                Fix: Add Version: "2012-10-17" to trust policy
+            >>
+
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement exists <<
+                Violation: AssumeRolePolicyDocument must have Statement array
+                Fix: Add Statement array with trust policy statements
+            >>
+        }
+    }
+}
+
+# Rule: IAM roles should have tags
+rule api_gateway_iam_roles_should_have_tags {
+    let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
+
+    when %iam_roles !empty {
+        %iam_roles.Properties.Tags exists <<
+            Violation: IAM role should have tags for governance
+            Fix: Add Tags with at least Purpose key
+            Rationale: Tags enable IAM resource tracking and access analysis
+            Example:
+              Tags:
+                - Key: Purpose
+                  Value: ApiGatewayCloudWatch
+        >>
+    }
+}

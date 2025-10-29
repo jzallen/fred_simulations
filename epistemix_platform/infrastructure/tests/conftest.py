@@ -12,6 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 import yaml
+from aws_cdk.assertions import Template
 from sceptre.config.reader import ConfigReader
 from sceptre.context import SceptreContext
 
@@ -19,13 +20,8 @@ from sceptre.context import SceptreContext
 @pytest.fixture(scope="session")
 def infrastructure_root() -> Path:
     """Return the path to the infrastructure root directory."""
-    # Start from the current file's directory
     current_file = Path(__file__)
-
-    # Go up from conftest.py to tests/, then to infrastructure/
-    # conftest.py is in infrastructure/tests/, so parent.parent gives us infrastructure/
     infrastructure_dir = current_file.parent.parent
-
     return infrastructure_dir
 
 
@@ -68,6 +64,16 @@ def load_template():
             return json.load(f)
 
     return _load_template
+
+
+@pytest.fixture(scope="session")
+def cdk_template_factory():
+    """Factory function to create CDK Template objects from template dicts."""
+
+    def _create_cdk_template(template_dict: dict[str, Any]) -> Template:
+        return Template.from_string(json.dumps(template_dict))
+
+    return _create_cdk_template
 
 
 @pytest.fixture(scope="session")
@@ -133,7 +139,6 @@ def expected_tags() -> dict[str, dict[str, str]]:
     }
 
 
-# Helper functions
 def create_mock_stack(
     stack_name: str, template: dict[str, Any], parameters: dict[str, str] = None
 ) -> Mock:
@@ -197,3 +202,79 @@ def validate_parameter_constraints(
         return False
 
     return True
+
+
+def assert_resource_has_properties(cdk_template: Template, resource_type: str, **properties):
+    """Assert resource has specific properties using CDK Match.
+
+    This helper reduces boilerplate for common CDK assertion patterns.
+
+    Args:
+        cdk_template: CDK Template object from cdk_template_factory
+        resource_type: CloudFormation resource type (e.g., "AWS::Lambda::Function")
+        **properties: Property name/value pairs to match
+
+    Example:
+        assert_resource_has_properties(
+            cdk_template,
+            "AWS::Lambda::Function",
+            Timeout=Match.any_value(),
+            MemorySize=Match.any_value()
+        )
+    """
+    from aws_cdk.assertions import Match
+
+    cdk_template.has_resource_properties(resource_type, Match.object_like(properties))
+
+
+def assert_resource_has_tags(cdk_template: Template, resource_type: str, *required_tags):
+    """Assert resource has specific tag keys using CDK assertions.
+
+    Args:
+        cdk_template: CDK Template object from cdk_template_factory
+        resource_type: CloudFormation resource type
+        *required_tags: Tag key names that must exist
+
+    Example:
+        assert_resource_has_tags(
+            cdk_template,
+            "AWS::Lambda::Function",
+            "Environment", "Service", "ManagedBy"
+        )
+    """
+    from aws_cdk.assertions import Match
+
+    tags_matchers = [Match.object_like({"Key": tag}) for tag in required_tags]
+    cdk_template.has_resource_properties(
+        resource_type, Match.object_like({"Tags": Match.array_with(tags_matchers)})
+    )
+
+
+def assert_resource_property_exists(cdk_template: Template, resource_type: str, property_name: str):
+    """Assert a property exists without checking its value.
+
+    Useful for testing that configuration exists, regardless of the specific value.
+
+    Args:
+        cdk_template: CDK Template object from cdk_template_factory
+        resource_type: CloudFormation resource type
+        property_name: Property name that should exist
+
+    Example:
+        assert_resource_property_exists(
+            cdk_template,
+            "AWS::Lambda::Function",
+            "Timeout"
+        )
+    """
+    from aws_cdk.assertions import Match
+
+    cdk_template.has_resource_properties(
+        resource_type, Match.object_like({property_name: Match.any_value()})
+    )
+
+
+@pytest.fixture(scope="session")
+def cfnlint_config_path(infrastructure_root: Path) -> str:
+    """Return path to cfn-lint configuration file."""
+    return str(infrastructure_root / ".cfnlintrc.yaml")

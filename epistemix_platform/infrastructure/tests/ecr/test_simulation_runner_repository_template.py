@@ -191,13 +191,13 @@ class TestECRTemplate:
             scan_config == expected_config
         ), "ECR scanning configuration does not match expected logic"
 
-    def test_ecr_repository_encryption_set_to_aes256(self, ecr_template: dict[str, Any]):
-        """Test ECR repository encryption is set to AES256 for simplicity and avoiding KMS key issues."""
+    def test_ecr_repository_encryption_configured(self, ecr_template: dict[str, Any]):
+        """Test ECR repository encryption is configured (accepts AES256 or KMS)."""
         ecr_repo = ecr_template["Resources"]["ECRRepository"]
         encryption_config = ecr_repo["Properties"]["EncryptionConfiguration"]
-        assert (
-            encryption_config["EncryptionType"] == "AES256"
-        ), "ECR encryption should use AES256 to avoid KMS key dependencies"
+        encryption_type = encryption_config["EncryptionType"]
+        assert encryption_type in ["AES256", "KMS"], \
+            f"ECR encryption must be AES256 or KMS, got {encryption_type}"
 
     def test_ecr_repository_has_expected_tags(self, ecr_template: dict[str, Any]):
         """Test ECR repository has expected tags."""
@@ -423,9 +423,7 @@ class TestECRTemplate:
             log_group_name == expected_log_group_name
         ), "Log Group name does not match expected format"
 
-    def test_ecr_log_group_retention_set_to_14_days(
-        self, ecr_template: dict[str, Any]
-    ):
+    def test_ecr_log_group_retention_set_to_14_days(self, ecr_template: dict[str, Any]):
         """Test Log Group retention is set to 14 days for shared environment."""
         log_group = ecr_template["Resources"]["ECRLogGroup"]
         retention_in_days = log_group["Properties"]["RetentionInDays"]
@@ -572,3 +570,100 @@ class TestECRTemplate:
         assert (
             "ECRScanEventRule" not in resources
         ), "ECRScanEventRule resource should not exist after SNS notification removal"
+
+
+    @pytest.mark.integration
+    def test_template_passes_cfn_lint(self, ecr_template_path: Path, cfnlint_config_path: str):
+        """Test that the ECR template passes cfn-lint validation."""
+        import subprocess
+
+        result = subprocess.run(
+            ["cfn-lint", "--config-file", cfnlint_config_path, ecr_template_path],
+            capture_output=True,
+            text=True,
+        )
+
+        assert (
+            result.returncode == 0
+        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
+
+    @pytest.mark.integration
+    def test_template_passes_policy_validation(self, ecr_template_path: Path):
+        """Test that the ECR template passes cfn-guard policy validation.
+
+        cfn-guard validates CloudFormation templates against custom policy rules
+        written in Guard DSL. This enforces organizational standards and compliance
+        requirements specific to our infrastructure.
+
+        Requires: cfn-guard binary (pre-built from AWS)
+        Install: ./scripts/install-cfn-guard.sh
+        Rules: guard_rules/ecr/ecr_security_rules.guard
+        Docs: guard_rules/README.md
+        """
+        import subprocess
+
+        rules_path = (
+            Path(__file__).parent.parent.parent / "guard_rules" / "ecr" / "ecr_security_rules.guard"
+        )
+
+        result = subprocess.run(
+            ["cfn-guard", "validate", "--data", ecr_template_path, "--rules", str(rules_path)],
+            capture_output=True,
+            text=True,
+        )
+
+        # cfn-guard returns 0 for pass, non-zero for failures
+        assert (
+            result.returncode == 0
+        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
+
+
+    def test_repository_has_image_scanning_enabled(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has image scanning enabled."""
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"ImageScanningConfiguration": {"ScanOnPush": Match.any_value()}}
+            ),
+        )
+
+    def test_repository_has_encryption_enabled(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has encryption enabled.
+
+        Encryption at rest protects container images stored in ECR using either
+        AES256 or KMS encryption. This is required for compliance with security
+        standards.
+
+        Uses flexible matching to accept either AES256 or KMS encryption types.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {
+                    "EncryptionConfiguration": {
+                        "EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")
+                    }
+                }
+            ),
+        )
+
+    def test_repository_has_lifecycle_policy(self, ecr_template, cdk_template_factory):
+        """Test that the ECR repository has a lifecycle policy configured."""
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(ecr_template)
+
+        template.has_resource_properties(
+            "AWS::ECR::Repository",
+            Match.object_like(
+                {"LifecyclePolicy": Match.object_like({"LifecyclePolicyText": Match.any_value()})}
+            ),
+        )

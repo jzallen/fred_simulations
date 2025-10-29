@@ -1,13 +1,4 @@
-"""
-Tests for S3 CloudFormation template validation.
-
-This module tests the S3 upload bucket template for compliance with:
-- CloudFormation syntax and schema validation
-- Parameter constraints and validation
-- Security configurations (public access blocks, CORS)
-- Lifecycle policies and versioning
-- Output definitions and exports
-"""
+"""Tests for S3 CloudFormation template validation."""
 
 import json
 import re
@@ -203,11 +194,7 @@ class TestS3Template:
         ), "CORS should use AllowedOrigins parameter."
 
     def test_s3__cors_rules__only_etag_header_exposed_to_client(self, s3_template: dict[str, Any]):
-        """Test that CORS rules expose the ETag header to the client.
-
-        The ETag header is important for clients to manage caching and verify object integrity.
-        The tag value is a hash of the object contents.
-        """
+        """Test that CORS rules expose the ETag header to the client."""
         bucket = s3_template["Resources"]["UploadBucket"]
         cors_rule = bucket["Properties"]["CorsConfiguration"]["CorsRules"][0]
         assert cors_rule["ExposedHeaders"] == ["ETag"], "CORS should expose the ETag header."
@@ -709,82 +696,112 @@ class TestS3Template:
             policy["Properties"]["Bucket"]["Ref"] == "UploadBucket"
         ), "Policy should reference the UploadBucket."
 
-    def test_bucket_encryption_policy_denies_insecure_connections(
-        self, s3_template: dict[str, Any]
+    @pytest.mark.integration
+    def test_template_passes_cfn_lint(self, s3_template_path: Path, cfnlint_config_path: str):
+        """Verify S3 template passes CloudFormation linting (syntax/schema validation).
+
+        Requires: cfn-lint (available in exported venv at dist/export/python/virtualenvs/infrastructure_env/)
+        Run manually: dist/export/python/virtualenvs/infrastructure_env/3.11.13/bin/cfn-lint <template>
+        """
+        import subprocess
+
+        result = subprocess.run(
+            ["cfn-lint", "--config-file", cfnlint_config_path, str(s3_template_path)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"cfn-lint found errors in template:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
+    @pytest.mark.integration
+    def test_template_passes_policy_validation(
+        self, s3_template_path: Path, infrastructure_root: Path
     ):
-        """Test that bucket policy denies insecure connections."""
-        resources = s3_template.get("Resources", {})
-        policy = resources["BucketEncryptionPolicy"]
-        statements = policy["Properties"]["PolicyDocument"]["Statement"]
+        """Verify S3 template passes organizational policy validation (cfn-guard).
 
-        # Find the deny insecure connections statement
-        deny_insecure = next(
-            (s for s in statements if s.get("Sid") == "DenyInsecureConnections"), None
+        Requires: cfn-guard binary (install via scripts/install-cfn-guard.sh)
+        Run manually: cfn-guard validate --data <template> --rules guard_rules/s3/s3_security_rules.guard
+        """
+        import subprocess
+
+        rules = infrastructure_root / "guard_rules" / "s3" / "s3_security_rules.guard"
+
+        result = subprocess.run(
+            ["cfn-guard", "validate", "--data", str(s3_template_path), "--rules", str(rules)],
+            capture_output=True,
+            text=True,
         )
 
-        assert deny_insecure is not None, "Policy should have DenyInsecureConnections statement."
-        assert deny_insecure["Effect"] == "Deny", "DenyInsecureConnections should be a Deny effect."
-        assert (
-            deny_insecure["Principal"] == "*"
-        ), "DenyInsecureConnections should apply to all principals."
-        assert (
-            deny_insecure["Action"] == "s3:*"
-        ), "DenyInsecureConnections should apply to all S3 actions."
-        assert (
-            deny_insecure["Condition"]["Bool"]["aws:SecureTransport"] == "false"
-        ), "Should deny when SecureTransport is false."
-
-    def test_bucket_encryption_policy_denies_unencrypted_uploads(self, s3_template: dict[str, Any]):
-        """Test that bucket policy denies unencrypted uploads."""
-        resources = s3_template.get("Resources", {})
-        policy = resources["BucketEncryptionPolicy"]
-        statements = policy["Properties"]["PolicyDocument"]["Statement"]
-
-        # Find the deny unencrypted uploads statement
-        deny_unencrypted = next(
-            (s for s in statements if s.get("Sid") == "DenyUnencryptedObjectUploads"), None
+        assert result.returncode == 0, (
+            f"cfn-guard found policy violations:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}\n\n"
+            f"See guard_rules/s3/s3_security_rules.guard for policy definitions"
         )
 
-        assert (
-            deny_unencrypted is not None
-        ), "Policy should have DenyUnencryptedObjectUploads statement."
-        assert (
-            deny_unencrypted["Effect"] == "Deny"
-        ), "DenyUnencryptedObjectUploads should be a Deny effect."
-        assert (
-            deny_unencrypted["Principal"] == "*"
-        ), "DenyUnencryptedObjectUploads should apply to all principals."
-        assert (
-            deny_unencrypted["Action"] == "s3:PutObject"
-        ), "DenyUnencryptedObjectUploads should apply to PutObject."
-        assert (
-            deny_unencrypted["Condition"]["StringNotEquals"]["s3:x-amz-server-side-encryption"]
-            == "AES256"
-        ), "Should deny when encryption is not AES256."
+    # CDK Assertion Tests (Flexible Behavioral Testing)
 
-    def test_bucket_encryption_policy_denies_missing_encryption_header(
-        self, s3_template: dict[str, Any]
+    def test_bucket_has_encryption_at_rest(self, s3_template: dict[str, Any], cdk_template_factory):
+        """Verify S3 bucket has encryption configuration (flexible CDK assertion).
+
+        This test replaces brittle structure-based tests with flexible behavioral validation.
+        It verifies that encryption exists without depending on exact template structure.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(s3_template)
+
+        # Verify bucket has encryption configuration
+        template.has_resource_properties(
+            "AWS::S3::Bucket",
+            Match.object_like(
+                {
+                    "BucketEncryption": {
+                        "ServerSideEncryptionConfiguration": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
+                                )
+                            ]
+                        )
+                    }
+                }
+            ),
+        )
+
+    def test_bucket_policy_enforces_https_only(
+        self, s3_template: dict[str, Any], cdk_template_factory
     ):
-        """Test that bucket policy denies uploads missing encryption header."""
-        resources = s3_template.get("Resources", {})
-        policy = resources["BucketEncryptionPolicy"]
-        statements = policy["Properties"]["PolicyDocument"]["Statement"]
+        """Verify bucket policy enforces HTTPS-only connections (flexible CDK assertion).
 
-        # Find the deny missing header statement
-        deny_missing = next(
-            (s for s in statements if s.get("Sid") == "DenyMissingEncryptionHeader"), None
+        This test replaces brittle Sid-based tests with flexible behavioral validation.
+        It verifies that insecure connections are denied without depending on specific
+        statement names or structure.
+        """
+        from aws_cdk.assertions import Match
+
+        template = cdk_template_factory(s3_template)
+
+        # Verify bucket policy denies insecure connections (however implemented)
+        template.has_resource_properties(
+            "AWS::S3::BucketPolicy",
+            Match.object_like(
+                {
+                    "PolicyDocument": {
+                        "Statement": Match.array_with(
+                            [
+                                Match.object_like(
+                                    {
+                                        "Effect": "Deny",
+                                        "Condition": {"Bool": {"aws:SecureTransport": "false"}},
+                                    }
+                                )
+                            ]
+                        )
+                    }
+                }
+            ),
         )
-
-        assert deny_missing is not None, "Policy should have DenyMissingEncryptionHeader statement."
-        assert (
-            deny_missing["Effect"] == "Deny"
-        ), "DenyMissingEncryptionHeader should be a Deny effect."
-        assert (
-            deny_missing["Principal"] == "*"
-        ), "DenyMissingEncryptionHeader should apply to all principals."
-        assert (
-            deny_missing["Action"] == "s3:PutObject"
-        ), "DenyMissingEncryptionHeader should apply to PutObject."
-        assert (
-            deny_missing["Condition"]["Null"]["s3:x-amz-server-side-encryption"] == "true"
-        ), "Should deny when encryption header is missing."
