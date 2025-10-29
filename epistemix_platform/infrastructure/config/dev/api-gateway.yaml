@@ -30,9 +30,12 @@ tags:
 
 # Sceptre hooks for template validation
 hooks:
+  before_validate:
+    - !cmd "echo '▶ Running cfn-lint on API Gateway template...' && cfn-lint templates/api-gateway/epistemix-api-gateway.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
   before_create:
-    - !cmd "cfn-lint templates/api-gateway/epistemix-api-gateway.json"
-    - !cmd "cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail"
+    - !cmd "echo '▶ Running cfn-lint on API Gateway template...' && cfn-lint templates/api-gateway/epistemix-api-gateway.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
   before_update:
-    - !cmd "cfn-lint templates/api-gateway/epistemix-api-gateway.json"
-    - !cmd "cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail"
+    - !cmd "echo '▶ Running cfn-lint on API Gateway template...' && cfn-lint templates/api-gateway/epistemix-api-gateway.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/api-gateway/epistemix-api-gateway.json --rules guard_rules/api_gateway_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"

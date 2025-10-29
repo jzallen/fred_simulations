@@ -38,9 +38,12 @@ tags:
 
 # Sceptre hooks for template validation
 hooks:
+  before_validate:
+    - !cmd "echo '▶ Running cfn-lint on Lambda template...' && cfn-lint templates/lambda/epistemix-api-lambda.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
   before_create:
-    - !cmd "cfn-lint templates/lambda/epistemix-api-lambda.json"
-    - !cmd "cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail"
+    - !cmd "echo '▶ Running cfn-lint on Lambda template...' && cfn-lint templates/lambda/epistemix-api-lambda.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
   before_update:
-    - !cmd "cfn-lint templates/lambda/epistemix-api-lambda.json"
-    - !cmd "cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail"
+    - !cmd "echo '▶ Running cfn-lint on Lambda template...' && cfn-lint templates/lambda/epistemix-api-lambda.json && echo '✓ cfn-lint passed'"
+    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/lambda/epistemix-api-lambda.json --rules guard_rules/lambda_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
