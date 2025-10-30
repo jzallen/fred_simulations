@@ -189,7 +189,7 @@ class TestTCRHandler:
 
     @patch("subprocess.run")
     def test_run_tcr_cycle__when_tests_fail__changes_reverted(self, mock_run, handler, temp_file):
-        def side_effect(*args, **kwargs):
+        def side_effect(*args, **_kwargs):  # noqa: ARG001
             if args[0] == handler.config.test_command:
                 return Mock(returncode=1, stdout="Test failed", stderr="Error details")
             else:
