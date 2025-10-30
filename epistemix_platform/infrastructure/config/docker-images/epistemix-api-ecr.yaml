@@ -21,8 +21,17 @@ tags:
 
 # Sceptre hooks for template validation
 validation_hooks: &validation_hooks
-  - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-lint...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ (epistemix-api-ecr) cfn-lint passed'"
-  - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ (epistemix-api-ecr) cfn-guard passed'"
+  - !cmd |
+    echo '▶ (epistemix-api-ecr) Running cfn-lint...' && \
+    cfn-lint templates/ecr/epistemix-api-repository.json && \
+    echo '✓ (epistemix-api-ecr) cfn-lint passed'
+  - !cmd |
+    echo '▶ (epistemix-api-ecr) Running cfn-guard security validation...' && \
+    cfn-guard validate \
+      --data templates/ecr/epistemix-api-repository.json \
+      --rules guard_rules/ecr_security_rules.guard \
+      --show-summary fail && \
+    echo '✓ (epistemix-api-ecr) cfn-guard passed'
 
 hooks:
   before_validate: *validation_hooks
