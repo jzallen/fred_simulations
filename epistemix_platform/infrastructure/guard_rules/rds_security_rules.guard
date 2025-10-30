@@ -15,9 +15,20 @@ rule rds_storage_encryption_enabled {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.StorageEncrypted exists
+        %rds_instances.Properties.StorageEncrypted exists <<
+            Violation: RDS instance must have storage encryption configured
+            Fix: Add StorageEncrypted property and set to true
+            Rationale: Encrypts data at rest including instances, backups, read replicas, and snapshots
+            Reference: AWS Foundational Security Best Practices standard
+            Example:
+              StorageEncrypted: true
+        >>
 
-        %rds_instances.Properties.StorageEncrypted == true
+        %rds_instances.Properties.StorageEncrypted == true <<
+            Violation: RDS instance storage encryption must be enabled
+            Fix: Set StorageEncrypted to true
+            Rationale: Protects sensitive data at rest using AWS KMS
+        >>
     }
 }
 
@@ -30,14 +41,26 @@ rule rds_not_publicly_accessible {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.PubliclyAccessible exists
+        %rds_instances.Properties.PubliclyAccessible exists <<
+            Violation: RDS instance should explicitly configure PubliclyAccessible
+            Fix: Add PubliclyAccessible property and set to false (or use parameter)
+            Rationale: Explicit configuration prevents accidental public exposure
+            Reference: Security Hub exposure control
+            Example:
+              PubliclyAccessible: false
+        >>
 
         # Allow either hardcoded false or parameter reference
         # Note: Guard cannot evaluate CloudFormation intrinsic functions,
         # so we check for presence rather than specific value when using Ref
         when %rds_instances.Properties.PubliclyAccessible == true {
             # Fail if explicitly set to true
-            %rds_instances.Properties.PubliclyAccessible == false
+            %rds_instances.Properties.PubliclyAccessible == false <<
+                Violation: RDS instance must not be publicly accessible
+                Fix: Set PubliclyAccessible to false
+                Rationale: Publicly accessible databases expose sensitive data to internet threats
+                Reference: Increases risk of unauthorized access and potential attacks
+            >>
         }
     }
 }
@@ -47,7 +70,13 @@ rule rds_must_have_subnet_group {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.DBSubnetGroupName exists
+        %rds_instances.Properties.DBSubnetGroupName exists <<
+            Violation: RDS instance must be associated with a DB subnet group
+            Fix: Add DBSubnetGroupName property referencing a subnet group
+            Rationale: Ensures database is deployed in private subnets across multiple AZs
+            Example:
+              DBSubnetGroupName: !Ref MyDBSubnetGroup
+        >>
     }
 }
 
@@ -56,10 +85,20 @@ rule rds_must_have_vpc_security_groups {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.VPCSecurityGroups exists
+        %rds_instances.Properties.VPCSecurityGroups exists <<
+            Violation: RDS instance must have VPC security groups configured
+            Fix: Add VPCSecurityGroups property with at least one security group
+            Rationale: Controls network access to the database at the network layer
+            Example:
+              VPCSecurityGroups:
+                - !Ref DBSecurityGroup
+        >>
 
         # At least one security group must be specified
-        %rds_instances.Properties.VPCSecurityGroups[*] !empty
+        %rds_instances.Properties.VPCSecurityGroups[*] !empty <<
+            Violation: RDS instance VPCSecurityGroups list cannot be empty
+            Fix: Add at least one security group to VPCSecurityGroups array
+        >>
     }
 }
 
@@ -72,10 +111,21 @@ rule rds_backup_retention_configured {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.BackupRetentionPeriod exists
+        %rds_instances.Properties.BackupRetentionPeriod exists <<
+            Violation: RDS instance must have backup retention period configured
+            Fix: Add BackupRetentionPeriod (1-35 days, recommend 7+ for production)
+            Rationale: Enables point-in-time recovery and disaster recovery
+            Reference: Security Hub recommends automated backups with appropriate retention
+            Example:
+              BackupRetentionPeriod: 7
+        >>
 
         # BackupRetentionPeriod must be at least 1 day (0 disables backups)
-        %rds_instances.Properties.BackupRetentionPeriod >= 1
+        %rds_instances.Properties.BackupRetentionPeriod >= 1 <<
+            Violation: RDS instance backup retention period must be at least 1 day
+            Fix: Set BackupRetentionPeriod to 7 or more for production databases
+            Rationale: Zero disables automated backups, preventing disaster recovery
+        >>
     }
 }
 
@@ -84,9 +134,21 @@ rule rds_should_have_maintenance_windows {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.PreferredBackupWindow exists
+        %rds_instances.Properties.PreferredBackupWindow exists <<
+            Violation: RDS instance should specify a preferred backup window
+            Fix: Add PreferredBackupWindow (e.g., "03:00-04:00")
+            Rationale: Schedules backups during low-usage periods to minimize performance impact
+            Example:
+              PreferredBackupWindow: "03:00-04:00"
+        >>
 
-        %rds_instances.Properties.PreferredMaintenanceWindow exists
+        %rds_instances.Properties.PreferredMaintenanceWindow exists <<
+            Violation: RDS instance should specify a preferred maintenance window
+            Fix: Add PreferredMaintenanceWindow (e.g., "sun:04:00-sun:05:00")
+            Rationale: Schedules maintenance during planned downtime windows
+            Example:
+              PreferredMaintenanceWindow: "sun:04:00-sun:05:00"
+        >>
     }
 }
 
@@ -95,10 +157,19 @@ rule rds_deletion_policy_configured {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.DeletionPolicy exists
+        %rds_instances.DeletionPolicy exists <<
+            Violation: RDS instance should have DeletionPolicy configured
+            Fix: Add DeletionPolicy (Snapshot or Retain for production, Delete for ephemeral)
+            Rationale: Prevents accidental data loss during stack deletion
+            Reference: Security Hub recommends deletion protection
+            Example: DeletionPolicy: Snapshot
+        >>
 
         when %rds_instances.DeletionPolicy exists {
-            %rds_instances.DeletionPolicy in ['Snapshot', 'Retain', 'Delete']
+            %rds_instances.DeletionPolicy in ['Snapshot', 'Retain', 'Delete'] <<
+                Violation: RDS instance DeletionPolicy must be Snapshot, Retain, or Delete
+                Fix: Set DeletionPolicy to Snapshot (recommended), Retain, or Delete
+            >>
         }
     }
 }
@@ -112,7 +183,12 @@ rule rds_must_specify_engine {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.Engine exists
+        %rds_instances.Properties.Engine exists <<
+            Violation: RDS instance must specify database engine
+            Fix: Add Engine property with database type
+            Example:
+              Engine: postgres
+        >>
     }
 }
 
@@ -122,7 +198,11 @@ rule rds_password_parameter_noecho {
 
     # Ensure password parameters have NoEcho enabled
     when %db_password_params !empty {
-        %db_password_params.NoEcho == true
+        %db_password_params.NoEcho == true <<
+            Violation: Database password parameters must have NoEcho enabled
+            Fix: Set NoEcho: true for password parameters
+            Rationale: Prevents passwords from appearing in CloudFormation console and CLI output
+        >>
     }
 }
 
@@ -135,10 +215,26 @@ rule rds_instances_must_be_tagged {
     let rds_instances = Resources.*[ Type == 'AWS::RDS::DBInstance' ]
 
     when %rds_instances !empty {
-        %rds_instances.Properties.Tags exists
+        %rds_instances.Properties.Tags exists <<
+            Violation: RDS instance must have tags for governance
+            Fix: Add Tags with at least Name, Project, and Environment keys
+            Rationale: Tags enable cost tracking, resource management, and compliance
+            Example:
+              Tags:
+                - Key: Name
+                  Value: my-database
+                - Key: Project
+                  Value: my-project
+                - Key: Environment
+                  Value: production
+        >>
 
         when %rds_instances.Properties.Tags exists {
-            some %rds_instances.Properties.Tags[*].Key == 'Environment'
+            some %rds_instances.Properties.Tags[*].Key == 'Environment' <<
+                Violation: RDS instance must have an 'Environment' tag
+                Fix: Add Environment tag to instance
+                Rationale: Environment tagging is essential for cost allocation and access control
+            >>
         }
     }
 }
@@ -148,7 +244,17 @@ rule rds_subnet_groups_must_be_tagged {
     let subnet_groups = Resources.*[ Type == 'AWS::RDS::DBSubnetGroup' ]
 
     when %subnet_groups !empty {
-        %subnet_groups.Properties.Tags exists
+        %subnet_groups.Properties.Tags exists <<
+            Violation: RDS DB subnet group must have tags for governance
+            Fix: Add Tags with at least Name and Project keys
+            Rationale: Tags enable cost tracking and resource management
+            Example:
+              Tags:
+                - Key: Name
+                  Value: my-db-subnet-group
+                - Key: Project
+                  Value: my-project
+        >>
     }
 }
 
@@ -157,10 +263,21 @@ rule rds_subnet_groups_must_have_subnets {
     let subnet_groups = Resources.*[ Type == 'AWS::RDS::DBSubnetGroup' ]
 
     when %subnet_groups !empty {
-        %subnet_groups.Properties.SubnetIds exists
+        %subnet_groups.Properties.SubnetIds exists <<
+            Violation: RDS DB subnet group must reference subnet IDs
+            Fix: Add SubnetIds property with at least 2 subnet IDs in different AZs
+            Rationale: Multiple subnets in different AZs enable high availability
+            Example:
+              SubnetIds:
+                - !Ref PrivateSubnet1
+                - !Ref PrivateSubnet2
+        >>
 
         when %subnet_groups.Properties.SubnetIds exists {
-            %subnet_groups.Properties.SubnetIds !empty
+            %subnet_groups.Properties.SubnetIds !empty <<
+                Violation: RDS DB subnet group SubnetIds cannot be empty
+                Fix: Add at least 2 subnet IDs to the SubnetIds list
+            >>
         }
     }
 }
@@ -174,7 +291,13 @@ rule rds_security_groups_must_be_in_vpc {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.VpcId exists
+        %security_groups.Properties.VpcId exists <<
+            Violation: Security group must be associated with VPC
+            Fix: Add VpcId property referencing a VPC
+            Rationale: VPC security groups provide better isolation than EC2-Classic
+            Example:
+              VpcId: !Ref VPC
+        >>
     }
 }
 
@@ -183,7 +306,13 @@ rule rds_security_groups_should_have_description {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.GroupDescription exists
+        %security_groups.Properties.GroupDescription exists <<
+            Violation: Security group must have GroupDescription
+            Fix: Add GroupDescription property with meaningful description
+            Rationale: Descriptions help identify purpose and scope of security groups
+            Example:
+              GroupDescription: "Security group for RDS PostgreSQL instance"
+        >>
     }
 }
 
@@ -192,7 +321,15 @@ rule rds_security_groups_must_be_tagged {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.Tags exists
+        %security_groups.Properties.Tags exists <<
+            Violation: Security group should have tags for governance
+            Fix: Add Tags with at least Name key
+            Rationale: Tags enable resource management and identification
+            Example:
+              Tags:
+                - Key: Name
+                  Value: rds-security-group
+        >>
     }
 }
 
@@ -201,6 +338,12 @@ rule rds_security_group_ingress_should_have_description {
     let sg_ingress = Resources.*[ Type == 'AWS::EC2::SecurityGroupIngress' ]
 
     when %sg_ingress !empty {
-        %sg_ingress.Properties.Description exists
+        %sg_ingress.Properties.Description exists <<
+            Violation: Security group ingress rule should have Description
+            Fix: Add Description property explaining the purpose of the rule
+            Rationale: Descriptions document the business purpose and requester of each rule
+            Example:
+              Description: "Allow PostgreSQL access from application tier"
+        >>
     }
 }

@@ -204,6 +204,70 @@ class TestRDSPostgresTemplate:
             Match.object_like({"FromPort": 5432, "ToPort": 5432, "IpProtocol": "tcp"}),
         )
 
+    # Validation Tests (cfn-lint, cfn-nag, cfn-guard)
+
+    @pytest.mark.integration
+    def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
+        """Test that the template passes cfn-lint validation.
+
+        cfn-lint validates CloudFormation templates against AWS schema and best practices.
+
+        Requires: cfn-lint (Python package in infrastructure_env)
+        Install: pants export --resolve=infrastructure_env
+        Config: .cfnlintrc.yaml
+
+        Note: This template may have warnings (W3011, W1011) which are acceptable
+        for development environments but should be addressed for production.
+        """
+        import subprocess
+
+        result = subprocess.run(
+            ["cfn-lint", "--config-file", cfnlint_config_path, template_path],
+            capture_output=True,
+            text=True,
+        )
+
+        # cfn-lint returns 0 for no errors, non-zero for errors
+        # Warnings (W) don't cause non-zero exit codes by default
+        assert (
+            result.returncode == 0
+        ), f"cfn-lint validation failed:\n{result.stdout}\n{result.stderr}"
+
+    @pytest.mark.integration
+    def test_template_passes_policy_validation(self, template_path: str):
+        """Test that the template passes cfn-guard policy validation.
+
+        cfn-guard validates CloudFormation templates against custom policy rules.
+
+        Requires: cfn-guard binary (official AWS installer)
+        Install: curl --proto '=https' --tlsv1.2 -sSf \
+                 https://raw.githubusercontent.com/aws-cloudformation/cloudformation-guard/main/install-guard.sh | sh
+        Rules: guard_rules/rds/rds_security_rules.guard
+        Docs: guard_rules/README.md
+        """
+        import subprocess
+
+        rules_path = (
+            Path(__file__).parent.parent.parent / "guard_rules" / "rds" / "rds_security_rules.guard"
+        )
+
+        result = subprocess.run(
+            [
+                "cfn-guard",
+                "validate",
+                "--data",
+                template_path,
+                "--rules",
+                str(rules_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        assert (
+            result.returncode == 0
+        ), f"cfn-guard policy validation failed:\n{result.stdout}\n{result.stderr}"
+
     # CDK Assertion Tests (Behavioral Validation)
 
     def test_db_instance_has_encryption_enabled(self, template, cdk_template_factory):
@@ -241,6 +305,20 @@ class TestRDSPostgresTemplate:
                     "PreferredBackupWindow": Match.any_value(),
                 }
             ),
+        )
+
+    def test_db_instance_in_private_subnet(self, template, cdk_template_factory):
+        """Test that the RDS instance is deployed in a DB subnet group.
+
+        DB subnet groups ensure the database is deployed in appropriate
+        subnets (typically private subnets for security).
+        """
+
+        cdk_template = cdk_template_factory(template)
+
+        cdk_template.has_resource_properties(
+            "AWS::RDS::DBInstance",
+            Match.object_like({"DBSubnetGroupName": Match.any_value()}),
         )
 
     def test_db_instance_has_security_group(self, template, cdk_template_factory):

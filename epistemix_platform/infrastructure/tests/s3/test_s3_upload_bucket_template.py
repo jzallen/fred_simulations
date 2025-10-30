@@ -696,6 +696,52 @@ class TestS3Template:
             policy["Properties"]["Bucket"]["Ref"] == "UploadBucket"
         ), "Policy should reference the UploadBucket."
 
+    @pytest.mark.integration
+    def test_template_passes_cfn_lint(self, s3_template_path: Path, cfnlint_config_path: str):
+        """Verify S3 template passes CloudFormation linting (syntax/schema validation).
+
+        Requires: cfn-lint (available in exported venv at dist/export/python/virtualenvs/infrastructure_env/)
+        Run manually: dist/export/python/virtualenvs/infrastructure_env/3.11.13/bin/cfn-lint <template>
+        """
+        import subprocess
+
+        result = subprocess.run(
+            ["cfn-lint", "--config-file", cfnlint_config_path, str(s3_template_path)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, (
+            f"cfn-lint found errors in template:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
+    @pytest.mark.integration
+    def test_template_passes_policy_validation(
+        self, s3_template_path: Path, infrastructure_root: Path
+    ):
+        """Verify S3 template passes organizational policy validation (cfn-guard).
+
+        Requires: cfn-guard binary (install via scripts/install-cfn-guard.sh)
+        Run manually: cfn-guard validate --data <template> --rules guard_rules/s3/s3_security_rules.guard
+        """
+        import subprocess
+
+        rules = infrastructure_root / "guard_rules" / "s3" / "s3_security_rules.guard"
+
+        result = subprocess.run(
+            ["cfn-guard", "validate", "--data", str(s3_template_path), "--rules", str(rules)],
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, (
+            f"cfn-guard found policy violations:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}\n\n"
+            f"See guard_rules/s3/s3_security_rules.guard for policy definitions"
+        )
+
     # CDK Assertion Tests (Flexible Behavioral Testing)
 
     def test_bucket_has_encryption_at_rest(self, s3_template: dict[str, Any], cdk_template_factory):

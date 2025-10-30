@@ -15,9 +15,24 @@ rule ec2_must_use_imdsv2 {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.MetadataOptions exists
+        %ec2_instances.Properties.MetadataOptions exists <<
+            Violation: EC2 instance must have MetadataOptions configured
+            Fix: Add MetadataOptions property with HttpTokens set to 'required'
+            Rationale: IMDSv2 prevents SSRF attacks on instance metadata
+            Reference: Security Hub control [EC2.8]
+            Example:
+              MetadataOptions:
+                HttpTokens: required
+                HttpEndpoint: enabled
+                HttpPutResponseHopLimit: 1
+        >>
 
-        %ec2_instances.Properties.MetadataOptions.HttpTokens == "required"
+        %ec2_instances.Properties.MetadataOptions.HttpTokens == "required" <<
+            Violation: EC2 instance must use IMDSv2 (HttpTokens: required)
+            Fix: Set HttpTokens to 'required' in MetadataOptions
+            Rationale: IMDSv2 is session-based and prevents metadata enumeration attacks
+            Reference: IMDSv2 stops various attacks against metadata endpoints
+        >>
     }
 }
 
@@ -30,7 +45,14 @@ rule ec2_should_have_instance_profile {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.IamInstanceProfile exists
+        %ec2_instances.Properties.IamInstanceProfile exists <<
+            Violation: EC2 instance should have IAM instance profile
+            Fix: Add IamInstanceProfile property referencing instance profile
+            Rationale: Instance profiles provide temporary credentials instead of long-lived keys
+            Reference: Security best practice for accessing AWS services
+            Example:
+              IamInstanceProfile: !Ref MyInstanceProfile
+        >>
     }
 }
 
@@ -39,19 +61,38 @@ rule ec2_roles_must_trust_ec2_service {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
-        %iam_roles.Properties.AssumeRolePolicyDocument exists
+        %iam_roles.Properties.AssumeRolePolicyDocument exists <<
+            Violation: IAM role must have AssumeRolePolicyDocument
+            Fix: Add AssumeRolePolicyDocument defining trust policy
+            Rationale: Defines which principals can assume the role
+        >>
 
         when %iam_roles.Properties.AssumeRolePolicyDocument exists {
-            %iam_roles.Properties.AssumeRolePolicyDocument.Version exists
+            %iam_roles.Properties.AssumeRolePolicyDocument.Version exists <<
+                Violation: AssumeRolePolicyDocument must specify Version
+                Fix: Add Version: "2012-10-17" to trust policy
+            >>
 
-            %iam_roles.Properties.AssumeRolePolicyDocument.Statement exists
+            %iam_roles.Properties.AssumeRolePolicyDocument.Statement exists <<
+                Violation: AssumeRolePolicyDocument must have Statement array
+                Fix: Add Statement array with trust policy statements
+            >>
 
             %iam_roles.Properties.AssumeRolePolicyDocument.Statement[*] {
-                Effect == 'Allow'
+                Effect == 'Allow' <<
+                    Violation: Trust policy statements must have Effect: Allow
+                    Fix: Set Effect to 'Allow' in trust policy statements
+                >>
 
-                Action exists
+                Action exists <<
+                    Violation: Trust policy statements must specify Action
+                    Fix: Add Action: sts:AssumeRole
+                >>
 
-                Principal exists
+                Principal exists <<
+                    Violation: Trust policy statements must specify Principal
+                    Fix: Add Principal with Service: ec2.amazonaws.com
+                >>
             }
         }
     }
@@ -62,10 +103,20 @@ rule ec2_instance_profiles_must_have_roles {
     let instance_profiles = Resources.*[ Type == 'AWS::IAM::InstanceProfile' ]
 
     when %instance_profiles !empty {
-        %instance_profiles.Properties.Roles exists
+        %instance_profiles.Properties.Roles exists <<
+            Violation: Instance profile must reference at least one IAM role
+            Fix: Add Roles property with role reference
+            Rationale: Instance profiles attach IAM roles to EC2 instances
+            Example:
+              Roles:
+                - !Ref InstanceRole
+        >>
 
         when %instance_profiles.Properties.Roles exists {
-            %instance_profiles.Properties.Roles !empty
+            %instance_profiles.Properties.Roles !empty <<
+                Violation: Instance profile Roles array cannot be empty
+                Fix: Add at least one role reference to the Roles array
+            >>
         }
     }
 }
@@ -75,7 +126,15 @@ rule ec2_iam_roles_should_have_tags {
     let iam_roles = Resources.*[ Type == 'AWS::IAM::Role' ]
 
     when %iam_roles !empty {
-        %iam_roles.Properties.Tags exists
+        %iam_roles.Properties.Tags exists <<
+            Violation: IAM role should have tags for governance
+            Fix: Add Tags with at least Name key
+            Rationale: Tags enable IAM resource tracking and access analysis
+            Example:
+              Tags:
+                - Key: Name
+                  Value: bastion-role
+        >>
     }
 }
 
@@ -88,10 +147,21 @@ rule ec2_should_have_security_groups {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.SecurityGroupIds exists
+        %ec2_instances.Properties.SecurityGroupIds exists <<
+            Violation: EC2 instance should have security groups configured
+            Fix: Add SecurityGroupIds property with at least one security group
+            Rationale: Security groups control network access to the instance
+            Reference: Required for VPC-based instances
+            Example:
+              SecurityGroupIds:
+                - !Ref InstanceSecurityGroup
+        >>
 
         when %ec2_instances.Properties.SecurityGroupIds exists {
-            %ec2_instances.Properties.SecurityGroupIds !empty
+            %ec2_instances.Properties.SecurityGroupIds !empty <<
+                Violation: EC2 instance SecurityGroupIds list cannot be empty
+                Fix: Add at least one security group to the list
+            >>
         }
     }
 }
@@ -101,7 +171,13 @@ rule ec2_should_have_subnet_id {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.SubnetId exists
+        %ec2_instances.Properties.SubnetId exists <<
+            Violation: EC2 instance should have subnet ID configured
+            Fix: Add SubnetId property for VPC deployment
+            Rationale: Explicit subnet placement ensures proper network configuration
+            Example:
+              SubnetId: !Ref PrivateSubnet
+        >>
     }
 }
 
@@ -110,7 +186,13 @@ rule ec2_security_groups_must_be_in_vpc {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.VpcId exists
+        %security_groups.Properties.VpcId exists <<
+            Violation: Security group must be associated with VPC
+            Fix: Add VpcId property referencing a VPC
+            Rationale: VPC security groups provide better isolation than EC2-Classic
+            Example:
+              VpcId: !Ref VPC
+        >>
     }
 }
 
@@ -119,7 +201,13 @@ rule ec2_security_groups_should_have_description {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.GroupDescription exists
+        %security_groups.Properties.GroupDescription exists <<
+            Violation: Security group must have GroupDescription
+            Fix: Add GroupDescription property with meaningful description
+            Rationale: Descriptions help identify purpose and scope of security groups
+            Example:
+              GroupDescription: "Security group for bastion host"
+        >>
     }
 }
 
@@ -129,7 +217,12 @@ rule security_groups_with_egress_should_have_rules {
     let sgs_with_egress = %security_groups[ Properties.SecurityGroupEgress exists ]
 
     when %sgs_with_egress !empty {
-        %sgs_with_egress.Properties.SecurityGroupEgress !empty
+        %sgs_with_egress.Properties.SecurityGroupEgress !empty <<
+            Violation: Security group with SecurityGroupEgress cannot have empty array
+            Fix: Add at least one egress rule or remove SecurityGroupEgress property
+            Rationale: Empty egress rules block all outbound traffic
+            Note: If SecurityGroupEgress is omitted, AWS creates default allow-all egress rule
+        >>
     }
 }
 
@@ -138,7 +231,15 @@ rule ec2_security_groups_should_have_tags {
     let security_groups = Resources.*[ Type == 'AWS::EC2::SecurityGroup' ]
 
     when %security_groups !empty {
-        %security_groups.Properties.Tags exists
+        %security_groups.Properties.Tags exists <<
+            Violation: Security group should have tags for governance
+            Fix: Add Tags with at least Name key
+            Rationale: Tags enable resource management and identification
+            Example:
+              Tags:
+                - Key: Name
+                  Value: bastion-security-group
+        >>
     }
 }
 
@@ -147,7 +248,13 @@ rule ec2_security_group_ingress_should_have_description {
     let sg_ingress = Resources.*[ Type == 'AWS::EC2::SecurityGroupIngress' ]
 
     when %sg_ingress !empty {
-        %sg_ingress.Properties.Description exists
+        %sg_ingress.Properties.Description exists <<
+            Violation: Security group ingress rule should have Description
+            Fix: Add Description property explaining the purpose of the rule
+            Rationale: Descriptions document the business purpose of each rule
+            Example:
+              Description: "Allow PostgreSQL access from bastion"
+        >>
     }
 }
 
@@ -156,7 +263,13 @@ rule ec2_security_group_egress_should_have_description {
     let sg_egress = Resources.*[ Type == 'AWS::EC2::SecurityGroupEgress' ]
 
     when %sg_egress !empty {
-        %sg_egress.Properties.Description exists
+        %sg_egress.Properties.Description exists <<
+            Violation: Security group egress rule should have Description
+            Fix: Add Description property explaining the purpose of the rule
+            Rationale: Descriptions document the business purpose of each rule
+            Example:
+              Description: "Allow PostgreSQL access to RDS"
+        >>
     }
 }
 
@@ -169,10 +282,26 @@ rule ec2_instances_must_be_tagged {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.Tags exists
+        %ec2_instances.Properties.Tags exists <<
+            Violation: EC2 instance must have tags for governance
+            Fix: Add Tags with at least Name and Purpose keys
+            Rationale: Tags enable cost tracking and resource management
+            Example:
+              Tags:
+                - Key: Name
+                  Value: my-instance
+                - Key: Purpose
+                  Value: bastion-host
+                - Key: Environment
+                  Value: production
+        >>
 
         when %ec2_instances.Properties.Tags exists {
-            some %ec2_instances.Properties.Tags[*].Key == 'Name'
+            some %ec2_instances.Properties.Tags[*].Key == 'Name' <<
+                Violation: EC2 instance must have a 'Name' tag
+                Fix: Add Name tag to instance
+                Rationale: Name tags improve instance identification in console
+            >>
         }
     }
 }
@@ -182,7 +311,15 @@ rule ec2_instances_must_specify_image {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.ImageId exists
+        %ec2_instances.Properties.ImageId exists <<
+            Violation: EC2 instance must specify ImageId
+            Fix: Add ImageId property with AMI ID or SSM parameter
+            Rationale: Explicit AMI selection ensures intended OS and configuration
+            Example:
+              ImageId: ami-12345678
+              # Or use SSM parameter:
+              ImageId: "{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}"
+        >>
     }
 }
 
@@ -191,6 +328,12 @@ rule ec2_instances_must_specify_instance_type {
     let ec2_instances = Resources.*[ Type == 'AWS::EC2::Instance' ]
 
     when %ec2_instances !empty {
-        %ec2_instances.Properties.InstanceType exists
+        %ec2_instances.Properties.InstanceType exists <<
+            Violation: EC2 instance must specify InstanceType
+            Fix: Add InstanceType property or reference parameter
+            Rationale: Explicit instance type selection ensures proper sizing
+            Example:
+              InstanceType: t3.micro
+        >>
     }
 }
