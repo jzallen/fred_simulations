@@ -3,6 +3,7 @@ Get runs use case for the Epistemix API.
 This module implements the core business logic for retrieving runs.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.run import Run
@@ -27,3 +28,8 @@ def get_runs_by_job_id(run_repository: IRunRepository, job_id: int) -> list[Run]
         List of run business models associated with the job ID.
     """
     return run_repository.find_by_job_id(job_id)
+
+
+def create_get_runs_by_job_id(run_repository: IRunRepository):
+    """Factory to create get_runs_by_job_id function with dependencies wired."""
+    return functools.partial(get_runs_by_job_id, run_repository)

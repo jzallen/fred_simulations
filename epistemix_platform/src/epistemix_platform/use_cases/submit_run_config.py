@@ -3,6 +3,7 @@ Run submission configuration use case for the Epistemix API.
 This module implements the core business logic for run submission configuration.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.job_s3_prefix import JobS3Prefix
@@ -78,3 +79,14 @@ def submit_run_config(
     )
 
     return run_configuration_location
+
+
+def create_submit_run_config(
+    job_repository: IJobRepository,
+    run_repository: IRunRepository,
+    upload_location_repository: IUploadLocationRepository,
+):
+    """Factory to create submit_run_config function with dependencies wired."""
+    return functools.partial(
+        submit_run_config, job_repository, run_repository, upload_location_repository
+    )

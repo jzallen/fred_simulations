@@ -3,6 +3,7 @@ Job submission use case for the Epistemix API.
 This module implements the core business logic for job submission operations.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.job import JobStatus
@@ -75,3 +76,10 @@ def submit_job(
     )
 
     return job_input_location
+
+
+def create_submit_job(
+    job_repository: IJobRepository, upload_location_repository: IUploadLocationRepository
+):
+    """Factory to create submit_job function with dependencies wired."""
+    return functools.partial(submit_job, job_repository, upload_location_repository)

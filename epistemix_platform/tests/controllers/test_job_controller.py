@@ -18,7 +18,7 @@ from botocore.stub import Stubber
 from freezegun import freeze_time
 from returns.pipeline import is_successful
 
-from epistemix_platform.controllers.job_controller import JobController, JobControllerDependencies
+from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
 from epistemix_platform.models.job import Job, JobStatus
@@ -62,22 +62,20 @@ def service():
     )
 
     service = JobController()
-    service._dependencies = JobControllerDependencies(
-        register_job_fn=Mock(return_value=job),
-        submit_job_fn=Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url")),
-        submit_job_config_fn=Mock(
-            return_value=UploadLocation(url="http://example.com/pre-signed-url-job-config")
-        ),
-        submit_runs_fn=Mock(return_value=[run]),
-        submit_run_config_fn=Mock(
-            return_value=UploadLocation(url="http://example.com/pre-signed-url-run-config")
-        ),
-        get_runs_by_job_id_fn=Mock(return_value=[run]),
-        get_job_uploads_fn=Mock(return_value=[mock_upload1, mock_upload2]),
-        read_upload_content_fn=Mock(return_value=UploadContent.create_text("test content")),
-        write_to_local_fn=Mock(return_value=None),
-        archive_uploads_fn=Mock(return_value=[mock_location1, mock_location2]),
+    service._register_job = Mock(return_value=job)
+    service._submit_job = Mock(return_value=UploadLocation(url="http://example.com/pre-signed-url"))
+    service._submit_job_config = Mock(
+        return_value=UploadLocation(url="http://example.com/pre-signed-url-job-config")
     )
+    service._submit_runs = Mock(return_value=[run])
+    service._submit_run_config = Mock(
+        return_value=UploadLocation(url="http://example.com/pre-signed-url-run-config")
+    )
+    service._get_runs_by_job_id = Mock(return_value=[run])
+    service._get_job_uploads = Mock(return_value=[mock_upload1, mock_upload2])
+    service._read_upload_content = Mock(return_value=UploadContent.create_text("test content"))
+    service._write_to_local = Mock(return_value=None)
+    service._archive_uploads = Mock(return_value=[mock_location1, mock_location2])
     return service
 
 
@@ -99,9 +97,7 @@ def run_requests():
 class TestJobController:
     def test_register_job__calls_register_job_fn_with_created_job(self, service):
         service.register_job(user_token_value="token", tags=["info_job"])
-        service._dependencies.register_job_fn.assert_called_once_with(
-            user_token_value="token", tags=["info_job"]
-        )
+        service._register_job.assert_called_once_with(user_token_value="token", tags=["info_job"])
 
     def test_register_job__returns_success_result_with_job_data(self, service):
         job_result = service.register_job(user_token_value="token", tags=["info_job"])
@@ -120,7 +116,7 @@ class TestJobController:
     def test_register_job__when_value_error_raised__returns_failure_result(
         self, service, bearer_token
     ):
-        service._dependencies.register_job_fn.side_effect = ValueError("Invalid user ID")
+        service._register_job.side_effect = ValueError("Invalid user ID")
         job_result = service.register_job(user_token_value=bearer_token, tags=["info_job"])
         assert not is_successful(job_result)
         assert job_result.failure() == "Invalid user ID"
@@ -128,7 +124,7 @@ class TestJobController:
     def test_register_job__when_exception_raised__returns_failure_result(
         self, service, bearer_token
     ):
-        service._dependencies.register_job_fn.side_effect = Exception("Unexpected error")
+        service._register_job.side_effect = Exception("Unexpected error")
         job_result = service.register_job(user_token_value=bearer_token, tags=["info_job"])
         assert not is_successful(job_result)
         assert job_result.failure() == "An unexpected error occurred while registering the job"
@@ -136,7 +132,7 @@ class TestJobController:
     def test_submit_job__calls_submit_job_fn_with_correct_parameters(self, service):
         service.submit_job(job_id=1, context="job", job_type="input")
         expected_job_upload = JobUpload(context="job", upload_type="input", job_id=1, run_id=None)
-        service._dependencies.submit_job_fn.assert_called_once_with(expected_job_upload)
+        service._submit_job.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url"}
@@ -151,7 +147,7 @@ class TestJobController:
         assert "Job ID must be positive" in job_result.failure()
 
     def test_submit_job__when_exception_raised__returns_failure_result(self, service):
-        service._dependencies.submit_job_fn.side_effect = Exception("Unexpected error")
+        service._submit_job.side_effect = Exception("Unexpected error")
         job_result = service.submit_job(job_id=1, context="job", job_type="input")
         assert not is_successful(job_result)
         assert job_result.failure() == "An unexpected error occurred while submitting the job"
@@ -159,7 +155,7 @@ class TestJobController:
     def test_submit_runs__calls_submit_runs_fn_with_correct_parameters(self, service, run_requests):
         bearer_token = "Bearer valid_token"
         service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
-        service._dependencies.submit_runs_fn.assert_called_once_with(
+        service._submit_runs.assert_called_once_with(
             run_requests=run_requests, user_token_value=bearer_token, epx_version="epx_client_1.2.2"
         )
 
@@ -186,7 +182,7 @@ class TestJobController:
     def test_submit_runs__when_value_error_raised__returns_failure_result(
         self, service, run_requests
     ):
-        service._dependencies.submit_runs_fn.side_effect = ValueError("Invalid run request")
+        service._submit_runs.side_effect = ValueError("Invalid run request")
         bearer_token = "Bearer valid_token"
         result = service.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
@@ -197,7 +193,7 @@ class TestJobController:
     def test_submit_runs__when_exception_raised__returns_failure_result(
         self, service, run_requests
     ):
-        service._dependencies.submit_runs_fn.side_effect = Exception("Unexpected error")
+        service._submit_runs.side_effect = Exception("Unexpected error")
         bearer_token = "Bearer valid_token"
         result = service.submit_runs(
             user_token_value=bearer_token, run_requests=run_requests, epx_version="epx_client_1.2.2"
@@ -210,7 +206,7 @@ class TestJobController:
     ):
         service.submit_job(job_id=1, context="job", job_type="config")
         expected_job_upload = JobUpload(context="job", upload_type="config", job_id=1, run_id=None)
-        service._dependencies.submit_job_config_fn.assert_called_once_with(expected_job_upload)
+        service._submit_job_config.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__type_config__returns_success_result_with_response_data(self, service):
         expected_response = {"url": "http://example.com/pre-signed-url-job-config"}
@@ -223,7 +219,7 @@ class TestJobController:
     ):
         service.submit_job(job_id=1, run_id=2, context="run", job_type="config")
         expected_job_upload = JobUpload(context="run", upload_type="config", job_id=1, run_id=2)
-        service._dependencies.submit_run_config_fn.assert_called_once_with(expected_job_upload)
+        service._submit_run_config.assert_called_once_with(expected_job_upload)
 
     def test_submit_job__context_run_type_config__returns_success_result_with_response_data(
         self, service
@@ -235,7 +231,7 @@ class TestJobController:
 
     def test_get_runs__calls_get_runs_by_job_id_fn_with_correct_job_id(self, service):
         service.get_runs(job_id=1)
-        service._dependencies.get_runs_by_job_id_fn.assert_called_once_with(job_id=1)
+        service._get_runs_by_job_id.assert_called_once_with(job_id=1)
 
     def test_get_runs__returns_success_result_with_run_data(self, service):
         expected_run = Run.create_persisted(
@@ -248,7 +244,7 @@ class TestJobController:
             created_at=datetime(2025, 1, 1, 12, 0, 0),
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
         )
-        service._dependencies.get_runs_by_job_id_fn.return_value = [expected_run]
+        service._get_runs_by_job_id.return_value = [expected_run]
 
         runs_result = service.get_runs(job_id=1)
         assert is_successful(runs_result)
@@ -262,12 +258,12 @@ class TestJobController:
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None,
         )
-        service._dependencies.get_job_uploads_fn.return_value = [upload]
+        service._get_job_uploads.return_value = [upload]
 
         service.get_job_uploads(job_id=1)
 
-        service._dependencies.get_job_uploads_fn.assert_called_once_with(job_id=1)
-        service._dependencies.read_upload_content_fn.assert_called_once_with(upload.location)
+        service._get_job_uploads.assert_called_once_with(job_id=1)
+        service._read_upload_content.assert_called_once_with(upload.location)
 
     def test_get_job_uploads__returns_success_result_with_content(self, service):
         upload = JobUpload(
@@ -278,8 +274,8 @@ class TestJobController:
             run_id=None,
         )
         content = UploadContent.create_text("test file content")
-        service._dependencies.get_job_uploads_fn.return_value = [upload]
-        service._dependencies.read_upload_content_fn.return_value = content
+        service._get_job_uploads.return_value = [upload]
+        service._read_upload_content.return_value = content
 
         result = service.get_job_uploads(job_id=1)
 
@@ -300,8 +296,8 @@ class TestJobController:
             location=UploadLocation(url="http://example.com/job-input"),
             run_id=None,
         )
-        service._dependencies.get_job_uploads_fn.return_value = [upload]
-        service._dependencies.read_upload_content_fn.side_effect = ValueError("S3 error")
+        service._get_job_uploads.return_value = [upload]
+        service._read_upload_content.side_effect = ValueError("S3 error")
 
         result = service.get_job_uploads(job_id=1)
 
@@ -319,12 +315,12 @@ class TestJobController:
         mock_upload = JobUpload(
             context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
         )
-        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
+        service._get_job_uploads.return_value = [mock_upload]
 
         service.archive_job_uploads(job_id=1, days_since_create=7, dry_run=True)
 
-        service._dependencies.get_job_uploads_fn.assert_called_once_with(job_id=1)
-        service._dependencies.archive_uploads_fn.assert_called_once_with(
+        service._get_job_uploads.assert_called_once_with(job_id=1)
+        service._archive_uploads.assert_called_once_with(
             upload_locations=[mock_location],
             days_since_create=7,
             hours_since_create=None,
@@ -343,21 +339,21 @@ class TestJobController:
         assert archived == expected_locations
 
     def test_archive_job_uploads__when_no_uploads_found__returns_empty_list(self, service):
-        service._dependencies.get_job_uploads_fn.return_value = []
+        service._get_job_uploads.return_value = []
 
         result = service.archive_job_uploads(job_id=999)
 
         assert is_successful(result)
         assert result.unwrap() == []
-        service._dependencies.archive_uploads_fn.assert_not_called()
+        service._archive_uploads.assert_not_called()
 
     def test_archive_job_uploads__when_value_error_raised__returns_failure_result(self, service):
         mock_location = UploadLocation(url="http://example.com/file.txt")
         mock_upload = JobUpload(
             context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
         )
-        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
-        service._dependencies.archive_uploads_fn.side_effect = ValueError("Invalid age threshold")
+        service._get_job_uploads.return_value = [mock_upload]
+        service._archive_uploads.side_effect = ValueError("Invalid age threshold")
 
         result = service.archive_job_uploads(job_id=1, days_since_create=-1)
 
@@ -369,8 +365,8 @@ class TestJobController:
         mock_upload = JobUpload(
             context="job", upload_type="input", job_id=1, location=mock_location, run_id=None
         )
-        service._dependencies.get_job_uploads_fn.return_value = [mock_upload]
-        service._dependencies.archive_uploads_fn.side_effect = Exception("S3 error")
+        service._get_job_uploads.return_value = [mock_upload]
+        service._archive_uploads.side_effect = Exception("S3 error")
 
         result = service.archive_job_uploads(job_id=1)
 
@@ -728,26 +724,23 @@ def mock_controller_with_uploads():
     mock_content1 = UploadContent.create_text("Content for file 1")
     mock_content2 = UploadContent.create_text("Content for file 2")
 
-    # Create JobControllerDependencies with all required fields
-    mock_deps = JobControllerDependencies(
-        register_job_fn=Mock(),
-        submit_job_fn=Mock(),
-        submit_job_config_fn=Mock(),
-        submit_runs_fn=Mock(),
-        submit_run_config_fn=Mock(),
-        get_runs_by_job_id_fn=Mock(),
-        get_job_uploads_fn=Mock(return_value=[mock_upload1, mock_upload2]),
-        read_upload_content_fn=Mock(side_effect=[mock_content1, mock_content2]),
-        write_to_local_fn=Mock(return_value=None),
-    )
+    # Create controller and wire mocks
+    controller = JobController()
+    controller._register_job = Mock()
+    controller._submit_job = Mock()
+    controller._submit_job_config = Mock()
+    controller._submit_runs = Mock()
+    controller._submit_run_config = Mock()
+    controller._get_runs_by_job_id = Mock()
+    controller._get_job_uploads = Mock(return_value=[mock_upload1, mock_upload2])
+    controller._read_upload_content = Mock(side_effect=[mock_content1, mock_content2])
+    controller._write_to_local = Mock(return_value=None)
 
     # Store mock content for reuse in tests
-    mock_deps.mock_content1 = mock_content1
-    mock_deps.mock_content2 = mock_content2
+    controller.mock_content1 = mock_content1
+    controller.mock_content2 = mock_content2
 
-    controller = JobController()
-    controller._dependencies = mock_deps
-    return controller, mock_deps
+    return controller, controller
 
 
 class TestJobControllerDownloadForceFlag:
@@ -755,18 +748,18 @@ class TestJobControllerDownloadForceFlag:
 
     def test_initial_download_creates_files(self, mock_controller_with_uploads, temp_download_dir):
         """Test that initial download creates files when directory is empty."""
-        controller, mock_deps = mock_controller_with_uploads
+        controller, _ = mock_controller_with_uploads
 
         # Setup read_upload_content mock
-        mock_deps.read_upload_content_fn = Mock(
-            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        controller._read_upload_content = Mock(
+            side_effect=[controller.mock_content1, controller.mock_content2]
         )
 
         # Setup write_to_local mock to actually write files for testing
         def mock_write_to_local(file_path, content, force=False):
             file_path.write_text(content.raw_content)
 
-        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        controller._write_to_local = Mock(side_effect=mock_write_to_local)
 
         # Download files
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
@@ -786,7 +779,7 @@ class TestJobControllerDownloadForceFlag:
         self, mock_controller_with_uploads, temp_download_dir
     ):
         """Test that download without force flag skips existing files."""
-        controller, mock_deps = mock_controller_with_uploads
+        controller, _ = mock_controller_with_uploads
 
         # Create existing files with different content
         file1 = temp_download_dir / "test_file1.txt"
@@ -795,12 +788,12 @@ class TestJobControllerDownloadForceFlag:
         file2.write_text("Modified content 2")
 
         # Setup read_upload_content mock
-        mock_deps.read_upload_content_fn = Mock(
-            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        controller._read_upload_content = Mock(
+            side_effect=[controller.mock_content1, controller.mock_content2]
         )
 
         # Setup write_to_local mock that shouldn't be called for existing files
-        mock_deps.write_to_local_fn = Mock()
+        controller._write_to_local = Mock()
 
         # Download without force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
@@ -813,13 +806,13 @@ class TestJobControllerDownloadForceFlag:
         assert file2.read_text() == "Modified content 2"
 
         # Verify read_upload_content was not called (files were skipped)
-        assert mock_deps.read_upload_content_fn.call_count == 0
+        assert controller._read_upload_content.call_count == 0
 
     def test_download_with_force_overwrites_existing_files(
         self, mock_controller_with_uploads, temp_download_dir
     ):
         """Test that download with force flag overwrites existing files."""
-        controller, mock_deps = mock_controller_with_uploads
+        controller, _ = mock_controller_with_uploads
 
         # Create existing files with different content
         file1 = temp_download_dir / "test_file1.txt"
@@ -828,15 +821,15 @@ class TestJobControllerDownloadForceFlag:
         file2.write_text("Modified content 2")
 
         # Setup read_upload_content mock
-        mock_deps.read_upload_content_fn = Mock(
-            side_effect=[mock_deps.mock_content1, mock_deps.mock_content2]
+        controller._read_upload_content = Mock(
+            side_effect=[controller.mock_content1, controller.mock_content2]
         )
 
         # Setup write_to_local mock to actually write files for testing
         def mock_write_to_local(file_path, content, force=False):
             file_path.write_text(content.raw_content)
 
-        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        controller._write_to_local = Mock(side_effect=mock_write_to_local)
 
         # Download with force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=True)
@@ -849,24 +842,24 @@ class TestJobControllerDownloadForceFlag:
         assert file2.read_text() == "Content for file 2"
 
         # Verify read_upload_content was called for all files
-        assert mock_deps.read_upload_content_fn.call_count == 2
+        assert controller._read_upload_content.call_count == 2
 
     def test_partial_existing_files_behavior(self, mock_controller_with_uploads, temp_download_dir):
         """Test behavior when only some files exist in the directory."""
-        controller, mock_deps = mock_controller_with_uploads
+        controller, _ = mock_controller_with_uploads
 
         # Create only one existing file
         file1 = temp_download_dir / "test_file1.txt"
         file1.write_text("Modified content 1")
 
         # Setup read_upload_content mock - should only be called for file2
-        mock_deps.read_upload_content_fn = Mock(return_value=mock_deps.mock_content2)
+        controller._read_upload_content = Mock(return_value=controller.mock_content2)
 
         # Setup write_to_local mock to actually write files for testing
         def mock_write_to_local(file_path, content, force=False):
             file_path.write_text(content.raw_content)
 
-        mock_deps.write_to_local_fn = Mock(side_effect=mock_write_to_local)
+        controller._write_to_local = Mock(side_effect=mock_write_to_local)
 
         # Download without force
         result = controller.download_job_uploads(123, temp_download_dir, should_force=False)
@@ -883,4 +876,4 @@ class TestJobControllerDownloadForceFlag:
         assert file2.read_text() == "Content for file 2"
 
         # Verify read_upload_content was called only once (for file2)
-        assert mock_deps.read_upload_content_fn.call_count == 1
+        assert controller._read_upload_content.call_count == 1

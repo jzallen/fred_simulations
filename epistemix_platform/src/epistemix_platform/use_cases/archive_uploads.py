@@ -3,6 +3,7 @@ Archive uploads use case for the Epistemix API.
 This module handles archiving uploads for manual intervention or job lifecycle management.
 """
 
+import functools
 import logging
 from datetime import datetime, timedelta
 
@@ -95,3 +96,8 @@ def archive_uploads(
         logger.debug(f"  Archived: {sanitized_url}")
 
     return archived_locations
+
+
+def create_archive_uploads(upload_location_repository: IUploadLocationRepository):
+    """Factory to create archive_uploads function with dependencies wired."""
+    return functools.partial(archive_uploads, upload_location_repository)

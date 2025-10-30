@@ -3,6 +3,7 @@ Use case for reading uploaded content from storage.
 This use case downloads and returns the contents of an uploaded file.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.upload_content import UploadContent
@@ -37,3 +38,8 @@ def read_upload_content(
     sanitized_url = location.get_sanitized_url()
     logger.info(f"Successfully read content from location: {sanitized_url}")
     return content
+
+
+def create_read_upload_content(upload_location_repository: IUploadLocationRepository):
+    """Factory to create read_upload_content function with dependencies wired."""
+    return functools.partial(read_upload_content, upload_location_repository)
