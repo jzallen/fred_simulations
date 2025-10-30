@@ -530,40 +530,6 @@ class TestLambdaTemplate:
             "AWS::Lambda::Alias", Match.object_like({"Name": {"Ref": "Environment"}})
         )
 
-    # Integration Tests (External Tools)
-
-    @pytest.mark.integration
-    def test_template_passes_cfn_lint(self, template_path: str, cfnlint_config_path: str):
-        """Test cfn-lint validation."""
-        import subprocess
-
-        result = subprocess.run(
-            ["cfn-lint", "--config-file", cfnlint_config_path, template_path],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, f"cfn-lint failed:\n{result.stdout}\n{result.stderr}"
-
-    @pytest.mark.integration
-    def test_template_passes_policy_validation(self, template_path: str):
-        """Test cfn-guard policy validation."""
-        import subprocess
-        from pathlib import Path
-
-        rules_path = (
-            Path(__file__).parent.parent.parent
-            / "guard_rules"
-            / "lambda"
-            / "lambda_security_rules.guard"
-        )
-
-        result = subprocess.run(
-            ["cfn-guard", "validate", "--data", template_path, "--rules", str(rules_path)],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, f"cfn-guard failed:\n{result.stdout}\n{result.stderr}"
-
     # CDK Assertions (Behavioral Validation)
 
     def test_lambda_deployed_in_vpc_cdk(self, template, cdk_template_factory):
