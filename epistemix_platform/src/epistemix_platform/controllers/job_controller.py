@@ -4,10 +4,7 @@ This service layer orchestrates business logic and coordinates between
 the web layer and domain models.
 """
 
-# TODO: Clean up imports - consolidate multiple imports from same module
-import functools
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Self
 
@@ -27,57 +24,20 @@ from epistemix_platform.repositories import (
 from epistemix_platform.repositories.interfaces import IResultsRepository
 from epistemix_platform.services.results_packager import FredResultsPackager
 from epistemix_platform.services.time_provider import SystemTimeProvider
-from epistemix_platform.use_cases import archive_uploads as archive_uploads_use_case
-from epistemix_platform.use_cases import (
-    get_job_uploads,
-    read_upload_content,
-    upload_results,
-    write_to_local,
-)
-from epistemix_platform.use_cases import get_runs_by_job_id as get_runs_by_job_id_use_case
-from epistemix_platform.use_cases import register_job as register_job_use_case
-from epistemix_platform.use_cases import submit_job as submit_job_use_case
-from epistemix_platform.use_cases import submit_job_config as submit_job_config_use_case
-from epistemix_platform.use_cases import submit_run_config as submit_run_config_use_case
-from epistemix_platform.use_cases import submit_runs as submit_runs_use_case
+from epistemix_platform.use_cases.archive_uploads import create_archive_uploads
+from epistemix_platform.use_cases.get_job_uploads import create_get_job_uploads
+from epistemix_platform.use_cases.get_runs import create_get_runs_by_job_id
+from epistemix_platform.use_cases.read_upload_content import create_read_upload_content
+from epistemix_platform.use_cases.register_job import create_register_job
+from epistemix_platform.use_cases.submit_job import create_submit_job
+from epistemix_platform.use_cases.submit_job_config import create_submit_job_config
+from epistemix_platform.use_cases.submit_run_config import create_submit_run_config
+from epistemix_platform.use_cases.submit_runs import create_submit_runs
+from epistemix_platform.use_cases.upload_results import create_upload_results
+from epistemix_platform.use_cases.write_to_local import write_to_local
 
 
 logger = logging.getLogger(__name__)
-
-
-class JobControllerDependencies:
-    """
-    Dependencies for the JobController.
-
-    This class encapsulates the dependencies required by the JobController,
-    allowing for easier testing and dependency injection.
-    """
-
-    def __init__(
-        self,
-        register_job_fn: Callable[[str, list[str]], Job],
-        submit_job_fn: Callable[[int, str, str], UploadLocation],
-        submit_job_config_fn: Callable[[int, str, str], UploadLocation],
-        submit_runs_fn: Callable[[list[dict[str, Any]], str, str], list[Run]],
-        submit_run_config_fn: Callable[[int, str, str, int | None], UploadLocation],
-        get_runs_by_job_id_fn: Callable[[int], Run | None],
-        get_job_uploads_fn: Callable[[int], list[JobUpload]],
-        read_upload_content_fn: Callable[[UploadLocation], UploadContent],
-        write_to_local_fn: Callable[[Path, UploadContent, bool], None],
-        archive_uploads_fn: Callable | None = None,
-        upload_results_fn: Callable[[int, int, Path], str] | None = None,
-    ):
-        self.register_job_fn = register_job_fn
-        self.submit_job_fn = submit_job_fn
-        self.submit_job_config_fn = submit_job_config_fn
-        self.submit_runs_fn = submit_runs_fn
-        self.submit_run_config_fn = submit_run_config_fn
-        self.get_runs_by_job_id_fn = get_runs_by_job_id_fn
-        self.get_job_uploads_fn = get_job_uploads_fn
-        self.read_upload_content_fn = read_upload_content_fn
-        self.write_to_local_fn = write_to_local_fn
-        self.archive_uploads_fn = archive_uploads_fn or archive_uploads_use_case
-        self.upload_results_fn = upload_results_fn or upload_results
 
 
 class JobController:
@@ -85,8 +45,10 @@ class JobController:
 
     def __init__(self):
         """Initialize the job controller without dependencies.
-        This constructor is best for tests when you need to override dependencies. The dependencies
-        are intended to be private so there is not public method to set them directly.
+
+        This constructor is best for tests when you need to override dependencies.
+        The use case methods are intended to be private, so there is no public method
+        to set them directly.
 
         Example:
         from unittest.mock import Mock
@@ -95,22 +57,21 @@ class JobController:
         mock_job = Job.create_persisted(job_id=1, user_id=123, tags=["test"])
         mock_location = UploadLocation(url="http://example.com/pre-signed-url", key="test.zip")
         job_controller = JobController()
-        job_controller._dependencies = JobControllerDependencies(
-            register_job_fn=Mock(return_value=mock_job),
-            submit_job_fn=Mock(return_value=mock_location),
-            submit_job_config_fn=Mock(return_value=mock_location),
-            submit_runs_fn=Mock(return_value=[]),
-            submit_run_config_fn=Mock(return_value=mock_location),
-            get_runs_by_job_id_fn=Mock(return_value=[]),
-            get_job_uploads_fn=Mock(return_value=[]),
-            read_upload_content_fn=Mock(),
-            write_to_local_fn=Mock(),
-            archive_uploads_fn=Mock(return_value=[])
-        )
+        job_controller._register_job = Mock(return_value=mock_job)
+        job_controller._submit_job = Mock(return_value=mock_location)
+        job_controller._submit_job_config = Mock(return_value=mock_location)
+        job_controller._submit_runs = Mock(return_value=[])
+        job_controller._submit_run_config = Mock(return_value=mock_location)
+        job_controller._get_runs_by_job_id = Mock(return_value=[])
+        job_controller._get_job_uploads = Mock(return_value=[])
+        job_controller._read_upload_content = Mock()
+        job_controller._write_to_local = Mock()
+        job_controller._archive_uploads = Mock(return_value=[])
+        job_controller._upload_results = Mock(return_value="http://s3.url/results.zip")
 
-        Use `create_with_repositories` to instantiate with a repository for production use.
+        Use `create_with_repositories` to instantiate with repositories for production use.
         """
-        self._dependencies = None
+        pass
 
     @classmethod
     def create_with_repositories(
@@ -134,41 +95,31 @@ class JobController:
         """
         service = cls()
 
-        service._dependencies = JobControllerDependencies(
-            register_job_fn=functools.partial(register_job_use_case, job_repository),
-            submit_job_fn=functools.partial(
-                submit_job_use_case, job_repository, upload_location_repository
-            ),
-            submit_job_config_fn=functools.partial(
-                submit_job_config_use_case, job_repository, upload_location_repository
-            ),
-            submit_runs_fn=functools.partial(
-                submit_runs_use_case, job_repository, run_repository, upload_location_repository
-            ),
-            submit_run_config_fn=functools.partial(
-                submit_run_config_use_case,
-                job_repository,
-                run_repository,
-                upload_location_repository,
-            ),
-            get_runs_by_job_id_fn=functools.partial(get_runs_by_job_id_use_case, run_repository),
-            get_job_uploads_fn=functools.partial(get_job_uploads, job_repository, run_repository),
-            read_upload_content_fn=functools.partial(
-                read_upload_content, upload_location_repository
-            ),
-            write_to_local_fn=write_to_local,
-            archive_uploads_fn=functools.partial(
-                archive_uploads_use_case, upload_location_repository
-            ),
-            upload_results_fn=functools.partial(
-                upload_results,
-                run_repository,
-                job_repository,
-                FredResultsPackager(),
-                results_repository,
-                SystemTimeProvider(),
-            ),
+        # Wire use case dependencies using factory functions
+        service._register_job = create_register_job(job_repository)
+        service._submit_job = create_submit_job(job_repository, upload_location_repository)
+        service._submit_job_config = create_submit_job_config(
+            job_repository, upload_location_repository
         )
+        service._submit_runs = create_submit_runs(
+            job_repository, run_repository, upload_location_repository
+        )
+        service._submit_run_config = create_submit_run_config(
+            job_repository, run_repository, upload_location_repository
+        )
+        service._get_runs_by_job_id = create_get_runs_by_job_id(run_repository)
+        service._get_job_uploads = create_get_job_uploads(job_repository, run_repository)
+        service._read_upload_content = create_read_upload_content(upload_location_repository)
+        service._write_to_local = write_to_local
+        service._archive_uploads = create_archive_uploads(upload_location_repository)
+        service._upload_results = create_upload_results(
+            run_repository,
+            job_repository,
+            FredResultsPackager(),
+            results_repository,
+            SystemTimeProvider(),
+        )
+
         return service
 
     def register_job(
@@ -189,7 +140,7 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            job = self._dependencies.register_job_fn(user_token_value=user_token_value, tags=tags)
+            job = self._register_job(user_token_value=user_token_value, tags=tags)
             return Success(job.to_dict())
         except ValueError as e:
             logger.exception("Validation error in register_job")
@@ -229,11 +180,11 @@ class JobController:
             # Route to the appropriate use case based on context and type
             match (context, job_type):
                 case ("job", "input"):
-                    upload_location = self._dependencies.submit_job_fn(job_upload)
+                    upload_location = self._submit_job(job_upload)
                 case ("job", "config"):
-                    upload_location = self._dependencies.submit_job_config_fn(job_upload)
+                    upload_location = self._submit_job_config(job_upload)
                 case ("run", "config"):
-                    upload_location = self._dependencies.submit_run_config_fn(job_upload)
+                    upload_location = self._submit_run_config(job_upload)
                 case _:
                     raise ValueError(f"Unsupported context '{context}' or job type '{job_type}'")
             return Success(upload_location.to_dict())
@@ -266,7 +217,7 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            runs = self._dependencies.submit_runs_fn(
+            runs = self._submit_runs(
                 run_requests=run_requests,
                 user_token_value=user_token_value,
                 epx_version=epx_version,
@@ -295,7 +246,7 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            runs = self._dependencies.get_runs_by_job_id_fn(job_id=job_id)
+            runs = self._get_runs_by_job_id(job_id=job_id)
             return Success([run.to_dict() for run in runs])
         except ValueError as e:
             logger.exception("Validation error in get_runs_by_job_id")
@@ -323,7 +274,7 @@ class JobController:
         """
         try:
             # Get upload metadata from use case
-            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+            uploads = self._get_job_uploads(job_id=job_id)
 
             # Process uploads based on whether content is requested
             results = []
@@ -334,7 +285,7 @@ class JobController:
                 if include_content:
                     try:
                         # Read content for this upload
-                        content = self._dependencies.read_upload_content_fn(upload.location)
+                        content = self._read_upload_content(upload.location)
                         upload_dict["content"] = content.to_dict()
                     except ValueError as e:
                         # Include error information if content couldn't be read
@@ -377,7 +328,7 @@ class JobController:
         """
         try:
             # Get upload metadata
-            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+            uploads = self._get_job_uploads(job_id=job_id)
 
             if not uploads:
                 return Failure(f"No uploads found for job {job_id}")
@@ -422,10 +373,10 @@ class JobController:
                         continue
 
                     # Read content from storage
-                    content = self._dependencies.read_upload_content_fn(upload.location)
+                    content = self._read_upload_content(upload.location)
 
                     # Use the write_to_local use case to handle the write operation
-                    self._dependencies.write_to_local_fn(file_path, content, force=should_force)
+                    self._write_to_local(file_path, content, force=should_force)
 
                     downloaded_files.append(str(file_path))
                     logger.info(f"Downloaded {upload.context}_{upload.upload_type} to {file_path}")
@@ -497,7 +448,7 @@ class JobController:
             )
 
             # Get all upload locations for the job
-            uploads = self._dependencies.get_job_uploads_fn(job_id=job_id)
+            uploads = self._get_job_uploads(job_id=job_id)
 
             if not uploads:
                 logger.info(f"No uploads found for job {job_id}")
@@ -509,7 +460,7 @@ class JobController:
             logger.info(f"Found {len(upload_locations)} uploads for job {job_id}")
 
             # Use the archive_uploads use case
-            archived_locations = self._dependencies.archive_uploads_fn(
+            archived_locations = self._archive_uploads(
                 upload_locations=upload_locations,
                 days_since_create=days_since_create,
                 hours_since_create=hours_since_create,
@@ -553,7 +504,7 @@ class JobController:
             logger.info(f"Uploading results for run {run_id} (job {job_id}) from {results_dir}")
 
             # Use the upload_results use case
-            results_url = self._dependencies.upload_results_fn(
+            results_url = self._upload_results(
                 job_id=job_id,
                 run_id=run_id,
                 results_dir=results_dir,

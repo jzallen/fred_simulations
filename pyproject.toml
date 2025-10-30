@@ -41,8 +41,7 @@ select = ["E", "F", "I", "UP", "B", "C4", "SIM", "TRY", "ARG"]
 # B904: exception chaining (requires careful review to avoid behavior changes)
 # SIM103, SIM105, SIM110, SIM117: simplify patterns (requires manual review for correctness)
 # TRY003: Avoid long exception messages (requires defining messages in exception classes)
-# ARG001: Unused function arguments (allow in test mocks and callbacks)
-ignore = ["E203", "E501", "B904", "SIM103", "SIM105", "SIM110", "SIM117", "TRY003", "ARG001"]
+ignore = ["E203", "E501", "B904", "SIM103", "SIM105", "SIM110", "SIM117", "TRY003"]
 
 [tool.ruff.lint.isort]
 # Match existing isort settings (Black-compatible)

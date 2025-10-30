@@ -3,6 +3,7 @@ Get job uploads use case for the Epistemix API.
 This module retrieves upload metadata associated with a job.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.job_upload import JobUpload
@@ -94,3 +95,8 @@ def get_job_uploads(
             logger.info(f"Found run_config for run {run.id}")
 
     return uploads
+
+
+def create_get_job_uploads(job_repository: IJobRepository, run_repository: IRunRepository):
+    """Factory to create get_job_uploads function with dependencies wired."""
+    return functools.partial(get_job_uploads, job_repository, run_repository)

@@ -6,6 +6,7 @@ results to S3. Following clean architecture principles, this use case orchestrat
 services and repositories without implementing business logic directly.
 """
 
+import functools
 import logging
 from pathlib import Path
 
@@ -120,3 +121,21 @@ def upload_results(
         ) from e
 
     return run.results_url
+
+
+def create_upload_results(
+    run_repository: IRunRepository,
+    job_repository: IJobRepository,
+    results_packager: IResultsPackager,
+    results_repository: IResultsRepository,
+    time_provider: ITimeProvider,
+):
+    """Factory to create upload_results function with dependencies wired."""
+    return functools.partial(
+        upload_results,
+        run_repository,
+        job_repository,
+        results_packager,
+        results_repository,
+        time_provider,
+    )

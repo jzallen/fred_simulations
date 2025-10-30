@@ -3,6 +3,7 @@ Job registration use case for the Epistemix API.
 This module implements the core business logic for job registration operations.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.job import Job, JobTag
@@ -93,6 +94,11 @@ def validate_tags(tags: list[str]) -> None:
         # Optional: Log unknown tags for monitoring
         if tag not in valid_tag_values:
             logger.warning(f"Unknown tag used: {tag}. Known tags: {valid_tag_values}")
+
+
+def create_register_job(job_repository: IJobRepository):
+    """Factory to create register_job function with dependencies wired."""
+    return functools.partial(register_job, job_repository)
 
 
 # Future use cases can be added here:

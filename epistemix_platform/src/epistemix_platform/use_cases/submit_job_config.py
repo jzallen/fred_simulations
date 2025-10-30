@@ -3,6 +3,7 @@ Job submission configuration use case for the Epistemix API.
 This module implements the core business logic for job submission configuration.
 """
 
+import functools
 import logging
 
 from epistemix_platform.models.job_s3_prefix import JobS3Prefix
@@ -64,3 +65,10 @@ def submit_job_config(
     )
 
     return job_configuration_location
+
+
+def create_submit_job_config(
+    job_repository: IJobRepository, upload_location_repository: IUploadLocationRepository
+):
+    """Factory to create submit_job_config function with dependencies wired."""
+    return functools.partial(submit_job_config, job_repository, upload_location_repository)

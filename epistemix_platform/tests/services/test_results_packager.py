@@ -302,7 +302,7 @@ class TestFredResultsPackager:
         """
 
         # Arrange: Mock zipfile.ZipFile to raise OSError
-        def failing_zipfile(*args, **kwargs):
+        def failing_zipfile():
             raise OSError("Disk full - cannot write ZIP")
 
         monkeypatch.setattr(zipfile, "ZipFile", failing_zipfile)

@@ -3,6 +3,7 @@ Run submission use case for the Epistemix API.
 This module implements the core business logic for run submission operations.
 """
 
+import functools
 import logging
 import re
 from typing import Any, TypedDict
@@ -164,6 +165,17 @@ def submit_runs(
         run_responses.append(final_run)
 
     return run_responses
+
+
+def create_submit_runs(
+    job_repository: IJobRepository,
+    run_repository: IRunRepository,
+    upload_location_repository: IUploadLocationRepository,
+):
+    """Factory to create submit_runs function with dependencies wired."""
+    return functools.partial(
+        submit_runs, job_repository, run_repository, upload_location_repository
+    )
 
 
 # Legacy functions for backward compatibility

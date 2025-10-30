@@ -22,7 +22,6 @@ pex_binary(
         ":epistemix-reqs#botocore",
         ":epistemix-reqs#python-dotenv",
         ":epistemix-reqs#sqlalchemy",
-        ":epistemix-reqs#alembic",
         ":epistemix-reqs#psycopg2-binary",
     ],
 )
@@ -85,7 +84,6 @@ pex_binary(
         ":epistemix-reqs#requests",
         ":epistemix-reqs#python-dotenv",
         ":epistemix-reqs#returns",
-        ":epistemix-reqs#alembic",
         ":epistemix-reqs#psycopg2-binary",
     ],
 )
