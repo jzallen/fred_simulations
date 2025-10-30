@@ -756,7 +756,7 @@ class TestJobControllerDownloadForceFlag:
         )
 
         # Setup write_to_local mock to actually write files for testing
-        def mock_write_to_local(file_path, content, force=False):
+        def mock_write_to_local(file_path, content, **kwargs):
             file_path.write_text(content.raw_content)
 
         controller._write_to_local = Mock(side_effect=mock_write_to_local)
@@ -826,7 +826,7 @@ class TestJobControllerDownloadForceFlag:
         )
 
         # Setup write_to_local mock to actually write files for testing
-        def mock_write_to_local(file_path, content, force=False):
+        def mock_write_to_local(file_path, content, **kwargs):
             file_path.write_text(content.raw_content)
 
         controller._write_to_local = Mock(side_effect=mock_write_to_local)
@@ -856,7 +856,7 @@ class TestJobControllerDownloadForceFlag:
         controller._read_upload_content = Mock(return_value=controller.mock_content2)
 
         # Setup write_to_local mock to actually write files for testing
-        def mock_write_to_local(file_path, content, force=False):
+        def mock_write_to_local(file_path, content, **kwargs):
             file_path.write_text(content.raw_content)
 
         controller._write_to_local = Mock(side_effect=mock_write_to_local)
