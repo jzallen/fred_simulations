@@ -21,3 +21,22 @@ tags:
   Component: ECR
   Service: SimulationRunner
   Shared: "true"
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (simulation-runner-ecr) Running cfn-lint...' && \
+    cfn-lint templates/ecr/simulation-runner-repository.json && \
+    echo '✓ (simulation-runner-ecr) cfn-lint passed'
+  - !cmd |
+    echo '▶ (simulation-runner-ecr) Running cfn-guard security validation...' && \
+    cfn-guard validate \
+      --data templates/ecr/simulation-runner-repository.json \
+      --rules guard_rules/ecr_security_rules.guard \
+      --show-summary fail && \
+    echo '✓ (simulation-runner-ecr) cfn-guard passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks

@@ -25,3 +25,22 @@ stack_tags:
   Project: epistemix-platform
   Environment: staging
   ManagedBy: sceptre
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (rds-postgres) Running cfn-lint...' && \
+    cfn-lint templates/rds/rds-postgres.json && \
+    echo '✓ (rds-postgres) cfn-lint passed'
+  - !cmd |
+    echo '▶ (rds-postgres) Running cfn-guard security validation...' && \
+    cfn-guard validate \
+      --data templates/rds/rds-postgres.json \
+      --rules guard_rules/rds_security_rules.guard \
+      --show-summary fail && \
+    echo '✓ (rds-postgres) cfn-guard passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks

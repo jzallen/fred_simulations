@@ -27,3 +27,22 @@ tags:
   CostCenter: Development
   Component: APIGateway
   Service: EpistemixAPI
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (api-gateway) Running cfn-lint...' && \
+    cfn-lint templates/api-gateway/epistemix-api-gateway.json && \
+    echo '✓ (api-gateway) cfn-lint passed'
+  - !cmd |
+    echo '▶ (api-gateway) Running cfn-guard security validation...' && \
+    cfn-guard validate \
+      --data templates/api-gateway/epistemix-api-gateway.json \
+      --rules guard_rules/api_gateway_security_rules.guard \
+      --show-summary fail && \
+    echo '✓ (api-gateway) cfn-guard passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks
