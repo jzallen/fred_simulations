@@ -22,11 +22,11 @@ tags:
 # Sceptre hooks for template validation
 hooks:
   before_validate:
-    - !cmd "echo '▶ Running cfn-lint on ECR template...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-lint...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ (epistemix-api-ecr) cfn-lint passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ (epistemix-api-ecr) cfn-guard passed'"
   before_create:
-    - !cmd "echo '▶ Running cfn-lint on ECR template...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-lint...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ (epistemix-api-ecr) cfn-lint passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ (epistemix-api-ecr) cfn-guard passed'"
   before_update:
-    - !cmd "echo '▶ Running cfn-lint on ECR template...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-lint...' && cfn-lint templates/ecr/epistemix-api-repository.json && echo '✓ (epistemix-api-ecr) cfn-lint passed'"
+    - !cmd "echo '▶ (epistemix-api-ecr) Running cfn-guard security validation...' && cfn-guard validate --data templates/ecr/epistemix-api-repository.json --rules guard_rules/ecr_security_rules.guard --show-summary fail && echo '✓ (epistemix-api-ecr) cfn-guard passed'"

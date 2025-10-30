@@ -20,11 +20,11 @@ tags:
 # Sceptre hooks for template validation
 hooks:
   before_validate:
-    - !cmd "echo '▶ Running cfn-lint on S3 template...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
   before_create:
-    - !cmd "echo '▶ Running cfn-lint on S3 template...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
   before_update:
-    - !cmd "echo '▶ Running cfn-lint on S3 template...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
+    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"

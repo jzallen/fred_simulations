@@ -22,11 +22,11 @@ stack_tags:
 # Sceptre hooks for template validation
 hooks:
   before_validate:
-    - !cmd "echo '▶ Running cfn-lint on EC2 template...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-lint...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ (ssm-bastion) cfn-lint passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ (ssm-bastion) cfn-guard passed'"
   before_create:
-    - !cmd "echo '▶ Running cfn-lint on EC2 template...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-lint...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ (ssm-bastion) cfn-lint passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ (ssm-bastion) cfn-guard passed'"
   before_update:
-    - !cmd "echo '▶ Running cfn-lint on EC2 template...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ cfn-lint passed'"
-    - !cmd "echo '▶ Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ cfn-guard passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-lint...' && cfn-lint templates/ec2/ssm-bastion.json && echo '✓ (ssm-bastion) cfn-lint passed'"
+    - !cmd "echo '▶ (ssm-bastion) Running cfn-guard security validation...' && cfn-guard validate --data templates/ec2/ssm-bastion.json --rules guard_rules/ec2_security_rules.guard --show-summary fail && echo '✓ (ssm-bastion) cfn-guard passed'"
