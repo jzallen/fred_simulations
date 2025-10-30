@@ -18,13 +18,11 @@ tags:
   Service: FileUploads
 
 # Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
+  - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
+
 hooks:
-  before_validate:
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
-  before_create:
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
-  before_update:
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-lint...' && cfn-lint templates/s3/s3-upload-bucket.json && echo '✓ (s3-upload-bucket) cfn-lint passed'"
-    - !cmd "echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && cfn-guard validate --data templates/s3/s3-upload-bucket.json --rules guard_rules/s3_security_rules.guard --show-summary fail && echo '✓ (s3-upload-bucket) cfn-guard passed'"
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks

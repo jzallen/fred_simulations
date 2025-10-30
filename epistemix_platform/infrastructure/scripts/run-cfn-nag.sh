@@ -7,7 +7,7 @@
 # cfn-nag scans CloudFormation templates for security anti-patterns (140+ built-in rules)
 # Docker image: stelligent/cfn_nag (MIT License)
 
-set -e
+set -euo pipefail
 
 if [ -z "$1" ]; then
     echo "Error: Template path required"

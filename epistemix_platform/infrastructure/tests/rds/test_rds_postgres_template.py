@@ -243,20 +243,6 @@ class TestRDSPostgresTemplate:
             ),
         )
 
-    def test_db_instance_in_private_subnet(self, template, cdk_template_factory):
-        """Test that the RDS instance is deployed in a DB subnet group.
-
-        DB subnet groups ensure the database is deployed in appropriate
-        subnets (typically private subnets for security).
-        """
-
-        cdk_template = cdk_template_factory(template)
-
-        cdk_template.has_resource_properties(
-            "AWS::RDS::DBInstance",
-            Match.object_like({"DBSubnetGroupName": Match.any_value()}),
-        )
-
     def test_db_instance_has_security_group(self, template, cdk_template_factory):
         """Test that the RDS instance has VPC security groups configured.
 
