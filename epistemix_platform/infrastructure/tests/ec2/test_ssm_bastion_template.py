@@ -24,7 +24,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestSSMBastionTemplate:
     """Test suite for SSM Bastion CloudFormation template with deep security validation."""
 
-
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
 
@@ -366,4 +365,3 @@ class TestSSMBastionTemplate:
             "AWS::EC2::SecurityGroupIngress",
             Match.object_like({"Description": Match.string_like_regexp(".+")}),
         )
-

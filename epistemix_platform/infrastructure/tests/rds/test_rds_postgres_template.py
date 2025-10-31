@@ -24,7 +24,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestRDSPostgresTemplate:
     """Test suite for RDS PostgreSQL CloudFormation template."""
 
-
     def test_template_exists(self, template_path: str):
         """Test that the template file exists."""
         assert Path(template_path).exists(), "Template file does not exist"
@@ -45,7 +44,6 @@ class TestRDSPostgresTemplate:
         assert (
             "RDS" in template["Description"] or "PostgreSQL" in template["Description"]
         ), "Description should mention RDS or PostgreSQL"
-
 
     def test_parameters_defined(self, template: dict[str, Any]):
         """Test that parameters are defined in the template."""
@@ -88,7 +86,6 @@ class TestRDSPostgresTemplate:
         allowed = env_param.get("AllowedValues", [])
         assert "dev" in allowed, "Environment should allow 'dev'"
         assert "staging" in allowed or "prod" in allowed, "Environment should allow staging or prod"
-
 
     def test_db_instance_exists(self, template: dict[str, Any]):
         """Test DBInstance resource exists."""
@@ -147,7 +144,6 @@ class TestRDSPostgresTemplate:
             len(db_props["VPCSecurityGroups"]) > 0
         ), "DBInstance should have at least one security group"
 
-
     def test_db_subnet_group_exists(self, template: dict[str, Any]):
         """Test DBSubnetGroup resource exists."""
         resources = template.get("Resources", {})
@@ -172,7 +168,6 @@ class TestRDSPostgresTemplate:
             "AWS::RDS::DBSubnetGroup",
             Match.object_like({"Tags": Match.array_with([Match.object_like({})])}),
         )
-
 
     def test_db_security_group_exists(self, template: dict[str, Any]):
         """Test DBSecurityGroup resource exists."""

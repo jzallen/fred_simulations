@@ -26,7 +26,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestLambdaTemplate:
     """Test suite for Lambda CloudFormation template with deep security validation."""
 
-
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
 
