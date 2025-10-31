@@ -38,6 +38,7 @@ python_tests(
         ":test-reqs#freezegun",
         ":test-reqs#pytest",
         ":test-reqs#pytest-xdist",
+        ":test-reqs#moto",
     ],
 )
 

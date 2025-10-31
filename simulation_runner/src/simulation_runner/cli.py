@@ -11,22 +11,29 @@ Usage:
     simulation-runner prepare --job-id 12 --run-id 4
 """
 
-import logging
-from pathlib import Path
+# Bootstrap configuration MUST happen before other imports
+# This loads .env files and AWS Parameter Store configuration
+from simulation_runner.bootstrap import bootstrap_config  # noqa: E402, I001
 
-import click
+bootstrap_config()
 
-from simulation_runner import __version__
-from simulation_runner.config import SimulationConfig
-from simulation_runner.exceptions import (
+# Standard imports after bootstrap  # noqa: E402
+import logging  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+import click  # noqa: E402
+
+from simulation_runner import __version__  # noqa: E402
+from simulation_runner.config import SimulationConfig  # noqa: E402
+from simulation_runner.exceptions import (  # noqa: E402
     ConfigurationError,
     FREDConfigError,
     SimulationRunnerError,
     ValidationError,
     WorkflowError,
 )
-from simulation_runner.fred_config_builder import FREDConfigBuilder
-from simulation_runner.workflow import SimulationWorkflow
+from simulation_runner.fred_config_builder import FREDConfigBuilder  # noqa: E402
+from simulation_runner.workflow import SimulationWorkflow  # noqa: E402
 
 
 # Configure logging
