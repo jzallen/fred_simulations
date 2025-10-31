@@ -1,3 +1,8 @@
+# Bootstrap configuration must run before any other imports
+# ruff: noqa: E402, I001
+from epistemix_platform.bootstrap import bootstrap_config
+
+bootstrap_config()
 """
 Flask app that implements the Epistemix API based on the Pact contract.
 This app follows Clean Architecture principles with proper separation of concerns.
