@@ -1,0 +1,91 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "IAM policy for AWS Systems Manager Parameter Store access",
+
+  "Parameters": {
+    "Environment": {
+      "Type": "String",
+      "Description": "Environment name for parameter store path and tagging",
+      "Default": "dev",
+      "AllowedValues": ["dev", "staging", "production"]
+    },
+    "PolicyName": {
+      "Type": "String",
+      "Description": "Name of the IAM policy",
+      "Default": "ParameterStoreAccessPolicy"
+    }
+  },
+
+  "Resources": {
+    "ParameterStoreAccessPolicy": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "ManagedPolicyName": {
+          "Fn::Sub": "${PolicyName}-${Environment}"
+        },
+        "Description": {
+          "Fn::Sub": "Allows read access to Parameter Store parameters under /epistemix/${Environment}/"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AllowParameterStoreRead",
+              "Effect": "Allow",
+              "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+                "ssm:GetParametersByPath"
+              ],
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/epistemix/${Environment}/*"
+                }
+              ]
+            },
+            {
+              "Sid": "AllowKMSDecryptForSecureStrings",
+              "Effect": "Allow",
+              "Action": [
+                "kms:Decrypt"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "kms:ViaService": {
+                    "Fn::Sub": "ssm.${AWS::Region}.amazonaws.com"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "Outputs": {
+    "PolicyArn": {
+      "Description": "ARN of the Parameter Store access policy",
+      "Value": {
+        "Ref": "ParameterStoreAccessPolicy"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-PolicyArn"
+        }
+      }
+    },
+    "PolicyName": {
+      "Description": "Name of the Parameter Store access policy",
+      "Value": {
+        "Fn::Sub": "${PolicyName}-${Environment}"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-PolicyName"
+        }
+      }
+    }
+  }
+}
