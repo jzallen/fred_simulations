@@ -1,0 +1,201 @@
+# SSM Parameter Store Security Rules
+# CloudFormation Guard policy rules for AWS Systems Manager Parameter Store security validation
+#
+# These rules enforce security best practices for SSM parameters in CloudFormation templates.
+# Documentation: https://docs.aws.amazon.com/cfn-guard/latest/ug/writing-rules.html
+# AWS SSM Parameter Store Best Practices: https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-securestring.html
+# Security Hub SSM Controls: https://docs.aws.amazon.com/securityhub/latest/userguide/ssm-controls.html
+
+# ============================================================================
+# DATA PROTECTION AND ENCRYPTION
+# ============================================================================
+
+# Rule: Sensitive parameters must use SecureString type
+rule ssm_secure_parameters_must_use_securestring {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        %ssm_parameters.Properties.Type exists <<
+            Violation: SSM Parameter must specify a Type
+            Fix: Add Type property (String, StringList, or SecureString)
+            Rationale: Type determines whether parameter value is encrypted
+            Example:
+              Type: SecureString
+        >>
+
+        # Check if parameter name contains sensitive keywords
+        when %ssm_parameters.Properties.Name.*[*] in ['password', 'secret', 'token', 'key', 'credential'] {
+            %ssm_parameters.Properties.Type == 'SecureString' <<
+                Violation: Parameters containing sensitive data must use SecureString type
+                Fix: Set Type to 'SecureString' for password, secret, token, key, or credential parameters
+                Rationale: SecureString encrypts parameter values using AWS KMS
+                Reference: AWS security best practices for sensitive configuration data
+            >>
+        }
+    }
+}
+
+# Rule: SSM parameters should have descriptions
+rule ssm_parameters_should_have_description {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        %ssm_parameters.Properties.Description exists <<
+            Violation: SSM Parameter should have a Description
+            Fix: Add Description property explaining parameter purpose
+            Rationale: Descriptions document parameter usage and help prevent misconfiguration
+            Example:
+              Description: "RDS database endpoint hostname"
+        >>
+    }
+}
+
+# ============================================================================
+# NAMING CONVENTIONS AND ORGANIZATION
+# ============================================================================
+
+# Rule: SSM parameters must have meaningful names
+rule ssm_parameters_must_have_names {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        %ssm_parameters.Properties.Name exists <<
+            Violation: SSM Parameter must have a Name property
+            Fix: Add Name property with hierarchical path (e.g., /app/env/config/key)
+            Rationale: Naming is required for parameter identification and retrieval
+            Example:
+              Name: /epistemix/dev/database/host
+        >>
+    }
+}
+
+# Rule: SSM parameter names should follow hierarchical structure
+# Note: cfn-guard cannot easily validate string patterns like startsWith
+# This is a documentation rule - manual validation needed
+# Expected format: /application/environment/category/parameter
+# Example: /epistemix/dev/database/host
+
+# ============================================================================
+# GOVERNANCE AND COMPLIANCE
+# ============================================================================
+
+# Rule: SSM parameters must have tags
+rule ssm_parameters_must_be_tagged {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        %ssm_parameters.Properties.Tags exists <<
+            Violation: SSM Parameter must have tags for governance
+            Fix: Add Tags with at least Project and Environment keys
+            Rationale: Tags enable cost tracking, resource management, and compliance
+            Example:
+              Tags:
+                Project: epistemix-platform
+                Environment: dev
+                ManagedBy: CloudFormation
+        >>
+
+        when %ssm_parameters.Properties.Tags exists {
+            some %ssm_parameters.Properties.Tags.Environment exists <<
+                Violation: SSM Parameter must have an 'Environment' tag
+                Fix: Add Environment tag to parameter
+                Rationale: Environment tagging is essential for cost allocation and access control
+            >>
+
+            some %ssm_parameters.Properties.Tags.Project exists <<
+                Violation: SSM Parameter must have a 'Project' tag
+                Fix: Add Project tag to parameter
+                Rationale: Project tagging enables multi-tenant cost tracking and resource grouping
+            >>
+        }
+    }
+}
+
+# Rule: SSM parameters should have values
+rule ssm_parameters_must_have_values {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        %ssm_parameters.Properties.Value exists <<
+            Violation: SSM Parameter must have a Value property
+            Fix: Add Value property with parameter data
+            Rationale: Parameters without values cannot be used by applications
+            Example:
+              Value: "my-database-host.rds.amazonaws.com"
+        >>
+    }
+}
+
+# ============================================================================
+# PARAMETER TYPES AND VALIDATION
+# ============================================================================
+
+# Rule: SSM parameters must use valid types
+rule ssm_parameters_must_use_valid_types {
+    let ssm_parameters = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %ssm_parameters !empty {
+        when %ssm_parameters.Properties.Type exists {
+            %ssm_parameters.Properties.Type in ['String', 'StringList', 'SecureString'] <<
+                Violation: SSM Parameter Type must be String, StringList, or SecureString
+                Fix: Set Type to one of the valid values
+                Rationale: Only these types are supported by AWS SSM Parameter Store
+            >>
+        }
+    }
+}
+
+# ============================================================================
+# PASSWORD AND CREDENTIAL PARAMETERS
+# ============================================================================
+
+# Rule: Password parameters must not be logged in CloudFormation
+rule ssm_password_parameter_noecho {
+    let password_params = Parameters.*[ NoEcho exists ]
+
+    # Ensure password parameters have NoEcho enabled
+    when %password_params !empty {
+        %password_params.NoEcho == true <<
+            Violation: Sensitive parameters must have NoEcho enabled
+            Fix: Set NoEcho: true for password and credential parameters
+            Rationale: Prevents sensitive values from appearing in CloudFormation console and CLI output
+        >>
+    }
+}
+
+# Rule: Password template parameters should have constraints
+rule ssm_password_parameters_should_have_constraints {
+    # Check template parameters that are used for passwords
+    let password_template_params = Parameters.*[ NoEcho == true ]
+
+    when %password_template_params !empty {
+        %password_template_params.MinLength exists <<
+            Violation: Password parameters should have MinLength constraint
+            Fix: Add MinLength constraint (recommend 8 or more)
+            Rationale: Enforces minimum password strength requirements
+            Example:
+              MinLength: 8
+        >>
+    }
+}
+
+# ============================================================================
+# OUTPUTS AND EXPORTS
+# ============================================================================
+
+# Rule: SSM parameter stacks should export useful outputs
+rule ssm_parameter_stacks_should_have_outputs {
+    let has_ssm_params = Resources.*[ Type == 'AWS::SSM::Parameter' ]
+
+    when %has_ssm_params !empty {
+        Outputs exists <<
+            Violation: SSM Parameter stack should define Outputs
+            Fix: Add Outputs section with parameter names/ARNs for cross-stack references
+            Rationale: Outputs enable other stacks to discover parameter names
+            Example:
+              Outputs:
+                ParameterPathPrefix:
+                  Value: /epistemix/dev
+        >>
+    }
+}

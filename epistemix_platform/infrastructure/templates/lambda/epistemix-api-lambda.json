@@ -79,12 +79,22 @@
       "Default": 60,
       "MinValue": 3,
       "MaxValue": 900
+    },
+    "ParameterStoreAccessPolicyArn": {
+      "Type": "String",
+      "Description": "ARN of the Parameter Store access IAM policy (optional)",
+      "Default": ""
     }
   },
 
   "Conditions": {
     "IsProduction": {
       "Fn::Equals": [{"Ref": "Environment"}, "production"]
+    },
+    "HasParameterStorePolicy": {
+      "Fn::Not": [
+        { "Fn::Equals": [{ "Ref": "ParameterStoreAccessPolicyArn" }, ""] }
+      ]
     }
   },
 
@@ -162,10 +172,20 @@
             }
           ]
         },
-        "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-          "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-        ],
+        "ManagedPolicyArns": {
+          "Fn::If": [
+            "HasParameterStorePolicy",
+            [
+              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+              {"Ref": "ParameterStoreAccessPolicyArn"}
+            ],
+            [
+              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+            ]
+          ]
+        },
         "Policies": [
           {
             "PolicyName": "CloudWatchLogsPolicy",

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# Bootstrap configuration must run before any other imports
+# ruff: noqa: E402, I001
+from epistemix_platform.bootstrap import bootstrap_config
+
+bootstrap_config()
 """
 Epistemix CLI for interacting with jobs and uploads.
 
@@ -451,9 +456,12 @@ def job_uploads():
 @click.option("--json-output", is_flag=True, help="Output as JSON")
 def list_job_uploads(job_id: int, json_output: bool):
     """List sanitized S3 URLs for all uploads of a job and its runs."""
+    session = None
     try:
-        # Get the singleton JobController
+        # Get the singleton JobController (creates session internally)
         job_controller = get_job_controller()
+        # Get the session created by get_job_controller for cleanup
+        session = get_database_session()
         config = get_default_config()
         env = config["env"]
         bucket_name = config["bucket"] or "epistemix-uploads-dev"
@@ -498,14 +506,15 @@ def list_job_uploads(job_id: int, json_output: bool):
 
                     click.echo(f"{prefix} {sanitized_url}")
 
-        session.close()
-
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
+    finally:
+        if session:
+            session.close()
 
 
 @job_uploads.command("archive")
