@@ -158,6 +158,123 @@ aws cloudformation describe-stacks \
   --output text
 ```
 
+## Running Database Migrations
+
+The project includes a `migration-runner` Docker container that uses the bootstrap configuration module to load database credentials from either:
+1. Local `.env` file (for development)
+2. AWS Parameter Store (for AWS environments)
+
+### Local Development Migrations
+
+```bash
+# 1. Create .env file from example
+cp .env.example .env
+
+# 2. Edit .env file with your database credentials
+# DATABASE_URL=postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db
+
+# 3. Start PostgreSQL
+docker-compose up -d postgres
+
+# 4. Run migrations
+docker-compose run --rm migration-runner alembic upgrade head
+
+# 5. Check migration status
+docker-compose run --rm migration-runner alembic current
+
+# 6. Show migration history
+docker-compose run --rm migration-runner alembic history
+```
+
+### AWS Environment Migrations (with Parameter Store)
+
+The bootstrap module automatically loads configuration from AWS Parameter Store when running in AWS environments.
+
+```bash
+# 1. Ensure parameters are set in Parameter Store
+# Required parameters under /epistemix/{environment}/:
+# - database/host
+# - database/port
+# - database/name
+# - database/user
+# - database/password
+
+# 2. Build migration-runner image
+pants package //:migration-runner
+
+# 3. Run migrations in AWS (example using ECS/Fargate)
+# The ENVIRONMENT variable determines Parameter Store path
+docker run --rm \
+  -e ENVIRONMENT=production \
+  -e AWS_REGION=us-east-1 \
+  migration-runner:latest alembic upgrade head
+```
+
+### Manual Configuration Override
+
+You can override the bootstrap configuration by providing explicit DATABASE_URL:
+
+```bash
+# Override with explicit DATABASE_URL
+docker-compose run --rm \
+  -e DATABASE_URL=postgresql://user:pass@custom-host:5432/db \
+  migration-runner alembic upgrade head
+
+# Test bootstrap is working
+docker-compose run --rm migration-runner \
+  python3 -c "from epistemix_platform.bootstrap import bootstrap_config; bootstrap_config(); import os; print('DATABASE_URL:', os.environ.get('DATABASE_URL'))"
+```
+
+### Migration Entrypoint Behavior
+
+The `migration-entrypoint.sh` script:
+1. Calls `bootstrap_config()` to load configuration from .env or Parameter Store
+2. Handles postgres:// to postgresql:// URL conversion
+3. Waits for database to be available (with timeout)
+4. Sets PYTHONPATH for epistemix_platform imports
+5. Runs the provided command (default: `alembic --help`)
+
+### Configuration Priority
+
+The bootstrap module uses the following priority order:
+1. **Lowest**: Values from `.env` file (if exists)
+2. **Medium**: Explicit environment variables (override .env)
+3. **Highest**: AWS Parameter Store (fills in missing values)
+
+This means:
+- Local development: Use `.env` file
+- AWS environments: Parameter Store provides all config
+- Override: Set explicit environment variables when needed
+
+### Troubleshooting Migration-Runner
+
+**Bootstrap not loading configuration:**
+```bash
+# Check if bootstrap module is accessible
+docker-compose run --rm migration-runner \
+  python3 -c "import epistemix_platform.bootstrap; print('Bootstrap OK')"
+
+# Check what environment is being used
+docker-compose run --rm migration-runner \
+  python3 -c "import os; print('ENVIRONMENT:', os.getenv('ENVIRONMENT', 'dev'))"
+```
+
+**Database connection errors:**
+```bash
+# Test database connectivity
+docker-compose run --rm migration-runner \
+  psql "$DATABASE_URL" -c "SELECT version();"
+
+# Check if DATABASE_URL is set after bootstrap
+docker-compose run --rm migration-runner \
+  bash -c "python3 -c 'from epistemix_platform.bootstrap import bootstrap_config; bootstrap_config()' && echo \$DATABASE_URL"
+```
+
+**Parameter Store access denied:**
+- Ensure IAM role/user has `ssm:GetParametersByPath` permission
+- Verify parameters exist at `/epistemix/{environment}/database/*`
+- Check AWS_REGION is set correctly
+
 ## Accessing the RDS Database
 
 ### Method 1: SSM Port Forwarding (Recommended)

@@ -6,11 +6,9 @@ set -e
 
 echo "=== Epistemix Database Migration Runner ==="
 
-# Default to local development database if DATABASE_URL not set
-if [ -z "$DATABASE_URL" ]; then
-    echo "No DATABASE_URL provided, using local development database"
-    export DATABASE_URL="postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db"
-fi
+# Bootstrap configuration from .env file or AWS Parameter Store
+echo "Loading configuration via bootstrap module..."
+python3 -c "from epistemix_platform.bootstrap import bootstrap_config; bootstrap_config()"
 
 # Handle postgres:// -> postgresql:// conversion for compatibility
 if [[ "$DATABASE_URL" == postgres://* ]]; then
