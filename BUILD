@@ -94,16 +94,23 @@ docker_image(
         # Install PostgreSQL client and build dependencies
         "RUN apt-get update && apt-get install -y postgresql-client gcc python3-dev libpq-dev && rm -rf /var/lib/apt/lists/*",
         # Install Python dependencies for migrations and the application
-        "RUN pip install --no-cache-dir alembic==1.13.0 psycopg2-binary==2.9.9 sqlalchemy==2.0.41 boto3==1.40.1 pydantic==2.11.7 returns==0.25.0",
+        "RUN pip install --no-cache-dir alembic==1.13.0 psycopg2-binary==2.9.9 sqlalchemy==2.0.41 boto3==1.40.1 pydantic==2.11.7 returns==0.25.0 python-dotenv==1.0.1",
         # Create mount point directory
         "RUN mkdir -p /fred_simulations",
         # Set working directory to match mount point
         "WORKDIR /fred_simulations",
+        # Copy migration entrypoint script
+        "COPY epistemix_platform/scripts/migration-entrypoint.sh /usr/local/bin/migration-entrypoint.sh",
+        "RUN chmod +x /usr/local/bin/migration-entrypoint.sh",
         # Default environment for local development
-        "ENV DATABASE_URL=postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db",
         "ENV PYTHONUNBUFFERED=1",
-        # No entrypoint - just run commands directly
-        # Default command shows help for psql
-        "CMD [\"psql\", \"--help\"]",
+        "ENV ENVIRONMENT=dev",
+        # Set entrypoint to migration script
+        "ENTRYPOINT [\"/usr/local/bin/migration-entrypoint.sh\"]",
+        # Default command shows help for alembic
+        "CMD [\"alembic\", \"--help\"]",
+    ],
+    dependencies=[
+        "epistemix_platform:scripts",
     ],
 )
