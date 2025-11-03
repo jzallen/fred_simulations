@@ -26,7 +26,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestEpistemixAPIRepositoryTemplate:
     """Test suite for Epistemix API ECR repository CloudFormation template."""
 
-
     def test_template_exists(self, template_path: str):
         """Test that the template file exists."""
         assert Path(template_path).exists(), "Template file does not exist"
@@ -48,7 +47,6 @@ class TestEpistemixAPIRepositoryTemplate:
             "Epistemix API" in template["Description"]
         ), "Description does not mention Epistemix API"
 
-
     def test_environment_parameter_exists(self, template: dict[str, Any]):
         """Test Environment parameter is defined."""
         parameters = template.get("Parameters", {})
@@ -67,7 +65,6 @@ class TestEpistemixAPIRepositoryTemplate:
         assert env_param.get("AllowedValues") == [
             "shared"
         ], "Environment parameter should only allow 'shared'"
-
 
     def test_ecr_repository_exists(self, template, cdk_template_factory):
         """Test ECRRepository resource exists."""
@@ -107,7 +104,6 @@ class TestEpistemixAPIRepositoryTemplate:
             "AWS::ECR::Repository", Match.object_like({"ImageTagMutability": "MUTABLE"})
         )
 
-
     def test_image_scanning_enabled(self, template, cdk_template_factory):
         """Test image scanning is enabled."""
         cdk_template = cdk_template_factory(template)
@@ -124,10 +120,13 @@ class TestEpistemixAPIRepositoryTemplate:
         cdk_template.has_resource_properties(
             "AWS::ECR::Repository",
             Match.object_like(
-                {"EncryptionConfiguration": Match.object_like({"EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")})}
+                {
+                    "EncryptionConfiguration": Match.object_like(
+                        {"EncryptionType": Match.string_like_regexp(r"^(AES256|KMS)$")}
+                    )
+                }
             ),
         )
-
 
     def test_lifecycle_policy_exists(self, template, cdk_template_factory):
         """Test lifecycle policy is configured."""
@@ -168,7 +167,6 @@ class TestEpistemixAPIRepositoryTemplate:
             retention_rule.get("selection", {}).get("countNumber") == 10
         ), "Should keep last 10 images"
 
-
     def test_repository_policy_exists(self, template, cdk_template_factory):
         """Test repository policy is configured."""
         cdk_template = cdk_template_factory(template)
@@ -202,7 +200,6 @@ class TestEpistemixAPIRepositoryTemplate:
                 }
             ),
         )
-
 
     def test_repository_has_tags(self, template, cdk_template_factory):
         """Test repository has tags configured."""

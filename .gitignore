@@ -96,5 +96,9 @@ CLAUDE.md
 ~/.epistemix/cli.env
 cli.env
 
+# Environment files
+.env
+.env.local
+
 # Local data directory for database volumes
 /data/

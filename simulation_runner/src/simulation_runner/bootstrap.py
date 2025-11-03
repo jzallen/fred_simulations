@@ -15,7 +15,6 @@ used from any application (epistemix_platform, simulation_runner, etc.).
 """
 
 import os
-from urllib.parse import quote, quote_plus
 
 import boto3
 from botocore.exceptions import ClientError
@@ -151,14 +150,12 @@ def _build_database_url_if_needed() -> None:
     if not all(key in os.environ for key in required):
         return
 
-    # Build PostgreSQL URL with properly encoded credentials
-    # Use quote_plus to encode username and password (handles @, :, # etc.)
-    # Use quote for database name (less restrictive, but still safe)
-    user = quote_plus(os.environ["DATABASE_USER"])
-    password = quote_plus(os.environ["DATABASE_PASSWORD"])
+    # Build PostgreSQL URL
+    user = os.environ["DATABASE_USER"]
+    password = os.environ["DATABASE_PASSWORD"]
     host = os.environ["DATABASE_HOST"]
     port = os.environ["DATABASE_PORT"]
-    name = quote(os.environ["DATABASE_NAME"])
+    name = os.environ["DATABASE_NAME"]
 
     database_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
     os.environ["DATABASE_URL"] = database_url
