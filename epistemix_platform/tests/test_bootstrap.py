@@ -355,10 +355,12 @@ class TestLoadFromParameterStore:
 
         From BDD scenario: Handle Parameter Store access denied gracefully
         """
-        # ARRANGE - Mock ClientError for AccessDenied
+        # ARRANGE - Mock ClientError for AccessDenied on paginator
+        # The actual code uses get_paginator().paginate(), so we need to mock the paginator
         with patch("boto3.client") as mock_client:
             mock_ssm = MagicMock()
-            mock_ssm.get_parameters_by_path.side_effect = ClientError(
+            paginator = mock_ssm.get_paginator.return_value
+            paginator.paginate.side_effect = ClientError(
                 {"Error": {"Code": "AccessDeniedException", "Message": "Access Denied"}},
                 "GetParametersByPath",
             )
