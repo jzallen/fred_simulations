@@ -1,0 +1,43 @@
+template:
+  path: ssm/parameter-store.json
+
+# Dependencies - RDS stack must exist to get endpoint
+dependencies:
+  - dev/rds-postgres.yaml
+
+# Stack parameters for development environment
+parameters:
+  Environment: dev
+  # Reference RDS stack outputs using !stack_output (path-based)
+  DBHost: !stack_output dev/rds-postgres.yaml::DBEndpoint
+  DBPort: !stack_output dev/rds-postgres.yaml::DBPort
+  DBName: !stack_output dev/rds-postgres.yaml::DBName
+  DBUser: epistemixuser
+  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  S3UploadBucket: epistemix-uploads-dev
+  AWSRegion: us-east-1
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: dev
+  ManagedBy: sceptre
+  Purpose: ParameterStore
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (parameter-store) Running cfn-lint...' && \
+    cfn-lint templates/ssm/parameter-store.json && \
+    echo '✓ (parameter-store) cfn-lint passed'
+  - !cmd |
+    echo '▶ (parameter-store) Running cfn-guard security validation...' && \
+    cfn-guard validate \
+      --data templates/ssm/parameter-store.json \
+      --rules guard_rules/ssm_security_rules.guard \
+      --show-summary fail && \
+    echo '✓ (parameter-store) cfn-guard passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks
