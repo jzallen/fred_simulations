@@ -11,6 +11,13 @@ Usage:
     simulation-runner prepare --job-id 12 --run-id 4
 """
 
+# Bootstrap configuration MUST happen before other imports
+# This loads .env files and AWS Parameter Store configuration
+from simulation_runner.bootstrap import bootstrap_config
+
+bootstrap_config()
+
+# Standard imports after bootstrap
 import logging
 from pathlib import Path
 
@@ -158,7 +165,9 @@ def validate(job_id: int, run_id: int | None):
         # Summary
         click.echo()
         click.echo("=" * 60)
-        click.echo(f"✓ All {len(validated_runs)} configuration(s) validated successfully")
+        click.echo(
+            f"✓ All {len(validated_runs)} configuration(s) validated successfully"
+        )
         click.echo()
 
         for run_info in validated_runs:
