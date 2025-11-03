@@ -232,6 +232,69 @@ class TestLoadFromParameterStore:
             os.environ.pop(key, None)
 
     @mock_aws
+    def test_load_from_parameter_store_database_url_with_special_chars(self) -> None:
+        """Verify DATABASE_URL properly encodes special characters in credentials.
+
+        From BDD scenario: URL-encode credentials with special characters
+        Tests fix for CodeRabbit issue: credentials with @, :, #, % etc must be encoded
+        """
+        # ARRANGE
+        import boto3
+
+        ssm = boto3.client("ssm", region_name="us-east-1")
+        # Password contains special chars that must be URL-encoded
+        ssm.put_parameter(
+            Name="/epistemix/test/database/host",
+            Value="db.example.com",
+            Type="String",
+        )
+        ssm.put_parameter(Name="/epistemix/test/database/port", Value="5432", Type="String")
+        ssm.put_parameter(Name="/epistemix/test/database/name", Value="mydb", Type="String")
+        ssm.put_parameter(
+            Name="/epistemix/test/database/user",
+            Value="admin@example.com",  # @ must be encoded
+            Type="String",
+        )
+        ssm.put_parameter(
+            Name="/epistemix/test/database/password",
+            Value="P@ssw0rd:123#$%",  # Special chars: @, :, #, $, %
+            Type="SecureString",
+        )
+
+        # Clear all database env vars
+        for key in [
+            "DATABASE_HOST",
+            "DATABASE_PORT",
+            "DATABASE_NAME",
+            "DATABASE_USER",
+            "DATABASE_PASSWORD",
+            "DATABASE_URL",
+        ]:
+            os.environ.pop(key, None)
+
+        # ACT
+        load_from_parameter_store(environment="test")
+
+        # ASSERT
+        # Verify that special characters are properly encoded:
+        # @ becomes %40, : becomes %3A, # becomes %23, $ becomes %24, % becomes %25
+        expected_url = (
+            "postgresql://admin%40example.com:P%40ssw0rd%3A123%23%24%25" "@db.example.com:5432/mydb"
+        )
+        assert os.environ.get("DATABASE_URL") == expected_url
+
+        # CLEANUP
+        for key in [
+            "DATABASE_HOST",
+            "DATABASE_PORT",
+            "DATABASE_NAME",
+            "DATABASE_USER",
+            "DATABASE_PASSWORD",
+            "DATABASE_URL",
+        ]:
+            os.environ.pop(key, None)
+
+    @mock_aws
     def test_load_from_parameter_store_database_url_already_set(self) -> None:
         """Verify DATABASE_URL is not overridden if already set.
 
@@ -292,10 +355,12 @@ class TestLoadFromParameterStore:
 
         From BDD scenario: Handle Parameter Store access denied gracefully
         """
-        # ARRANGE - Mock ClientError for AccessDenied
+        # ARRANGE - Mock ClientError for AccessDenied on paginator
+        # The actual code uses get_paginator().paginate(), so we need to mock the paginator
         with patch("boto3.client") as mock_client:
             mock_ssm = MagicMock()
-            mock_ssm.get_parameters_by_path.side_effect = ClientError(
+            paginator = mock_ssm.get_paginator.return_value
+            paginator.paginate.side_effect = ClientError(
                 {"Error": {"Code": "AccessDeniedException", "Message": "Access Denied"}},
                 "GetParametersByPath",
             )

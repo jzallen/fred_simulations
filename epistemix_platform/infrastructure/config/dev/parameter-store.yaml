@@ -1,8 +1,6 @@
 template:
   path: ssm/parameter-store.json
 
-stack_name: epistemix-parameter-store-dev
-
 # Dependencies - RDS stack must exist to get endpoint
 dependencies:
   - dev/rds-postgres.yaml
@@ -10,10 +8,10 @@ dependencies:
 # Stack parameters for development environment
 parameters:
   Environment: dev
-  # Reference RDS stack outputs using !stack_output
-  DBHost: !stack_output fred-simulations-dev-rds-postgres::DBEndpoint
-  DBPort: !stack_output fred-simulations-dev-rds-postgres::DBPort
-  DBName: !stack_output fred-simulations-dev-rds-postgres::DBName
+  # Reference RDS stack outputs using !stack_output (path-based)
+  DBHost: !stack_output dev/rds-postgres.yaml::DBEndpoint
+  DBPort: !stack_output dev/rds-postgres.yaml::DBPort
+  DBName: !stack_output dev/rds-postgres.yaml::DBName
   DBUser: epistemixuser
   DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
   S3UploadBucket: epistemix-uploads-dev
