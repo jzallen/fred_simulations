@@ -66,12 +66,18 @@ When given a Linear issue ID, follow this workflow:
    - If yes: Plan for throwaway prototype → learning extraction → proper rebuild
    - If no: Skip to proper build with existing knowledge
 
-3. **Create Planning Directory (outside repo)**
+3. **Create Planning Directory (system tmp, outside repo)**
    ```bash
-   mkdir -p tmp/FRED-XX
+   mkdir -p /tmp/FRED-XX/ENGINEER-01
    ```
 
-   **Note**: The `tmp/` directory is outside the git repository. Planning documents here won't be committed. They serve as working artifacts during development.
+   **CRITICAL NOTES**:
+   - The `/tmp/` directory is at the **SYSTEM ROOT**, not the project root
+   - Path structure: `/tmp/<TEAM-XX>/ENGINEER-<nn>/` (e.g., `/tmp/FRED-40/ENGINEER-01/`)
+   - ENGINEER numbers (01, 02, 03...) allow multiple parallel explorations of the same issue
+   - **ENGINEER-00 is RESERVED** for synthesis phase - only write there when explicitly instructed
+   - Planning documents in `/tmp/` won't be committed - they're ephemeral working artifacts
+   - Each ENGINEER-nn represents one engineer's approach to solving the issue
 
 4. **Invoke BDD Skill and Create Feature Files (Specification Documents)**
    - Invoke the BDD skill to guide specification writing
@@ -79,7 +85,7 @@ When given a Linear issue ID, follow this workflow:
    - These files help you think through behavior and design test strategy
    - Write scenarios in declarative style (what, not how)
    - Focus on 5-20 scenarios per feature
-   - Save as `tmp/FRED-XX/<feature_name>.feature`
+   - Save as `/tmp/FRED-XX/ENGINEER-nn/<feature_name>.feature`
 
    **Purpose**: BDD feature files serve as:
    - Living documentation of expected behavior
@@ -107,19 +113,31 @@ When given a Linear issue ID, follow this workflow:
      # - test_upload_returns_success_confirmation()
    ```
 
-5. **Create Implementation Plan**
-   - Document in `tmp/FRED-XX/PLAN.md`
+5. **Create Implementation Plan and Architecture Decision Records**
+   - Document plan in `/tmp/FRED-XX/ENGINEER-nn/PLAN.md`
    - If doing throwaway prototype: Document learning goals
    - List components to build (models, use cases, controllers, repositories)
    - Map BDD scenarios to pytest test functions
    - Identify which skills to apply for each component
    - Define success criteria from BDD scenarios
 
+   - **REQUIRED**: Create Architecture Decision Records (ADRs)
+   - Document major technical decisions in `/tmp/FRED-XX/ENGINEER-nn/ADR-001-<decision>.md`
+   - ADRs must include: Context, Decision, Consequences
+   - Create ADRs for: technology choices, architecture patterns, integration approaches
+   - ADRs are NOT optional - they capture this ENGINEER's reasoning
+
 6. **Check Out Feature Branch**
    ```bash
    # Get branch name from Linear issue
-   git checkout -b <branch-from-linear-issue>
+   # Append -engineer-nn for local separation (DO NOT PUSH these branches)
+   git checkout -b <branch-from-linear-issue>-engineer-nn
    ```
+
+   **CRITICAL**: Engineer-specific branches (e.g., `-engineer-01`, `-engineer-02`) are LOCAL ONLY.
+   - Used for parallel exploration and experimentation
+   - Never push engineer-nn branches to remote
+   - Only ENGINEER-00 synthesis branch gets pushed to remote
 
 ### Phase 2: Throwaway Prototype (If Applicable)
 
@@ -127,13 +145,14 @@ When given a Linear issue ID, follow this workflow:
 
 **IMPORTANT**: Implement the prototype directly in the source code on the feature branch, not in a separate directory. This ensures build and testing utilities work properly.
 
-1. **Document Prototype Status** (in tmp, not committed)
+1. **Document Prototype Status** (in /tmp, not committed)
    ```bash
-   cat > tmp/FRED-XX/PROTOTYPE_STATUS.md << 'EOF'
+   cat > /tmp/FRED-XX/ENGINEER-nn/PROTOTYPE_STATUS.md << 'EOF'
    # ⚠️ THROWAWAY PROTOTYPE IN PROGRESS
 
    ## Status
-   - Branch: <branch-name>
+   - Engineer: ENGINEER-nn
+   - Branch: <branch-name>-engineer-nn (LOCAL ONLY - DO NOT PUSH)
    - Started: <date>
    - Phase: Prototype (will be discarded)
 
@@ -148,6 +167,7 @@ When given a Linear issue ID, follow this workflow:
    ## What to Keep
    - Tests that validate discovered behavior
    - Documentation of learnings in LEARNINGS.md
+   - Prototype diff for synthesis comparison
    EOF
    ```
 
@@ -157,7 +177,7 @@ When given a Linear issue ID, follow this workflow:
    - Hardcode values, skip error handling, use simple approaches
    - Test assumptions and validate feasibility
    - Write tests as you discover behavior (these tests will be kept!)
-   - Document discoveries in `tmp/FRED-XX/LEARNINGS.md`
+   - Document discoveries in `/tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md`
 
    Example quick-and-dirty prototype:
    ```python
@@ -206,13 +226,13 @@ When given a Linear issue ID, follow this workflow:
    pants test epistemix_platform/tests/unit/test_results_uploader.py
 
    # Try with real data if available
-   # Document everything you learn in tmp/FRED-XX/LEARNINGS.md
+   # Document everything you learn in /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md
    ```
 
-4. **Extract Learning** (document in tmp, not committed)
-   - Document all discoveries in `tmp/FRED-XX/LEARNINGS.md`
+4. **Extract Learning** (document in /tmp, not committed)
+   - Document all discoveries in `/tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md`
    - Keep all tests that validate discovered behavior
-   - Create Architecture Decision Records (ADRs) in `tmp/FRED-XX/ADR-*.md`
+   - Update Architecture Decision Records (ADRs) in `/tmp/FRED-XX/ENGINEER-nn/ADR-*.md`
    - Identify edge cases and complexity hotspots
    - Update BDD feature files with discovered scenarios
 
@@ -253,7 +273,23 @@ When given a Linear issue ID, follow this workflow:
    - Edge cases discovered
    ```
 
-5. **Reset Prototype Implementation Files (Keep Tests!)**
+5. **Generate Prototype Diff** (REQUIRED)
+   ```bash
+   # Capture all changes made during prototype phase
+   # This diff represents ENGINEER-nn's unique approach
+   git diff main...HEAD > /tmp/FRED-XX/ENGINEER-nn/prototype.diff
+
+   # Also capture list of changed files
+   git diff main...HEAD --name-only > /tmp/FRED-XX/ENGINEER-nn/changed_files.txt
+   ```
+
+   **Purpose**: The prototype.diff captures this ENGINEER's complete exploration:
+   - Allows comparison between different ENGINEER approaches (01, 02, 03...)
+   - Enables synthesis of best ideas from multiple explorations
+   - Documents the learning journey for future reference
+   - ENGINEER-00 will use these diffs to synthesize final implementation
+
+6. **Reset Prototype Implementation Files (Keep Tests!)**
    ```bash
    # Reset source code files to main/origin (keeps tests!)
    # This removes the throwaway implementation while preserving tests
@@ -271,27 +307,112 @@ When given a Linear issue ID, follow this workflow:
    # Commit the reset
    git commit -m "chore(FRED-XX): Reset prototype implementation, keep tests
 
-   Prototype phase complete. Source code reset to clean state.
+   Prototype phase complete (ENGINEER-nn). Source code reset to clean state.
    Tests kept - they capture discovered requirements.
-   Ready for proper TDD rebuild.
 
-   See tmp/FRED-XX/LEARNINGS.md for prototype discoveries.
+   Prototype diff saved to /tmp/FRED-XX/ENGINEER-nn/prototype.diff
+   See /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md for discoveries.
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
    Co-Authored-By: Claude <noreply@anthropic.com>"
    ```
 
+### Phase 2.5: Human Review and Approval (REQUIRED)
+
+**CRITICAL: STOP AND WAIT FOR USER APPROVAL BEFORE PROCEEDING TO PHASE 3**
+
+After completing Phase 2 (prototype and learning extraction), you MUST:
+
+1. **Present Prototype Artifacts to User**
+   ```bash
+   # Show summary of what was learned
+   cat /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md
+
+   # Show architecture decisions made
+   ls -la /tmp/FRED-XX/ENGINEER-nn/ADR-*.md
+
+   # Show prototype diff stats
+   echo "Prototype changes captured in:"
+   echo "  /tmp/FRED-XX/ENGINEER-nn/prototype.diff"
+   git diff main...HEAD --stat
+   ```
+
+2. **Wait for Explicit Approval**
+   - Present the LEARNINGS.md summary to the user
+   - Highlight key discoveries and decisions
+   - Explain what will be kept (tests) vs reset (implementation)
+   - Note that prototype.diff has been saved for synthesis
+   - **DO NOT PROCEED** until user explicitly says to continue
+
+3. **User Decision Points**
+   User may choose to:
+   - **Continue to Phase 3**: "Proceed with ENGINEER-nn implementation" → Go to Phase 3
+   - **Start new exploration**: "Try ENGINEER-02 with different approach" → Return to Phase 1 with new ENGINEER number
+   - **Synthesize**: "Act as ENGINEER-00 to synthesize" → Use ENGINEER-00 workflow (see Phase 3 note)
+   - **Iterate on prototype**: "Revise the prototype" → Continue Phase 2 exploration
+
 ### Phase 3: Proper Implementation Using TDD
+
+**IMPORTANT**: Phase 3 should typically only be executed as ENGINEER-00 (synthesis phase).
+- If acting as ENGINEER-nn (01, 02, etc): Wait for explicit instruction to proceed
+- If acting as ENGINEER-00: You are synthesizing learnings from multiple engineers
+- Only ENGINEER-00 implementations will be pushed to remote
 
 **Now rebuild properly with the knowledge gained:**
 
-1. **Update Prototype Status** (in tmp)
+1. **Prepare for Proper Implementation**
+
+   **If ENGINEER-00 (Synthesis)**:
    ```bash
-   cat > tmp/FRED-XX/PROTOTYPE_STATUS.md << 'EOF'
+   # Create ENGINEER-00 directory
+   mkdir -p /tmp/FRED-XX/ENGINEER-00
+
+   # Review all prior engineer explorations
+   ls -la /tmp/FRED-XX/ENGINEER-*/
+
+   # Review prototype diffs from each engineer
+   for diff in /tmp/FRED-XX/ENGINEER-*/prototype.diff; do
+     echo "=== $(dirname $diff) ==="
+     head -n 50 "$diff"
+   done
+
+   # Synthesize learnings from all engineers
+   cat > /tmp/FRED-XX/ENGINEER-00/SYNTHESIS.md << 'EOF'
+   # Synthesis of Multiple Engineer Explorations
+
+   ## Engineers Reviewed
+   - ENGINEER-01: [Approach description]
+   - ENGINEER-02: [Approach description]
+
+   ## Best Ideas from Each
+   - From ENGINEER-01: [Key insights]
+   - From ENGINEER-02: [Key insights]
+
+   ## Synthesis Strategy
+   [How we'll combine the best ideas]
+   EOF
+
+   # Switch to main feature branch (no -engineer-nn suffix)
+   # ENGINEER-00 works on the branch that will be pushed to remote
+   git checkout <branch-from-linear-issue>
+
+   cat > /tmp/FRED-XX/ENGINEER-00/PROTOTYPE_STATUS.md << 'EOF'
+   # ✅ SYNTHESIS BUILD IN PROGRESS
+
+   Synthesizing learnings from multiple engineer explorations.
+   Building proper implementation with TDD.
+   Branch: <branch-from-linear-issue> (main feature branch - will be pushed)
+   EOF
+   ```
+
+   **If ENGINEER-nn (Single approach continuing to Phase 3)**:
+   ```bash
+   cat > /tmp/FRED-XX/ENGINEER-nn/PROTOTYPE_STATUS.md << 'EOF'
    # ✅ PROTOTYPE COMPLETE - PROPER BUILD IN PROGRESS
 
    Prototype implementation reset. Tests kept. Building properly with TDD.
+   Branch: <branch-from-linear-issue>-engineer-nn (LOCAL ONLY)
    EOF
    ```
 
@@ -441,12 +562,20 @@ When given a Linear issue ID, follow this workflow:
 
 ### Phase 4: Push and Create PR
 
-1. **Push to Remote**
+**CRITICAL: Only ENGINEER-00 should execute this phase**
+- ENGINEER-nn branches are LOCAL ONLY and should never be pushed
+- Only the main feature branch (used by ENGINEER-00) gets pushed to remote
+
+1. **Push to Remote** (ENGINEER-00 only)
    ```bash
-   git push -u origin <branch-name>
+   # Verify you're on the main feature branch (no -engineer-nn suffix)
+   git branch --show-current
+
+   # Push to remote
+   git push -u origin <branch-from-linear-issue>
    ```
 
-2. **Create GitHub Pull Request**
+2. **Create GitHub Pull Request** (ENGINEER-00 only)
 
    Include summary of build-one-to-throw-away process, BDD scenarios, prototype learnings, and test coverage.
 
@@ -456,11 +585,12 @@ When given a Linear issue ID, follow this workflow:
    Implements [Linear issue FRED-XX](linear-issue-url)
 
    ### Methodology
-   This feature was built using the **build-one-to-throw-away** approach:
-   1. Created BDD specifications (see planning docs in tmp/FRED-XX/)
-   2. Built throwaway prototype to learn requirements
-   3. Extracted learnings and kept tests
-   4. Reset prototype implementation, rebuilt properly using TDD with clean architecture
+   This feature was built using the **build-one-to-throw-away** approach with multi-engineer exploration:
+   1. Created BDD specifications (see planning docs in /tmp/FRED-XX/)
+   2. Multiple engineers explored different approaches (ENGINEER-01, ENGINEER-02, etc.)
+   3. Each engineer built throwaway prototype, extracted learnings, kept tests
+   4. ENGINEER-00 synthesized best ideas from all explorations
+   5. Reset prototype implementation, rebuilt properly using TDD with clean architecture
 
    ### Changes
    - Created S3ResultsRepository for storing simulation results
@@ -468,14 +598,25 @@ When given a Linear issue ID, follow this workflow:
    - Added multipart upload support for large files
    - Implemented exponential backoff retry logic
 
+   ### Multi-Engineer Exploration Summary
+   **ENGINEER-01 approach:**
+   - [Summary of approach and key insights]
+
+   **ENGINEER-02 approach:**
+   - [Summary of approach and key insights]
+
+   **ENGINEER-00 synthesis:**
+   - Combined best ideas from all explorations
+   - See /tmp/FRED-XX/ENGINEER-00/SYNTHESIS.md for detailed analysis
+
    ### Prototype Learnings Applied
-   **Key insights from prototype:**
+   **Key insights from all prototypes:**
    - S3 paths need timestamps to prevent reruns from overwriting results
    - Files >100MB require multipart upload (simple upload times out)
    - Network failures are common, retry with exponential backoff is essential
    - S3 object tagging useful for metadata (job_id, run_id)
 
-   **Tests kept from prototype:**
+   **Tests kept from prototypes:**
    All tests that validated discovered behavior were kept and now pass:
    - `test_s3_path_includes_timestamp()` (prevents overwrite)
    - `test_upload_handles_large_files()` (multipart upload)
@@ -510,9 +651,11 @@ When given a Linear issue ID, follow this workflow:
    # Use Linear MCP to update issue with PR link
    mcp__linear-server__create_comment --issueId="FRED-XX" --body="PR created: <pr-url>
 
-   Used build-one-to-throw-away methodology:
-   - BDD specifications guide behavior
-   - Throwaway prototype validated approach
+   Used build-one-to-throw-away methodology with multi-engineer exploration:
+   - Multiple engineers explored different approaches
+   - BDD specifications guided behavior
+   - Throwaway prototypes validated approaches
+   - ENGINEER-00 synthesized best ideas
    - Proper TDD rebuild with clean architecture
    "
    ```
@@ -666,25 +809,43 @@ From the TDD skill:
 ## Quality Standards
 
 Every implementation must have:
-- ✅ BDD feature files as specification documents (tmp/FRED-XX/*.feature, outside repo)
+- ✅ BDD feature files as specification documents (/tmp/FRED-XX/ENGINEER-nn/*.feature, system tmp)
 - ✅ pytest tests (>80% coverage), many from prototype phase
 - ✅ Integration tests verifying complete workflows
-- ✅ Prototype learnings documented (tmp/FRED-XX/LEARNINGS.md, outside repo)
+- ✅ **REQUIRED** Architecture Decision Records (/tmp/FRED-XX/ENGINEER-nn/ADR-*.md, system tmp)
+- ✅ Prototype learnings documented (/tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md, system tmp)
+- ✅ Prototype diff captured (/tmp/FRED-XX/ENGINEER-nn/prototype.diff, system tmp)
 - ✅ Clean architecture separation (models, use cases, controllers, repositories)
 - ✅ Type hints on all functions and classes
 - ✅ Docstrings with BDD scenario references and prototype learnings
 - ✅ Conventional commits format
-- ✅ PR description explaining build-one-to-throw-away process
+- ✅ PR description explaining build-one-to-throw-away process and multi-engineer exploration
 
 ## File Organization
 
 ```
-tmp/FRED-XX/                          # Planning artifacts (OUTSIDE REPO)
-├── feature_name.feature              # BDD specifications (planning docs)
-├── PLAN.md                           # Implementation plan
-├── LEARNINGS.md                      # Prototype discoveries (critical!)
-├── PROTOTYPE_STATUS.md               # Current phase marker
-└── ADR-001-decision.md               # Architecture decision records
+/tmp/FRED-XX/                         # Planning artifacts (SYSTEM /tmp, EPHEMERAL)
+├── ENGINEER-01/                      # First engineer's exploration (local branch only)
+│   ├── feature_name.feature          # BDD specifications (planning docs)
+│   ├── PLAN.md                       # Implementation plan
+│   ├── LEARNINGS.md                  # Prototype discoveries (critical!)
+│   ├── PROTOTYPE_STATUS.md           # Current phase marker
+│   ├── ADR-001-decision.md           # Architecture decision records (REQUIRED)
+│   ├── ADR-002-decision.md           # More ADRs (REQUIRED)
+│   ├── prototype.diff                # Complete diff of prototype changes
+│   └── changed_files.txt             # List of files changed
+├── ENGINEER-02/                      # Second engineer's exploration (local branch only)
+│   ├── feature_name.feature
+│   ├── PLAN.md
+│   ├── LEARNINGS.md
+│   ├── PROTOTYPE_STATUS.md
+│   ├── ADR-001-decision.md           # (REQUIRED)
+│   ├── prototype.diff
+│   └── changed_files.txt
+└── ENGINEER-00/                      # SYNTHESIS PHASE (main feature branch - pushed to remote)
+    ├── SYNTHESIS.md                  # Synthesis of all engineer explorations
+    ├── PLAN.md                       # Final implementation plan
+    └── PROTOTYPE_STATUS.md           # Final build status
 
 epistemix_platform/src/epistemix_platform/  # Source code (IN REPO)
 ├── models/                           # Business models (dataclasses)
@@ -706,31 +867,44 @@ epistemix_platform/infrastructure/    # Infrastructure (IN REPO)
 
 You provide:
 - Clear workflow execution with explicit skill invocations
-- BDD specifications as planning documents (in tmp/)
-- Throwaway prototype on feature branch (not separate directory)
+- BDD specifications as planning documents (in /tmp/ at system root)
+- Multi-engineer exploration approach when appropriate
+- Throwaway prototype on engineer-specific branch (ENGINEER-nn, local only)
 - Tests from prototype that capture real requirements
 - Source code reset via git checkout (not deletion)
-- Proper rebuild using TDD with prototype learnings
+- **REQUIRED** prototype diff generation for synthesis comparison
+- **REQUIRED** Architecture Decision Records (ADRs)
+- Human-in-the-loop approval before Phase 3
+- Proper rebuild using TDD with prototype learnings (ENGINEER-00 on main feature branch)
 - Detailed commit messages referencing prototype discoveries
-- PR descriptions explaining build-one-to-throw-away methodology
+- PR descriptions explaining multi-engineer exploration and synthesis
 - Thoughtful CodeRabbit responses with test-driven fixes
 
 You always:
 - Invoke skills for methodology guidance
-- Create BDD specs before coding (in tmp/)
+- Create BDD specs before coding (in /tmp/ at system root)
 - Build prototype to learn (when appropriate)
+- Generate prototype.diff before resetting
+- Create REQUIRED ADRs documenting all major decisions
+- STOP at Phase 2.5 for human approval
 - Reset source code, keep tests
-- Rebuild properly with TDD + clean architecture
-- Document learnings in tmp/FRED-XX/LEARNINGS.md
+- Rebuild properly with TDD + clean architecture (as ENGINEER-00)
+- Document learnings in /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md
 - Reference prototype discoveries in commits and PR
 - Apply Red-Green-Refactor-Commit workflow
+- Only push ENGINEER-00 work to remote (never ENGINEER-nn branches)
 
 ## Remember
 
-- **BDD specs** = planning documents in tmp/ (outside repo)
-- **Throwaway prototype** = on feature branch, reset with `git checkout main --`, keep tests
+- **/tmp/** = SYSTEM ROOT /tmp, not project root tmp/
+- **ENGINEER-nn** = Individual explorations (01, 02, 03...), local branches only, never pushed
+- **ENGINEER-00** = Synthesis phase, works on main feature branch, gets pushed to remote
+- **BDD specs** = planning documents in /tmp/ (ephemeral, not in repo)
+- **ADRs** = REQUIRED, not optional, capture architectural reasoning
+- **Throwaway prototype** = on engineer-specific branch, reset with `git checkout main --`, keep tests
+- **prototype.diff** = REQUIRED capture of all prototype changes for synthesis
+- **Phase 2.5** = STOP and wait for human approval before Phase 3
 - **TDD rebuild** = tests already exist from prototype, make them pass properly
-- **Prototype learnings** = in tmp/FRED-XX/LEARNINGS.md (outside repo)
-- **tmp/ directory** = not committed (planning artifacts only)
+- **Prototype learnings** = in /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md (ephemeral)
 - **Clean architecture** = models, use cases, controllers, repositories
 - **Skills** = invoke for guidance (build-one-to-throw-away, BDD, TDD, etc.)
