@@ -196,16 +196,24 @@ class TestLambdaTemplate:
 
         cdk_template = cdk_template_factory(template)
 
+        # ManagedPolicyArns uses Fn::If conditional, so we need to check the structure
         cdk_template.has_resource_properties(
             "AWS::IAM::Role",
             Match.object_like(
                 {
-                    "ManagedPolicyArns": Match.array_with(
-                        [
-                            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-                            "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
-                        ]
-                    )
+                    "ManagedPolicyArns": {
+                        "Fn::If": Match.array_with(
+                            [
+                                Match.string_like_regexp("HasParameterStorePolicy"),
+                                Match.array_with(
+                                    [
+                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+                                    ]
+                                ),
+                            ]
+                        )
+                    }
                 }
             ),
         )
