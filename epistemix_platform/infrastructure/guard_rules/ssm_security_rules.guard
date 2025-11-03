@@ -24,8 +24,11 @@ rule ssm_secure_parameters_must_use_securestring {
         >>
 
         # Check if parameter name contains sensitive keywords
-        when %ssm_parameters.Properties.Name.*[*] in ['password', 'secret', 'token', 'key', 'credential'] {
-            %ssm_parameters.Properties.Type == 'SecureString' <<
+        # Filter for parameters with sensitive keywords in their names
+        let sensitive_params = %ssm_parameters[ Properties.Name == /(?i)(password|secret|token|key|credential)/ ]
+
+        when %sensitive_params !empty {
+            %sensitive_params.Properties.Type == 'SecureString' <<
                 Violation: Parameters containing sensitive data must use SecureString type
                 Fix: Set Type to 'SecureString' for password, secret, token, key, or credential parameters
                 Rationale: SecureString encrypts parameter values using AWS KMS

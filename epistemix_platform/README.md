@@ -179,7 +179,31 @@ cd /workspaces/fred_simulations
 poetry run python epistemix_platform/run_server.py
 ```
 
-## Environment Variables
+## Configuration Management
+
+The Epistemix platform supports flexible configuration through multiple sources:
+1. `.env` files (local development)
+2. Environment variables (container/CI environments)
+3. AWS Parameter Store (production)
+
+Configuration is loaded automatically when the application starts via the bootstrap module.
+
+### Local Development with .env Files
+
+For local development, create a `.env` file from the example:
+
+```bash
+cp .env.example .env
+# Edit .env with your local configuration
+```
+
+The `.env` file is automatically loaded when the Flask app or CLI starts. This is the easiest way to configure the application for local development.
+
+**Priority**: `.env` values are loaded first, then overridden by explicit environment variables.
+
+### Environment Variables
+
+All configuration can be set via environment variables:
 
 - `FLASK_HOST`: Host to bind to (default: 0.0.0.0)
 - `FLASK_PORT`: Port to listen on (default: 5000)
@@ -190,6 +214,78 @@ poetry run python epistemix_platform/run_server.py
 - `DATABASE_POOL_SIZE`: Connection pool size for PostgreSQL (default: 10)
 - `DATABASE_MAX_OVERFLOW`: Maximum overflow connections (default: 20)
 - `DATABASE_POOL_TIMEOUT`: Connection pool timeout in seconds (default: 30)
+- `AWS_REGION`: AWS region for S3 and Parameter Store (default: us-east-1)
+- `S3_UPLOAD_BUCKET`: S3 bucket for job uploads
+- `ENVIRONMENT`: Environment name for Parameter Store (dev, staging, production)
+- `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+
+### AWS Parameter Store (Production)
+
+For production deployments, configuration is loaded from AWS Parameter Store:
+
+**Parameter Store Path Format**: `/epistemix/{environment}/{parameter_name}`
+
+Example parameters:
+- `/epistemix/production/database/host` → `DATABASE_HOST`
+- `/epistemix/production/database/password` → `DATABASE_PASSWORD` (SecureString)
+- `/epistemix/production/s3_upload_bucket` → `S3_UPLOAD_BUCKET`
+
+The bootstrap module automatically:
+1. Loads `.env` file (if exists)
+2. Respects explicit environment variables (highest priority)
+3. Fetches missing values from Parameter Store based on `ENVIRONMENT` variable
+4. Constructs `DATABASE_URL` from individual components if needed
+
+**Graceful Fallback**: If AWS credentials are not available (local dev), the application continues using `.env` or environment variables without error.
+
+### Configuration Priority
+
+Configuration sources are applied in this priority order (highest to lowest):
+
+1. Explicit environment variables (highest priority)
+2. `.env` file values
+3. AWS Parameter Store values (fills in missing values)
+4. Application defaults (lowest priority)
+
+### Troubleshooting Configuration Issues
+
+**Issue**: Application can't connect to database
+
+**Solution**: Check database configuration:
+```bash
+# Verify DATABASE_URL is set correctly
+echo $DATABASE_URL
+
+# For local PostgreSQL via Docker:
+DATABASE_URL=postgresql://epistemix_user:epistemix_password@localhost:5432/epistemix_db
+
+# For local SQLite (fallback):
+DATABASE_URL=sqlite:///epistemix_jobs.db
+```
+
+**Issue**: AWS Parameter Store not loading
+
+**Solution**: Verify AWS credentials and permissions:
+```bash
+# Check AWS credentials
+aws sts get-caller-identity
+
+# Verify Parameter Store access
+aws ssm get-parameters-by-path --path /epistemix/dev/ --recursive
+
+# Required IAM permissions:
+# - ssm:GetParameter
+# - ssm:GetParametersByPath
+# - ssm:DescribeParameters
+```
+
+**Issue**: Configuration values not taking effect
+
+**Solution**: Check configuration priority:
+1. Verify `.env` file exists and is in the correct location
+2. Check for environment variables overriding `.env` values
+3. Restart the application after changing configuration
+4. Check logs for configuration loading messages
 
 ## Testing
 
