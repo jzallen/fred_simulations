@@ -18,9 +18,11 @@ from moto import mock_aws
 
 # Import will fail until we create the module (TDD Red phase)
 from epistemix_platform.bootstrap import (
+    _build_database_url_if_needed,
     bootstrap_config,
     load_dotenv_if_exists,
     load_from_parameter_store,
+    load_from_secrets_manager,
 )
 
 
@@ -215,6 +217,7 @@ class TestLoadFromParameterStore:
 
         # ACT
         load_from_parameter_store(environment="test")
+        _build_database_url_if_needed()  # Now called separately
 
         # ASSERT
         expected_url = "postgresql://admin:secret@db.example.com:5432/mydb"
@@ -274,6 +277,7 @@ class TestLoadFromParameterStore:
 
         # ACT
         load_from_parameter_store(environment="test")
+        _build_database_url_if_needed()  # Now called separately
 
         # ASSERT
         # Verify that special characters are properly encoded:
@@ -405,6 +409,89 @@ class TestLoadFromParameterStore:
 
         # CLEANUP
         os.environ.pop("DATABASE_PASSWORD", None)
+
+
+class TestLoadFromSecretsManager:
+    """Tests for load_from_secrets_manager function."""
+
+    @mock_aws
+    def test_load_from_secrets_manager_success(self) -> None:
+        """Verify database password is loaded from AWS Secrets Manager.
+
+        From BDD scenario: Load sensitive configuration from Secrets Manager
+        Tests fix for CodeRabbit issue: password migrated from SSM to Secrets Manager
+        """
+        # ARRANGE
+        import boto3
+
+        secrets_client = boto3.client("secretsmanager", region_name="us-east-1")
+
+        # Create secret
+        secrets_client.create_secret(
+            Name="/epistemix/test/database/password",
+            SecretString="super-secret-password-123",
+        )
+
+        # Clear env var
+        os.environ.pop("DATABASE_PASSWORD", None)
+
+        # ACT
+        load_from_secrets_manager(environment="test")
+
+        # ASSERT
+        assert os.environ.get("DATABASE_PASSWORD") == "super-secret-password-123"
+
+        # CLEANUP
+        os.environ.pop("DATABASE_PASSWORD", None)
+
+    @mock_aws
+    def test_load_from_secrets_manager_respects_existing_env(self) -> None:
+        """Verify existing DATABASE_PASSWORD is not overridden by Secrets Manager."""
+        # ARRANGE
+        import boto3
+
+        secrets_client = boto3.client("secretsmanager", region_name="us-east-1")
+
+        # Create secret
+        secrets_client.create_secret(
+            Name="/epistemix/test/database/password",
+            SecretString="aws-secret-value",
+        )
+
+        # Set env var before loading from Secrets Manager
+        os.environ["DATABASE_PASSWORD"] = "local-override"
+
+        # ACT
+        load_from_secrets_manager(environment="test")
+
+        # ASSERT - Should NOT override
+        assert os.environ.get("DATABASE_PASSWORD") == "local-override"
+
+        # CLEANUP
+        os.environ.pop("DATABASE_PASSWORD", None)
+
+    def test_load_from_secrets_manager_aws_unavailable(self) -> None:
+        """Verify function continues gracefully when AWS is unavailable."""
+        # ARRANGE - No mock_aws decorator, so boto3 will fail
+        os.environ.pop("DATABASE_PASSWORD", None)
+
+        # ACT - Should not raise exception
+        load_from_secrets_manager(environment="test")
+
+        # ASSERT - No exception raised means success
+        assert os.environ.get("DATABASE_PASSWORD") is None
+
+    @mock_aws
+    def test_load_from_secrets_manager_secret_not_found(self) -> None:
+        """Verify function continues gracefully when secret doesn't exist."""
+        # ARRANGE - Secrets Manager exists but secret doesn't
+        os.environ.pop("DATABASE_PASSWORD", None)
+
+        # ACT - Should not raise exception
+        load_from_secrets_manager(environment="nonexistent")
+
+        # ASSERT - No exception raised, password not set
+        assert os.environ.get("DATABASE_PASSWORD") is None
 
 
 class TestBootstrapConfig:
