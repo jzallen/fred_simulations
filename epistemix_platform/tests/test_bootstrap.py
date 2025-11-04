@@ -18,6 +18,7 @@ from moto import mock_aws
 
 # Import will fail until we create the module (TDD Red phase)
 from epistemix_platform.bootstrap import (
+    _build_database_url_if_needed,
     bootstrap_config,
     load_dotenv_if_exists,
     load_from_parameter_store,
@@ -216,6 +217,7 @@ class TestLoadFromParameterStore:
 
         # ACT
         load_from_parameter_store(environment="test")
+        _build_database_url_if_needed()  # Now called separately
 
         # ASSERT
         expected_url = "postgresql://admin:secret@db.example.com:5432/mydb"
@@ -275,6 +277,7 @@ class TestLoadFromParameterStore:
 
         # ACT
         load_from_parameter_store(environment="test")
+        _build_database_url_if_needed()  # Now called separately
 
         # ASSERT
         # Verify that special characters are properly encoded:
