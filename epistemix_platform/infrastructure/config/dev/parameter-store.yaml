@@ -15,7 +15,7 @@ parameters:
   DBPort: !stack_output fred-simulations-dev-rds-postgres::DBPort
   DBName: !stack_output fred-simulations-dev-rds-postgres::DBName
   DBUser: epistemixuser
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  # Note: DBPassword moved to Secrets Manager (see dev/database-secrets.yaml)
   S3UploadBucket: epistemix-uploads-dev
   AWSRegion: us-east-1
 

@@ -29,12 +29,6 @@
       "Description": "RDS database username",
       "Default": "epistemixuser"
     },
-    "DBPassword": {
-      "Type": "String",
-      "Description": "RDS database password (will be stored as SecureString)",
-      "NoEcho": true,
-      "MinLength": 8
-    },
     "S3UploadBucket": {
       "Type": "String",
       "Description": "S3 bucket name for file uploads",
@@ -136,28 +130,6 @@
       }
     },
 
-    "DatabasePasswordParameter": {
-      "Type": "AWS::SSM::Parameter",
-      "Properties": {
-        "Name": {
-          "Fn::Sub": "/epistemix/${Environment}/database/password"
-        },
-        "Description": "RDS database password (encrypted)",
-        "Type": "SecureString",
-        "Value": {
-          "Ref": "DBPassword"
-        },
-        "Tags": {
-          "Project": "epistemix-platform",
-          "Environment": {
-            "Ref": "Environment"
-          },
-          "ManagedBy": "CloudFormation",
-          "Purpose": "DatabaseConfiguration"
-        }
-      }
-    },
-
     "S3UploadBucketParameter": {
       "Type": "AWS::SSM::Parameter",
       "Properties": {
@@ -223,17 +195,6 @@
       "Export": {
         "Name": {
           "Fn::Sub": "${AWS::StackName}-DatabaseHostParameterName"
-        }
-      }
-    },
-    "DatabasePasswordParameterName": {
-      "Description": "Parameter name for database password (SecureString)",
-      "Value": {
-        "Ref": "DatabasePasswordParameter"
-      },
-      "Export": {
-        "Name": {
-          "Fn::Sub": "${AWS::StackName}-DatabasePasswordParameterName"
         }
       }
     },
