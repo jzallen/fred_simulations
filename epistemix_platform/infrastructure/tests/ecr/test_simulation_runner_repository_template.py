@@ -196,8 +196,10 @@ class TestECRTemplate:
         ecr_repo = ecr_template["Resources"]["ECRRepository"]
         encryption_config = ecr_repo["Properties"]["EncryptionConfiguration"]
         encryption_type = encryption_config["EncryptionType"]
-        assert encryption_type in ["AES256", "KMS"], \
-            f"ECR encryption must be AES256 or KMS, got {encryption_type}"
+        assert encryption_type in [
+            "AES256",
+            "KMS",
+        ], f"ECR encryption must be AES256 or KMS, got {encryption_type}"
 
     def test_ecr_repository_has_expected_tags(self, ecr_template: dict[str, Any]):
         """Test ECR repository has expected tags."""
@@ -579,9 +581,7 @@ class TestECRTemplate:
 
         template.has_resource_properties(
             "AWS::ECR::Repository",
-            Match.object_like(
-                {"ImageScanningConfiguration": {"ScanOnPush": Match.any_value()}}
-            ),
+            Match.object_like({"ImageScanningConfiguration": {"ScanOnPush": Match.any_value()}}),
         )
 
     def test_repository_has_encryption_enabled(self, ecr_template, cdk_template_factory):

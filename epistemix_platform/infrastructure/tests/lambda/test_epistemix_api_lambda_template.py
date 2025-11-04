@@ -26,7 +26,6 @@ def template(template_path: str) -> dict[str, Any]:
 class TestLambdaTemplate:
     """Test suite for Lambda CloudFormation template with deep security validation."""
 
-
     def test_template_exists(self, template_path: str):
         assert Path(template_path).exists()
 
@@ -197,16 +196,24 @@ class TestLambdaTemplate:
 
         cdk_template = cdk_template_factory(template)
 
+        # ManagedPolicyArns uses Fn::If conditional, so we need to check the structure
         cdk_template.has_resource_properties(
             "AWS::IAM::Role",
             Match.object_like(
                 {
-                    "ManagedPolicyArns": Match.array_with(
-                        [
-                            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-                            "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
-                        ]
-                    )
+                    "ManagedPolicyArns": {
+                        "Fn::If": Match.array_with(
+                            [
+                                Match.string_like_regexp("HasParameterStorePolicy"),
+                                Match.array_with(
+                                    [
+                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
+                                    ]
+                                ),
+                            ]
+                        )
+                    }
                 }
             ),
         )

@@ -22,13 +22,15 @@ services:
       - epistemix_network
 
   migration-runner:
-    # Use the image built by: pants package //:postgres-db
+    # Use the image built by: pants package //:migration-runner
     image: migration-runner:latest
     container_name: epistemix_migration_runner
     volumes:
       - ./:/fred_simulations:ro  # Mount entire project as read-only
+    env_file:
+      - .env  # Optional .env file for local development
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://epistemix_user:epistemix_password@postgres:5432/epistemix_db}
+      ENVIRONMENT: dev  # Environment name for Parameter Store path
     depends_on:
       postgres:
         condition: service_healthy
