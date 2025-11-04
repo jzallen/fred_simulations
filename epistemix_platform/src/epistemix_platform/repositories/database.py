@@ -142,11 +142,11 @@ def create_postgresql_engine_with_iam(
 ) -> Engine:
     """Create PostgreSQL engine using RDS IAM authentication.
 
-    Generates short-lived IAM authentication token (valid 15 minutes) and
-    uses it as the database password. SSL/TLS is required for IAM auth.
+    Uses SQLAlchemy event listener to generate fresh IAM tokens (valid 15 minutes)
+    for each new connection. This prevents token expiration failures.
 
-    The connection pool automatically handles token expiration via pool_pre_ping,
-    which detects stale connections and triggers new token generation.
+    The connection pool recycles connections every 10 minutes (before 15-min token expiry)
+    and uses pool_pre_ping to detect dead connections.
 
     Args:
         host: RDS endpoint hostname
@@ -162,7 +162,12 @@ def create_postgresql_engine_with_iam(
     Security:
         - Token is never logged (even in debug mode)
         - SSL/TLS enforced (required by RDS for IAM auth)
-        - Token automatically rotated on pool exhaustion
+        - Fresh token generated per connection (no expiration issues)
+
+    Implementation:
+        Uses AWS best practice pattern with do_connect event listener to
+        generate tokens dynamically instead of embedding in connection URL.
+        Reference: AWS RDS IAM authentication documentation
 
     Example:
         >>> engine = create_postgresql_engine_with_iam(
@@ -177,6 +182,7 @@ def create_postgresql_engine_with_iam(
     import logging
 
     import boto3
+    from sqlalchemy import event
 
     logger = logging.getLogger(__name__)
 
@@ -186,28 +192,52 @@ def create_postgresql_engine_with_iam(
         extra={"host": host, "port": port, "database": database, "user": user, "region": region},
     )
 
-    # Generate IAM authentication token (valid 15 minutes)
-    rds_client = boto3.client("rds", region_name=region)
-    token = rds_client.generate_db_auth_token(
-        DBHostname=host, Port=port, DBUsername=user, Region=region
-    )
-
-    # Build connection URL using token as password
-    # NOTE: Token is used as password - it is NOT logged
-    connection_url = f"postgresql://{user}:{token}@{host}:{port}/{database}"
+    # Create empty connection URL (no credentials)
+    # Credentials will be provided by do_connect event listener
+    connection_url = "postgresql://"
 
     # Create engine with IAM-appropriate settings
-    return create_engine(
+    engine = create_engine(
         connection_url,
         pool_size=config.DATABASE_POOL_SIZE,
         max_overflow=config.DATABASE_MAX_OVERFLOW,
         pool_timeout=config.DATABASE_POOL_TIMEOUT,
-        pool_pre_ping=True,  # Detect expired tokens, auto-regenerate
+        pool_recycle=600,  # Recycle connections every 10 min (before 15-min token expiry)
+        pool_pre_ping=True,  # Detect dead connections
         connect_args={
             "sslmode": "require",  # Required for IAM auth
             "connect_timeout": 10,
         },
     )
+
+    # Event listener to generate fresh IAM token per connection
+    @event.listens_for(engine, "do_connect")
+    def provide_token(dialect, conn_rec, cargs, cparams):  # noqa: ARG001
+        """Generate fresh IAM token for each database connection.
+
+        This event listener runs before each connection attempt, ensuring
+        we always use a valid token (never expired).
+
+        Args:
+            dialect: SQLAlchemy dialect (unused)
+            conn_rec: Connection record (unused)
+            cargs: Positional connection args (unused)
+            cparams: Connection parameters dict (modified in-place)
+        """
+        # Generate fresh IAM token (valid 15 minutes)
+        rds_client = boto3.client("rds", region_name=region)
+        token = rds_client.generate_db_auth_token(
+            DBHostname=host, Port=port, DBUsername=user, Region=region
+        )
+
+        # Provide connection parameters with fresh token
+        cparams["host"] = host
+        cparams["port"] = port
+        cparams["user"] = user
+        cparams["password"] = token  # Fresh token per connection
+        cparams["database"] = database
+
+    return engine
 
 
 def create_engine_from_config(config: "Config" = None, database_url: str = None) -> Engine:
