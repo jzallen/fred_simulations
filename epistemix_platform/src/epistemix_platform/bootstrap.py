@@ -49,14 +49,14 @@ def load_from_parameter_store(environment: str = "dev") -> None:
     Fetches all parameters under the path `/epistemix/{environment}/` and maps
     them to environment variables. For example:
     - `/epistemix/dev/database/host` → `DATABASE_HOST`
-    - `/epistemix/dev/database/password` → `DATABASE_PASSWORD`
+    - `/epistemix/dev/database/user` → `DATABASE_USER`
+
+    Note: Database password is NOT loaded from Parameter Store. It's stored
+    in AWS Secrets Manager for better security. Use load_from_secrets_manager()
+    to fetch the password.
 
     Only sets environment variables if they are NOT already set, respecting
     existing values from .env files or explicit environment settings.
-
-    If all database components are loaded and DATABASE_URL is not set, constructs
-    DATABASE_URL in PostgreSQL format:
-    `postgresql://{user}:{password}@{host}:{port}/{name}`
 
     Handles AWS errors gracefully:
     - No credentials configured: continues silently
@@ -103,15 +103,67 @@ def load_from_parameter_store(environment: str = "dev") -> None:
                 if env_var_name not in os.environ:
                     os.environ[env_var_name] = param_value
 
-        # Build DATABASE_URL from components if not already set
-        _build_database_url_if_needed()
-
     except ClientError:
         # Handle AWS errors gracefully
         # Common cases:
         # - NoCredentialsError: local dev without AWS credentials
         # - AccessDeniedException: insufficient permissions
         # - ParameterNotFound: no parameters exist for this environment
+        # All cases: continue silently to allow local development
+        pass
+    except Exception:
+        # Catch-all for network errors, connection timeouts, etc.
+        # Continue silently - local development should not require AWS
+        pass
+
+
+def load_from_secrets_manager(environment: str = "dev") -> None:
+    """Load sensitive configuration from AWS Secrets Manager into os.environ.
+
+    Fetches database password from Secrets Manager at path:
+    `/epistemix/{environment}/database/password`
+
+    This is separate from Parameter Store because:
+    - Secrets Manager provides better encryption and rotation for credentials
+    - CloudFormation doesn't support SecureString for SSM parameters
+    - AWS best practice: use Secrets Manager for database passwords
+
+    Only sets environment variables if they are NOT already set, respecting
+    existing values from .env files or explicit environment settings.
+
+    Handles AWS errors gracefully:
+    - No credentials configured: continues silently
+    - AccessDenied errors: continues silently
+    - Network errors: continues silently
+    - Other errors: continues silently
+
+    Args:
+        environment: The environment name (dev, staging, production, etc.).
+                    Used as part of secret name. Defaults to "dev".
+
+    Example:
+        >>> load_from_secrets_manager("production")
+        >>> load_from_secrets_manager()  # Uses "dev" by default
+    """
+    try:
+        # Create Secrets Manager client
+        secrets_client = boto3.client("secretsmanager", region_name=os.getenv("AWS_REGION", "us-east-1"))
+
+        # Fetch database password secret
+        secret_name = f"/epistemix/{environment}/database/password"
+
+        # Only fetch if DATABASE_PASSWORD not already set
+        if "DATABASE_PASSWORD" not in os.environ:
+            response = secrets_client.get_secret_value(SecretId=secret_name)
+            # SecretString contains the plaintext password
+            os.environ["DATABASE_PASSWORD"] = response["SecretString"]
+
+    except ClientError:
+        # Handle AWS errors gracefully
+        # Common cases:
+        # - NoCredentialsError: local dev without AWS credentials
+        # - AccessDeniedException: insufficient permissions
+        # - ResourceNotFoundException: secret doesn't exist for this environment
         # All cases: continue silently to allow local development
         pass
     except Exception:
@@ -173,10 +225,12 @@ def bootstrap_config(environment: str | None = None) -> None:
     Main entry point for loading configuration. Calls functions in priority order:
     1. Load from .env file (if exists)
     2. Existing environment variables (not modified)
-    3. Load from AWS Parameter Store (fills in missing values)
+    3. Load from AWS Parameter Store (fills in missing non-sensitive values)
+    4. Load from AWS Secrets Manager (fills in missing sensitive values)
+    5. Build DATABASE_URL from components if needed
 
-    The environment parameter or ENVIRONMENT variable determines which Parameter
-    Store path to use. Defaults to "dev" if neither is specified.
+    The environment parameter or ENVIRONMENT variable determines which AWS
+    resources to use. Defaults to "dev" if neither is specified.
 
     Args:
         environment: Optional environment name. If not provided, uses the
@@ -196,3 +250,9 @@ def bootstrap_config(environment: str | None = None) -> None:
 
     # Load from AWS Parameter Store (only sets missing values)
     load_from_parameter_store(environment)
+
+    # Load from AWS Secrets Manager (only sets missing values)
+    load_from_secrets_manager(environment)
+
+    # Build DATABASE_URL from components if not already set
+    _build_database_url_if_needed()
