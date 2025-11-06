@@ -210,6 +210,24 @@ class Run:
         """Update the pod phase."""
         self.pod_phase = pod_phase
 
+    def natural_key(self) -> str:
+        """
+        Generate a natural key for AWS Batch job naming.
+
+        Returns:
+            Formatted string like "job-123-run-42" for use as AWS Batch job name
+
+        Raises:
+            ValueError: If run is not persisted (id is None)
+
+        Note:
+            This key is used as the AWS Batch job name for tracking and debugging.
+            It uniquely identifies the run across the system.
+        """
+        if self.id is None:
+            raise ValueError("Cannot generate natural_key for unpersisted run")
+        return f"job-{self.job_id}-run-{self.id}"
+
     # TODO: See if field from dataclass lets you alias names, if so asdict can be used which
     # supports serializing nested dataclasses and enums automatically.
     def to_dict(self) -> dict[str, Any]:
