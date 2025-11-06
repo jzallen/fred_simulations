@@ -35,6 +35,19 @@ class PodPhase(Enum):
 
 
 @dataclass
+class RunStatusDetail:
+    """
+    Detailed run status information from AWS Batch.
+
+    Contains both the status enum and a descriptive message
+    from the AWS Batch service for debugging and monitoring.
+    """
+
+    status: RunStatus
+    message: str
+
+
+@dataclass
 class Run:
     """
     Run domain entity representing a run in the Epistemix system.
