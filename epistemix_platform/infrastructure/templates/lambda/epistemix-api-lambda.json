@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Complete Lambda infrastructure for Epistemix API including IAM role, function, and API Gateway permission",
+  "Description": "Complete Lambda infrastructure for Epistemix API including IAM role and function",
 
   "Parameters": {
     "Environment": {
@@ -80,21 +80,11 @@
       "MinValue": 3,
       "MaxValue": 900
     },
-    "ParameterStoreAccessPolicyArn": {
-      "Type": "String",
-      "Description": "ARN of the Parameter Store access IAM policy (optional)",
-      "Default": ""
-    }
   },
 
   "Conditions": {
     "IsProduction": {
       "Fn::Equals": [{"Ref": "Environment"}, "production"]
-    },
-    "HasParameterStorePolicy": {
-      "Fn::Not": [
-        { "Fn::Equals": [{ "Ref": "ParameterStoreAccessPolicyArn" }, ""] }
-      ]
     }
   },
 
@@ -172,20 +162,10 @@
             }
           ]
         },
-        "ManagedPolicyArns": {
-          "Fn::If": [
-            "HasParameterStorePolicy",
-            [
-              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-              "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
-              {"Ref": "ParameterStoreAccessPolicyArn"}
-            ],
-            [
-              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-              "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-            ]
-          ]
-        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+        ],
         "Policies": [
           {
             "PolicyName": "CloudWatchLogsPolicy",
@@ -378,8 +358,7 @@
         "FunctionName": {"Ref": "LambdaFunction"},
         "Description": {
           "Fn::Sub": "Version created on ${AWS::StackName} deployment"
-        },
-        "CodeSha256": "d949867ee4aaf39bd6a1398eed4946b534dbd0ad30e95c08f595acf1cbf0af51"
+        }
       }
     },
 

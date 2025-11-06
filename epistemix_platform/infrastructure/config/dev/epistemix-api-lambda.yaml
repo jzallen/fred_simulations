@@ -2,35 +2,43 @@ template:
   type: file
   path: lambda/epistemix-api-lambda.json
 
-stack_name: epistemix-api-lambda-dev
+# Let Sceptre auto-generate stack name (enables !stack_output usage)
+# Pattern: <project_code>-<command_path>
 
 # Dependencies - External stacks (ECR, RDS, S3) must exist before deploying
 # Note: API Gateway depends on Lambda, so Lambda is deployed first without API Gateway permission
-# After API Gateway is created, update Lambda stack to add the permission
-dependencies: []
+dependencies:
+  - dev/rds-postgres.yaml
+  - dev/s3-upload-bucket.yaml
 
 # Stack parameters for development environment
 parameters:
   Environment: dev
   ServiceName: epistemix-api
-  # ECR image URI (will be: 170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api:latest)
-  # NOTE: Update this after creating ECR repo and pushing image
-  ECRImageUri: "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api:latest"
+  # Dynamically fetch ECR image digest for environment-specific tag (:dev)
+  # This resolves to immutable digest at deploy time, solving race conditions
+  ECRImageUri: !rcmd |
+    aws ecr describe-images \
+      --repository-name epistemix-api \
+      --image-ids imageTag=dev \
+      --region us-east-1 \
+      --query 'imageDetails[0].imageDigest' \
+      --output text | \
+    xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/epistemix-api@{}"
   # VPC configuration
   VPCId: "vpc-00bb33feebfb59191"
   VPCSubnetIds: "subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672"
-  # RDS connection parameters (from external stack: fred-simulations-dev-rds-postgres)
-  DBSecurityGroupId: "sg-0623cab92420d3a59"
-  DBHost: "fred-simulations-dev-rds-postgres-dbinstance-8bu9adm1kzju.c2tsguye2mmq.us-east-1.rds.amazonaws.com"
-  DBPort: "5432"
-  DBName: "epistemixdb"
+  # RDS connection parameters (dynamically resolved from dev/rds-postgres stack)
+  DBSecurityGroupId: !stack_output dev/rds-postgres.yaml::SecurityGroupId
+  DBHost: !stack_output dev/rds-postgres.yaml::DBEndpoint
+  DBPort: !stack_output dev/rds-postgres.yaml::DBPort
+  DBName: !stack_output dev/rds-postgres.yaml::DBName
   DBUser: "epistemixuser"
   DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
-  # S3 bucket (from external stack: epistemix-uploads-dev-stack)
-  S3BucketName: "epistemix-uploads-dev"
+  # S3 bucket (dynamically resolved from epistemix-uploads-dev-stack)
+  S3BucketName: !stack_output dev/s3-upload-bucket.yaml::BucketName
   MemorySize: 3008
-  Timeout: 30
-  ApiGatewayRestApiId: "jxghhxhvvl"
+  Timeout: 90
 
 # Stack-specific tags
 tags:

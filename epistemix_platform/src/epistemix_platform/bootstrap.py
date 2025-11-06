@@ -220,39 +220,27 @@ def _build_database_url_if_needed() -> None:
 
 
 def bootstrap_config(environment: str | None = None) -> None:
-    """Bootstrap configuration from all sources with proper priority.
+    """Bootstrap configuration from .env file and environment variables.
 
-    Main entry point for loading configuration. Calls functions in priority order:
-    1. Load from .env file (if exists)
-    2. Existing environment variables (not modified)
-    3. Load from AWS Parameter Store (fills in missing non-sensitive values)
-    4. Load from AWS Secrets Manager (fills in missing sensitive values)
-    5. Build DATABASE_URL from components if needed
+    Main entry point for loading configuration. Priority order:
+    1. Load from .env file (if exists) - lowest priority
+    2. Existing environment variables override .env values
 
-    The environment parameter or ENVIRONMENT variable determines which AWS
-    resources to use. Defaults to "dev" if neither is specified.
+    In production (Lambda, ECS, etc.):
+        - CloudFormation/Sceptre resolves Parameter Store and Secrets Manager values
+        - These are injected as environment variables at deployment time
+        - No runtime AWS API calls needed
+
+    In local development:
+        - .env file contains all required configuration
+        - No AWS credentials or API calls required
 
     Args:
-        environment: Optional environment name. If not provided, uses the
-                    ENVIRONMENT environment variable, or defaults to "dev".
+        environment: Optional environment name (currently unused, kept for compatibility).
 
     Example:
-        >>> bootstrap_config()  # Use ENVIRONMENT var or default to "dev"
-        >>> bootstrap_config("production")  # Explicit environment
+        >>> bootstrap_config()  # Load .env if exists, respect existing env vars
     """
-    # Load .env file first (lowest priority, but loaded first)
+    # Load .env file for local development
+    # Existing environment variables take precedence (override=False)
     load_dotenv_if_exists()
-
-    # Determine environment
-    # Priority: explicit argument > ENVIRONMENT env var > "dev" default
-    if environment is None:
-        environment = os.getenv("ENVIRONMENT", "dev")
-
-    # Load from AWS Parameter Store (only sets missing values)
-    load_from_parameter_store(environment)
-
-    # Load from AWS Secrets Manager (only sets missing values)
-    load_from_secrets_manager(environment)
-
-    # Build DATABASE_URL from components if not already set
-    _build_database_url_if_needed()

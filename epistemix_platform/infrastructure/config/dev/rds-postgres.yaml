@@ -1,6 +1,10 @@
 template:
   path: rds/rds-postgres.json
 
+# Layer 3: RDS depends on Secrets Manager for database password
+dependencies:
+  - dev/database-secrets.yaml
+
 parameters:
   # Network Configuration
   VPCId: vpc-00bb33feebfb59191
@@ -10,7 +14,6 @@ parameters:
   # Database Configuration
   DBName: epistemixdb
   DBUsername: epistemixuser
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
   DBInstanceClass: db.t3.micro
   AllocatedStorage: 20
 
