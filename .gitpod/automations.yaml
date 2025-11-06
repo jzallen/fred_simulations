@@ -46,7 +46,7 @@ tasks:
             ~/.local/bin/pants --version
 
             # Install Claude CLI
-            npm install @anthropic-ai/claude-code
+            npm install -g @anthropic-ai/claude-code
             echo 'alias claude="npx @anthropic-ai/claude-code"' >> ~/.bashrc
         triggeredBy: ['postDevcontainerStart', 'manual']
 
