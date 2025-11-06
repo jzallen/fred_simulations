@@ -67,6 +67,11 @@ class Run:
     results_url: str | None = None  # Presigned URL for run results ZIP
     results_uploaded_at: datetime | None = None  # Timestamp when results were uploaded
 
+    # AWS Batch integration fields
+    aws_batch_job_id: str | None = None  # AWS Batch job ID for tracking
+    aws_batch_status: str | None = None  # Detailed Batch status for debugging
+    results_uploaded: bool = False  # CRITICAL: Track if results uploaded to S3
+
     @classmethod
     def create_unpersisted(
         cls,
@@ -81,6 +86,9 @@ class Run:
         config_url: str | None = None,
         results_url: str | None = None,
         results_uploaded_at: datetime | None = None,
+        aws_batch_job_id: str | None = None,
+        aws_batch_status: str | None = None,
+        results_uploaded: bool = False,
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -97,6 +105,9 @@ class Run:
             config_url: Presigned URL for run configuration
             results_url: Presigned URL for run results ZIP
             results_uploaded_at: Timestamp when results were uploaded
+            aws_batch_job_id: AWS Batch job ID for tracking
+            aws_batch_status: Detailed Batch status for debugging
+            results_uploaded: Whether results have been uploaded to S3
 
         Returns:
             A new Run instance with id=None
@@ -116,6 +127,9 @@ class Run:
             config_url=config_url,
             results_url=results_url,
             results_uploaded_at=results_uploaded_at,
+            aws_batch_job_id=aws_batch_job_id,
+            aws_batch_status=aws_batch_status,
+            results_uploaded=results_uploaded,
         )
 
     @classmethod
@@ -135,6 +149,9 @@ class Run:
         config_url: str | None = None,
         results_url: str | None = None,
         results_uploaded_at: datetime | None = None,
+        aws_batch_job_id: str | None = None,
+        aws_batch_status: str | None = None,
+        results_uploaded: bool = False,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -154,6 +171,9 @@ class Run:
             config_url: Presigned URL for run configuration
             results_url: Presigned URL for run results ZIP
             results_uploaded_at: Timestamp when results were uploaded
+            aws_batch_job_id: AWS Batch job ID for tracking
+            aws_batch_status: Detailed Batch status for debugging
+            results_uploaded: Whether results have been uploaded to S3
 
         Returns:
             A new Run instance with the specified ID
@@ -173,6 +193,9 @@ class Run:
             config_url=config_url,
             results_url=results_url,
             results_uploaded_at=results_uploaded_at,
+            aws_batch_job_id=aws_batch_job_id,
+            aws_batch_status=aws_batch_status,
+            results_uploaded=results_uploaded,
         )
 
     def is_persisted(self) -> bool:
