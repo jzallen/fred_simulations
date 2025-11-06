@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Complete Lambda infrastructure for Epistemix API including IAM role, function, and API Gateway permission",
+  "Description": "Complete Lambda infrastructure for Epistemix API including IAM role and function",
 
   "Parameters": {
     "Environment": {
@@ -79,7 +79,7 @@
       "Default": 60,
       "MinValue": 3,
       "MaxValue": 900
-    }
+    },
   },
 
   "Conditions": {
@@ -358,8 +358,7 @@
         "FunctionName": {"Ref": "LambdaFunction"},
         "Description": {
           "Fn::Sub": "Version created on ${AWS::StackName} deployment"
-        },
-        "CodeSha256": "d949867ee4aaf39bd6a1398eed4946b534dbd0ad30e95c08f595acf1cbf0af51"
+        }
       }
     },
 

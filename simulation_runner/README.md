@@ -119,18 +119,108 @@ Show simulation runner version:
 simulation-runner version
 ```
 
-### Environment Variables
+## Configuration Management
 
-The simulation runner uses the following environment variables:
+The simulation runner uses a flexible configuration system that supports multiple sources:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FRED_HOME` | Path to FRED framework installation | **Required** |
-| `EPISTEMIX_API_URL` | Epistemix API endpoint | From ~/.epistemix/cli.env |
-| `EPISTEMIX_S3_BUCKET` | S3 bucket for uploads | From config or env |
-| `AWS_REGION` | AWS region | `us-east-1` |
-| `DATABASE_URL` | Database connection string | `sqlite:///epistemix_jobs.db` |
-| `WORKSPACE_DIR` | Workspace for downloads/outputs | `/workspace/job_{id}` |
+### Configuration Priority (Highest to Lowest)
+
+1. **Environment Variables** - Direct environment variable overrides
+2. **Local .env File** - For local development (not committed to git)
+3. **AWS Parameter Store** - For staging/production deployments
+4. **Built-in Defaults** - Fallback values
+
+### Local Development with .env Files
+
+For local development, copy the example configuration:
+
+```bash
+cd simulation_runner
+cp .env.example .env
+# Edit .env with your local values
+```
+
+The `.env` file is automatically loaded when the CLI starts. Example `.env`:
+
+```bash
+# Local development configuration
+FRED_HOME=/workspaces/fred_simulations/fred-framework
+WORKSPACE_DIR=/workspace
+
+# Database
+DATABASE_URL=postgresql://epistemix_user:epistemix_password@localhost:5432/epistemix_db
+
+# API and S3
+EPISTEMIX_API_URL=http://localhost:5000
+EPISTEMIX_S3_BUCKET=epistemix-uploads-dev
+AWS_REGION=us-east-1
+
+# Environment
+ENVIRONMENT=dev
+```
+
+### Production with AWS Parameter Store
+
+In staging/production environments, configuration is loaded from AWS Systems Manager Parameter Store:
+
+```bash
+# Parameters are stored at:
+# /{application_name}/{environment}/{parameter_name}
+#
+# Example parameters:
+# /epistemix_platform/production/DB_HOST
+# /epistemix_platform/production/DB_PASSWORD
+# /epistemix_platform/production/EPISTEMIX_API_URL
+# /epistemix_platform/production/EPISTEMIX_S3_BUCKET
+
+# Set ENVIRONMENT to enable Parameter Store loading
+export ENVIRONMENT=production
+export APPLICATION_NAME=epistemix_platform
+
+# Run simulation runner (will load from Parameter Store)
+simulation-runner run --job-id 12
+```
+
+**Note:** FRED_HOME and WORKSPACE_DIR are NOT stored in Parameter Store as they are environment-specific paths.
+
+### Configuration Variables
+
+| Variable | Description | Default | In Parameter Store? |
+|----------|-------------|---------|---------------------|
+| `FRED_HOME` | Path to FRED framework installation | **Required** | No (local only) |
+| `WORKSPACE_DIR` | Workspace for downloads/outputs | `/workspace/job_{id}` | No (local only) |
+| `DATABASE_URL` | Database connection string | `sqlite:///epistemix_jobs.db` | Yes (or individual DB params) |
+| `DB_HOST` | Database host | - | Yes |
+| `DB_PORT` | Database port | `5432` | Yes |
+| `DB_NAME` | Database name | - | Yes |
+| `DB_USER` | Database user | - | Yes |
+| `DB_PASSWORD` | Database password | - | Yes (SecureString) |
+| `EPISTEMIX_API_URL` | Epistemix API endpoint | - | Yes |
+| `EPISTEMIX_S3_BUCKET` | S3 bucket for uploads | - | Yes |
+| `AWS_REGION` | AWS region | `us-east-1` | Yes |
+| `ENVIRONMENT` | Environment name (dev/staging/production) | `dev` | No |
+| `APPLICATION_NAME` | Application name for Parameter Store | `epistemix_platform` | No |
+
+### Running with Different Configurations
+
+```bash
+# Local development with .env file
+cd simulation_runner
+cp .env.example .env
+# Edit .env
+simulation-runner run --job-id 12
+
+# Override specific variables
+FRED_HOME=/custom/path simulation-runner run --job-id 12
+
+# Production with Parameter Store
+export ENVIRONMENT=production
+export FRED_HOME=/fred-framework
+simulation-runner run --job-id 12
+
+# Check current configuration
+simulation-runner config
+```
 
 ### Docker Usage
 

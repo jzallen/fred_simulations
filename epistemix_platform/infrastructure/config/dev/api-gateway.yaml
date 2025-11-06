@@ -2,18 +2,16 @@ template:
   type: file
   path: api-gateway/epistemix-api-gateway.json
 
-stack_name: epistemix-api-gateway-dev
-
 # Dependencies - Deploy Lambda first, then API Gateway
-# Note: Lambda and API Gateway are deployed separately to avoid circular dependency
-dependencies: []
+dependencies:
+  - dev/epistemix-api-lambda.yaml
 
 # Stack parameters for development environment
 parameters:
   Environment: dev
   ServiceName: epistemix-api
-  # Lambda function ARN (will be resolved from stack: epistemix-api-lambda-dev)
-  LambdaFunctionArn: !stack_output_external epistemix-api-lambda-dev::FunctionArn
+  # Lambda function ARN (resolved via !stack_output from Sceptre-managed stack)
+  LambdaFunctionArn: !stack_output dev/epistemix-api-lambda.yaml::FunctionArn
   # CORS origins for development
   AllowedOrigins: "http://localhost:3000,https://localhost:3000,http://localhost:5000,https://localhost:5000"
   # Stage configuration
