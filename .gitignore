@@ -102,3 +102,6 @@ cli.env
 
 # Local data directory for database volumes
 /data/
+
+# Git worktrees for parallel ENGINEER-nn explorations
+.worktrees/

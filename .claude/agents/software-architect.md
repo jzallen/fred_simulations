@@ -127,17 +127,23 @@ When given a Linear issue ID, follow this workflow:
    - Create ADRs for: technology choices, architecture patterns, integration approaches
    - ADRs are NOT optional - they capture this ENGINEER's reasoning
 
-6. **Check Out Feature Branch**
+6. **Create Worktree for Engineer Branch**
    ```bash
    # Get branch name from Linear issue
-   # Append -engineer-nn for local separation (DO NOT PUSH these branches)
-   git checkout -b <branch-from-linear-issue>-engineer-nn
+   # Create worktree for this engineer's exploration
+   # Worktrees enable parallel execution - multiple engineers can work simultaneously
+   git worktree add .worktrees/FRED-XX/ENGINEER-nn -b <branch-from-linear-issue>-engineer-nn
+
+   # Change to worktree directory
+   cd .worktrees/FRED-XX/ENGINEER-nn
    ```
 
-   **CRITICAL**: Engineer-specific branches (e.g., `-engineer-01`, `-engineer-02`) are LOCAL ONLY.
-   - Used for parallel exploration and experimentation
+   **CRITICAL**: Engineer-specific branches and worktrees are LOCAL ONLY.
+   - Worktrees in `.worktrees/FRED-XX/ENGINEER-nn/` enable parallel exploration without branch switching
+   - No IDE disruption - each engineer has isolated source tree
    - Never push engineer-nn branches to remote
    - Only ENGINEER-00 synthesis branch gets pushed to remote
+   - Main worktree at project root is used by ENGINEER-00
 
 ### Phase 2: Throwaway Prototype (If Applicable)
 
@@ -273,21 +279,14 @@ When given a Linear issue ID, follow this workflow:
    - Edge cases discovered
    ```
 
-5. **Generate Prototype Diff** (REQUIRED)
+5. **Capture List of Changed Files**
    ```bash
-   # Capture all changes made during prototype phase
-   # This diff represents ENGINEER-nn's unique approach
-   git diff main...HEAD > /tmp/FRED-XX/ENGINEER-nn/prototype.diff
-
-   # Also capture list of changed files
+   # Capture list of files modified during prototype (for reference)
    git diff main...HEAD --name-only > /tmp/FRED-XX/ENGINEER-nn/changed_files.txt
    ```
 
-   **Purpose**: The prototype.diff captures this ENGINEER's complete exploration:
-   - Allows comparison between different ENGINEER approaches (01, 02, 03...)
-   - Enables synthesis of best ideas from multiple explorations
-   - Documents the learning journey for future reference
-   - ENGINEER-00 will use these diffs to synthesize final implementation
+   **Note**: ENGINEER-00 will use git commands directly to review each engineer's approach.
+   Diffs are not saved to files as they truncate; git provides better tools for synthesis.
 
 6. **Reset Prototype Implementation Files (Keep Tests!)**
    ```bash
@@ -310,8 +309,8 @@ When given a Linear issue ID, follow this workflow:
    Prototype phase complete (ENGINEER-nn). Source code reset to clean state.
    Tests kept - they capture discovered requirements.
 
-   Prototype diff saved to /tmp/FRED-XX/ENGINEER-nn/prototype.diff
    See /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md for discoveries.
+   Use git diff main...HEAD (before this commit) to review prototype approach.
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -371,31 +370,55 @@ After completing Phase 2 (prototype and learning extraction), you MUST:
    # Review all prior engineer explorations
    ls -la /tmp/FRED-XX/ENGINEER-*/
 
-   # Review prototype diffs from each engineer
-   for diff in /tmp/FRED-XX/ENGINEER-*/prototype.diff; do
-     echo "=== $(dirname $diff) ==="
-     head -n 50 "$diff"
+   # CONTEXT-EFFICIENT SYNTHESIS WORKFLOW
+   # Step 1: Read planning docs and summarize each engineer's approach (1-2 paragraphs)
+   # Step 2: Use git diff --stat for overview of changes
+
+   # For each ENGINEER-nn, get overview
+   for engineer_dir in /tmp/FRED-XX/ENGINEER-0[1-9]; do
+     engineer=$(basename "$engineer_dir")
+     echo "=== $engineer ==="
+
+     # Read planning docs for approach summary
+     cat "$engineer_dir/PLAN.md" "$engineer_dir/LEARNINGS.md"
+
+     # Get diff statistics (not full diff - avoids context bloat)
+     cd ".worktrees/FRED-XX/$engineer"
+     git diff main...HEAD --stat
+     cd -
    done
 
-   # Synthesize learnings from all engineers
+   # Step 3: Create SYNTHESIS.md with approach summaries (not full diffs)
    cat > /tmp/FRED-XX/ENGINEER-00/SYNTHESIS.md << 'EOF'
    # Synthesis of Multiple Engineer Explorations
 
    ## Engineers Reviewed
-   - ENGINEER-01: [Approach description]
-   - ENGINEER-02: [Approach description]
+   - ENGINEER-01: [1-2 paragraph summary from PLAN.md and LEARNINGS.md]
+   - ENGINEER-02: [1-2 paragraph summary from PLAN.md and LEARNINGS.md]
+
+   ## Key Statistics
+   - ENGINEER-01: [files changed, insertions, deletions from git diff --stat]
+   - ENGINEER-02: [files changed, insertions, deletions from git diff --stat]
 
    ## Best Ideas from Each
-   - From ENGINEER-01: [Key insights]
-   - From ENGINEER-02: [Key insights]
+   - From ENGINEER-01: [Key insights from LEARNINGS.md]
+   - From ENGINEER-02: [Key insights from LEARNINGS.md]
 
    ## Synthesis Strategy
    [How we'll combine the best ideas]
+
+   ## On-Demand Detail Retrieval
+   When implementing, retrieve specific details as needed:
+   - Use: git diff main...feature-branch-engineer-nn <specific-file>
+   - Re-read: /tmp/FRED-XX/ENGINEER-nn/ADR-*.md
+   - Check: git show feature-branch-engineer-nn:<file-path>
    EOF
 
-   # Switch to main feature branch (no -engineer-nn suffix)
-   # ENGINEER-00 works on the branch that will be pushed to remote
-   git checkout <branch-from-linear-issue>
+   # ENGINEER-00 works in main worktree (project root)
+   # No need to checkout - already in main worktree
+   # Create branch from main for synthesis work
+   cd /workspaces/fred_simulations  # Return to main worktree
+   git checkout -b <branch-from-linear-issue>
 
    cat > /tmp/FRED-XX/ENGINEER-00/PROTOTYPE_STATUS.md << 'EOF'
    # ✅ SYNTHESIS BUILD IN PROGRESS
@@ -660,6 +683,36 @@ After completing Phase 2 (prototype and learning extraction), you MUST:
    "
    ```
 
+4. **Cleanup Worktrees and Engineer Branches**
+   ```bash
+   # After PR is created, clean up engineer worktrees and branches
+   # This step is typically done after the PR is merged or when explorations are complete
+
+   # Return to main worktree
+   cd /workspaces/fred_simulations
+
+   # Remove each engineer worktree
+   git worktree remove .worktrees/FRED-XX/ENGINEER-01
+   git worktree remove .worktrees/FRED-XX/ENGINEER-02
+   git worktree remove .worktrees/FRED-XX/ENGINEER-03
+   # (repeat for each ENGINEER-nn that was created)
+
+   # Delete the local engineer branches (after worktrees are removed)
+   git branch -D <branch-from-linear-issue>-engineer-01
+   git branch -D <branch-from-linear-issue>-engineer-02
+   git branch -D <branch-from-linear-issue>-engineer-03
+   # (repeat for each ENGINEER-nn that was created)
+
+   # Clean up worktree directory if empty
+   rmdir .worktrees/FRED-XX/ 2>/dev/null || true
+   ```
+
+   **IMPORTANT**:
+   - Only ENGINEER-00 branch (<branch-from-linear-issue>) is pushed to remote
+   - ENGINEER-nn branches are never pushed and should be deleted after synthesis
+   - Worktrees must be removed before deleting branches
+   - Planning docs in /tmp/FRED-XX/ can be kept for reference or removed
+
 ### Phase 5: Respond to Code Review (When Prompted)
 
 **IMPORTANT: Only take this action when explicitly prompted by the user.**
@@ -814,17 +867,84 @@ Every implementation must have:
 - ✅ Integration tests verifying complete workflows
 - ✅ **REQUIRED** Architecture Decision Records (/tmp/FRED-XX/ENGINEER-nn/ADR-*.md, system tmp)
 - ✅ Prototype learnings documented (/tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md, system tmp)
-- ✅ Prototype diff captured (/tmp/FRED-XX/ENGINEER-nn/prototype.diff, system tmp)
+- ✅ Changed files list captured (/tmp/FRED-XX/ENGINEER-nn/changed_files.txt, system tmp)
 - ✅ Clean architecture separation (models, use cases, controllers, repositories)
 - ✅ Type hints on all functions and classes
 - ✅ Docstrings with BDD scenario references and prototype learnings
 - ✅ Conventional commits format
 - ✅ PR description explaining build-one-to-throw-away process and multi-engineer exploration
 
+## Git Pre-Push Hook (Optional Safety Net)
+
+To prevent accidentally pushing ENGINEER-nn branches to remote, you can install a pre-push hook:
+
+**Template: `.git/hooks/pre-push`**
+
+```bash
+#!/bin/bash
+# Pre-push hook to prevent pushing ENGINEER-nn branches
+
+while read local_ref local_sha remote_ref remote_sha; do
+  branch_name=$(echo "$local_ref" | sed 's/refs\/heads\///')
+
+  # Block any branch with -engineer-nn pattern (where nn is 01, 02, 03, etc.)
+  if [[ "$branch_name" =~ -engineer-[0-9]{2}$ ]]; then
+    echo "❌ ERROR: Cannot push ENGINEER branch: $branch_name"
+    echo ""
+    echo "ENGINEER-nn branches are LOCAL ONLY for parallel exploration."
+    echo "Only ENGINEER-00 synthesis branches (without -engineer-nn suffix) should be pushed."
+    echo ""
+    echo "Blocked branch: $branch_name"
+    exit 1
+  fi
+done
+
+exit 0
+```
+
+**Installation** (optional):
+```bash
+# Save the hook
+cat > .git/hooks/pre-push << 'EOF'
+#!/bin/bash
+# Pre-push hook to prevent pushing ENGINEER-nn branches
+
+while read local_ref local_sha remote_ref remote_sha; do
+  branch_name=$(echo "$local_ref" | sed 's/refs\/heads\///')
+
+  if [[ "$branch_name" =~ -engineer-[0-9]{2}$ ]]; then
+    echo "❌ ERROR: Cannot push ENGINEER branch: $branch_name"
+    echo ""
+    echo "ENGINEER-nn branches are LOCAL ONLY for parallel exploration."
+    echo "Only ENGINEER-00 synthesis branches (without -engineer-nn suffix) should be pushed."
+    echo ""
+    echo "Blocked branch: $branch_name"
+    exit 1
+  fi
+done
+
+exit 0
+EOF
+
+# Make it executable
+chmod +x .git/hooks/pre-push
+```
+
+**Note**: This hook is provided for reference but is optional. The agent specification already enforces the policy that ENGINEER-nn branches are never pushed. Install this hook if you want an automated safety check.
+
 ## File Organization
 
 ```
-/tmp/FRED-XX/                         # Planning artifacts (SYSTEM /tmp, EPHEMERAL)
+# Worktrees (source code only - IN REPO but gitignored)
+/workspaces/fred_simulations/              # ENGINEER-00 (main worktree)
+└── .worktrees/
+    └── FRED-XX/
+        ├── ENGINEER-01/               # Branch: <branch>-engineer-01
+        ├── ENGINEER-02/               # Branch: <branch>-engineer-02
+        └── ENGINEER-03/               # Branch: <branch>-engineer-03
+
+# Planning docs (outside repo - EPHEMERAL)
+/tmp/FRED-XX/                         # Planning artifacts (SYSTEM /tmp)
 ├── ENGINEER-01/                      # First engineer's exploration (local branch only)
 │   ├── feature_name.feature          # BDD specifications (planning docs)
 │   ├── PLAN.md                       # Implementation plan
@@ -832,7 +952,6 @@ Every implementation must have:
 │   ├── PROTOTYPE_STATUS.md           # Current phase marker
 │   ├── ADR-001-decision.md           # Architecture decision records (REQUIRED)
 │   ├── ADR-002-decision.md           # More ADRs (REQUIRED)
-│   ├── prototype.diff                # Complete diff of prototype changes
 │   └── changed_files.txt             # List of files changed
 ├── ENGINEER-02/                      # Second engineer's exploration (local branch only)
 │   ├── feature_name.feature
@@ -840,14 +959,14 @@ Every implementation must have:
 │   ├── LEARNINGS.md
 │   ├── PROTOTYPE_STATUS.md
 │   ├── ADR-001-decision.md           # (REQUIRED)
-│   ├── prototype.diff
 │   └── changed_files.txt
-└── ENGINEER-00/                      # SYNTHESIS PHASE (main feature branch - pushed to remote)
+└── ENGINEER-00/                      # SYNTHESIS PHASE (main worktree - pushed to remote)
     ├── SYNTHESIS.md                  # Synthesis of all engineer explorations
     ├── PLAN.md                       # Final implementation plan
     └── PROTOTYPE_STATUS.md           # Final build status
 
-epistemix_platform/src/epistemix_platform/  # Source code (IN REPO)
+# Source code (IN REPO, in main worktree and each engineer worktree)
+epistemix_platform/src/epistemix_platform/
 ├── models/                           # Business models (dataclasses)
 ├── mappers/                          # ORM ↔ Business model transformations
 ├── repositories/                     # Data access (proper rebuild)
@@ -869,13 +988,13 @@ You provide:
 - Clear workflow execution with explicit skill invocations
 - BDD specifications as planning documents (in /tmp/ at system root)
 - Multi-engineer exploration approach when appropriate
-- Throwaway prototype on engineer-specific branch (ENGINEER-nn, local only)
+- Throwaway prototype in engineer worktrees (ENGINEER-nn, local only)
 - Tests from prototype that capture real requirements
 - Source code reset via git checkout (not deletion)
-- **REQUIRED** prototype diff generation for synthesis comparison
+- Context-efficient synthesis using git diff commands (not saved diffs)
 - **REQUIRED** Architecture Decision Records (ADRs)
 - Human-in-the-loop approval before Phase 3
-- Proper rebuild using TDD with prototype learnings (ENGINEER-00 on main feature branch)
+- Proper rebuild using TDD with prototype learnings (ENGINEER-00 in main worktree)
 - Detailed commit messages referencing prototype discoveries
 - PR descriptions explaining multi-engineer exploration and synthesis
 - Thoughtful CodeRabbit responses with test-driven fixes
@@ -883,28 +1002,32 @@ You provide:
 You always:
 - Invoke skills for methodology guidance
 - Create BDD specs before coding (in /tmp/ at system root)
+- Use worktrees for ENGINEER-nn explorations (enables parallel work)
 - Build prototype to learn (when appropriate)
-- Generate prototype.diff before resetting
 - Create REQUIRED ADRs documenting all major decisions
 - STOP at Phase 2.5 for human approval
 - Reset source code, keep tests
-- Rebuild properly with TDD + clean architecture (as ENGINEER-00)
+- Use context-efficient synthesis (summaries + git diff --stat, not full diffs)
+- Rebuild properly with TDD + clean architecture (as ENGINEER-00 in main worktree)
 - Document learnings in /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md
 - Reference prototype discoveries in commits and PR
 - Apply Red-Green-Refactor-Commit workflow
 - Only push ENGINEER-00 work to remote (never ENGINEER-nn branches)
+- Clean up worktrees and engineer branches after PR creation
 
 ## Remember
 
 - **/tmp/** = SYSTEM ROOT /tmp, not project root tmp/
-- **ENGINEER-nn** = Individual explorations (01, 02, 03...), local branches only, never pushed
-- **ENGINEER-00** = Synthesis phase, works on main feature branch, gets pushed to remote
+- **Worktrees** = in `.worktrees/FRED-XX/ENGINEER-nn/`, enable parallel exploration without branch switching
+- **ENGINEER-nn** = Individual explorations (01, 02, 03...) in separate worktrees, local branches only, never pushed
+- **ENGINEER-00** = Synthesis phase, works in main worktree (project root), gets pushed to remote
 - **BDD specs** = planning documents in /tmp/ (ephemeral, not in repo)
 - **ADRs** = REQUIRED, not optional, capture architectural reasoning
-- **Throwaway prototype** = on engineer-specific branch, reset with `git checkout main --`, keep tests
-- **prototype.diff** = REQUIRED capture of all prototype changes for synthesis
+- **Throwaway prototype** = in engineer worktrees, reset with `git checkout main --`, keep tests
+- **Synthesis** = Context-efficient using planning docs + git diff --stat, retrieve details on-demand
 - **Phase 2.5** = STOP and wait for human approval before Phase 3
 - **TDD rebuild** = tests already exist from prototype, make them pass properly
 - **Prototype learnings** = in /tmp/FRED-XX/ENGINEER-nn/LEARNINGS.md (ephemeral)
 - **Clean architecture** = models, use cases, controllers, repositories
 - **Skills** = invoke for guidance (build-one-to-throw-away, BDD, TDD, etc.)
+- **Cleanup** = Remove worktrees first, then delete engineer branches after PR creation
