@@ -5,6 +5,5 @@ They differ from repositories which handle database persistence.
 """
 
 from epistemix_platform.gateways.interfaces import ISimulationRunner
-from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
 
-__all__ = ["ISimulationRunner", "AWSBatchSimulationRunner"]
+__all__ = ["ISimulationRunner"]
