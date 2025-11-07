@@ -72,18 +72,21 @@ class AWSBatchSimulationRunner:
         # Use natural_key for job name
         job_name = run.natural_key()
 
-        # Prepare environment variables for container
-        environment = [
-            {"name": "JOB_ID", "value": str(run.job_id)},
-            {"name": "RUN_ID", "value": str(run.id)},
+        # Prepare command to invoke simulation-runner CLI with job and run IDs
+        # Command format: ["run", "--job-id", "11", "--run-id", "3"]
+        command = [
+            "run",
+            "--job-id", str(run.job_id),
+            "--run-id", str(run.id),
         ]
 
-        # Submit job to AWS Batch (job ID not stored - AWS Batch is source of truth)
+        # Submit job to AWS Batch with command override
+        # Environment variables are set in the job definition
         self._batch_client.submit_job(
             jobName=job_name,
             jobQueue=self._job_queue_name,
             jobDefinition=self._job_definition_name,
-            containerOverrides={"environment": environment},
+            containerOverrides={"command": command},
         )
 
     def describe_run(self, run: Run) -> RunStatusDetail:
