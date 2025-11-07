@@ -330,24 +330,36 @@ epistemix_platform/
     └── conftest.py     # Shared fixtures
 ```
 
-### Running Tests
+### Running Tests with Pants
+
+**CRITICAL**: Always use **target addresses**, never file paths, to maximize Pants caching benefits.
 
 ```bash
-# Run all tests
+# ✅ CORRECT: Use target addresses (maximizes cache hits)
+pants test epistemix_platform:src-tests
+
+# ❌ WRONG: Using file paths creates separate caches
+pants test epistemix_platform/tests/test_*.py
+
+# Run all tests in repository
 pants test ::
 
-# Run specific component
+# Run all tests in component
 pants test epistemix_platform::
 
-# Run with verbose output
-pants test epistemix_platform:: -- -vv
-
-# Run tests matching pattern
-pants test epistemix_platform:: -- -k "test_user"
-
-# Stop on first failure
-pants test epistemix_platform:: -- -x
+# Pass arguments to pytest after --
+pants test epistemix_platform:src-tests -- -vv        # Verbose
+pants test epistemix_platform:src-tests -- -k "test_user"  # Pattern match
+pants test epistemix_platform:src-tests -- -x         # Stop on first failure
+pants test epistemix_platform:src-tests -- -s         # Show print statements
 ```
+
+**For comprehensive Pants guidance**, see the `pants-build-system` skill, which covers:
+- Why target addresses vs file paths matter for caching
+- How Pants' file-level dependency tracking works
+- Target specifications (:: wildcard, BUILD files)
+- Cache optimization strategies
+- Integration with TDD workflows
 
 ## Remember
 
