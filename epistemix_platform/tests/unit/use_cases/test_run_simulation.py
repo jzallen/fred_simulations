@@ -19,7 +19,6 @@ class TestRunSimulationUseCase:
     def test_run_simulation_submits_run_to_gateway(self):
         """RED: Test that run_simulation submits run to simulation_runner gateway."""
         # ARRANGE
-        mock_run_repository = Mock()
         mock_simulation_runner = Mock()
 
         run = Run.create_persisted(
@@ -30,12 +29,10 @@ class TestRunSimulationUseCase:
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
         )
-        mock_run_repository.find_by_id.return_value = run
 
         # ACT
         run_simulation(
-            run_id=42,
-            run_repository=mock_run_repository,
+            run=run,
             simulation_runner=mock_simulation_runner,
         )
 
@@ -45,7 +42,6 @@ class TestRunSimulationUseCase:
     def test_run_simulation_does_not_save_run_after_submit(self):
         """Test that run_simulation does NOT save run after submit (AWS Batch is source of truth)."""
         # ARRANGE
-        mock_run_repository = Mock()
         mock_simulation_runner = Mock()
 
         run = Run.create_persisted(
@@ -56,22 +52,19 @@ class TestRunSimulationUseCase:
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
         )
-        mock_run_repository.find_by_id.return_value = run
 
         # ACT
         run_simulation(
-            run_id=42,
-            run_repository=mock_run_repository,
+            run=run,
             simulation_runner=mock_simulation_runner,
         )
 
-        # ASSERT - Repository save should NOT be called (no ephemeral fields to store)
-        mock_run_repository.save.assert_not_called()
+        # ASSERT - No repository involved anymore, just verify gateway called
+        mock_simulation_runner.submit_run.assert_called_once()
 
-    def test_run_simulation_retrieves_run_from_repository(self):
-        """RED: Test that run_simulation retrieves run by ID."""
+    def test_run_simulation_accepts_run_object_directly(self):
+        """Test that run_simulation accepts Run object directly (no repository lookup)."""
         # ARRANGE
-        mock_run_repository = Mock()
         mock_simulation_runner = Mock()
 
         run = Run.create_persisted(
@@ -82,38 +75,33 @@ class TestRunSimulationUseCase:
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
         )
-        mock_run_repository.find_by_id.return_value = run
-
-        # ACT
-        run_simulation(
-            run_id=42,
-            run_repository=mock_run_repository,
-            simulation_runner=mock_simulation_runner,
-        )
-
-        # ASSERT
-        mock_run_repository.find_by_id.assert_called_once_with(42)
-
-    def test_run_simulation_returns_run(self):
-        """Test that run_simulation returns the run unchanged."""
-        # ARRANGE
-        mock_run_repository = Mock()
-        mock_simulation_runner = Mock()
-
-        run = Run.create_persisted(
-            run_id=42,
-            job_id=123,
-            user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
-            request={"simulation": "test"},
-        )
-        mock_run_repository.find_by_id.return_value = run
 
         # ACT
         result = run_simulation(
+            run=run,
+            simulation_runner=mock_simulation_runner,
+        )
+
+        # ASSERT - Run passed directly, no repository lookup needed
+        assert result is run
+
+    def test_run_simulation_returns_run_unchanged(self):
+        """Test that run_simulation returns the run unchanged."""
+        # ARRANGE
+        mock_simulation_runner = Mock()
+
+        run = Run.create_persisted(
             run_id=42,
-            run_repository=mock_run_repository,
+            job_id=123,
+            user_id=456,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            request={"simulation": "test"},
+        )
+
+        # ACT
+        result = run_simulation(
+            run=run,
             simulation_runner=mock_simulation_runner,
         )
 
@@ -121,18 +109,26 @@ class TestRunSimulationUseCase:
         assert result.id == run.id
         assert result is run  # Same object, unmodified
 
-    def test_run_simulation_raises_if_run_not_found(self):
-        """RED: Test that run_simulation raises if run doesn't exist."""
+    def test_run_simulation_logs_submission_info(self):
+        """Test that run_simulation logs job submission with natural key."""
         # ARRANGE
-        mock_run_repository = Mock()
         mock_simulation_runner = Mock()
 
-        mock_run_repository.find_by_id.return_value = None
+        run = Run.create_persisted(
+            run_id=42,
+            job_id=123,
+            user_id=456,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            request={"simulation": "test"},
+        )
 
-        # ACT & ASSERT
-        with pytest.raises(ValueError, match="Run not found"):
-            run_simulation(
-                run_id=999,
-                run_repository=mock_run_repository,
-                simulation_runner=mock_simulation_runner,
-            )
+        # ACT
+        result = run_simulation(
+            run=run,
+            simulation_runner=mock_simulation_runner,
+        )
+
+        # ASSERT - Just verify the function completes successfully
+        assert result is run
+        mock_simulation_runner.submit_run.assert_called_once_with(run)
