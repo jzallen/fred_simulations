@@ -15,54 +15,66 @@ class ISimulationRunner(Protocol):
 
     Gateways implementing this protocol handle submission and monitoring
     of simulation runs on external compute infrastructure (e.g., AWS Batch).
+
+    AWS Batch is the source of truth for job state. Jobs are tracked by
+    name (run.natural_key()) rather than storing job IDs in the database.
     """
 
     def submit_run(self, run: Run) -> None:
         """
         Submit a run for execution.
 
+        Uses run.natural_key() as the job name for tracking in AWS Batch.
+        Does not modify the run object; AWS Batch is the source of truth.
+
         Args:
             run: The Run to submit for execution
 
-        Side Effects:
-            Updates run.aws_batch_job_id with the job ID returned from AWS Batch
-
         Note:
-            Implementation will call aws_batch.submit_job internally
-            Job definition ARN and queue name are constants within the implementation
+            Implementation will call aws_batch.submit_job internally with
+            jobName=run.natural_key(). Job definition ARN and queue name
+            are constants within the implementation.
         """
         ...
 
     def describe_run(self, run: Run) -> RunStatusDetail:
         """
-        Get current status of a run.
+        Get current status of a run from AWS Batch.
+
+        Looks up the job by name (run.natural_key()), then queries status.
+        AWS Batch is the source of truth for job state.
 
         Args:
-            run: The Run to query status for (must have aws_batch_job_id set)
+            run: The Run to query status for
 
         Returns:
             RunStatusDetail with current state and message from AWS Batch
 
         Raises:
-            ValueError: If run.aws_batch_job_id is None
+            ValueError: If job not found in AWS Batch
 
         Note:
-            Implementation will call aws_batch.describe_jobs internally
-            Maps AWS Batch status to RunStatus enum
+            Implementation will call aws_batch.list_jobs (with name filter)
+            and aws_batch.describe_jobs internally. Maps AWS Batch status
+            to RunStatus enum.
         """
         ...
 
     def cancel_run(self, run: Run) -> None:
         """
-        Cancel a running simulation.
+        Cancel a running simulation on AWS Batch.
+
+        Looks up the job by name (run.natural_key()), then terminates it.
+        AWS Batch is the source of truth for job state.
 
         Args:
-            run: The Run to cancel (must have aws_batch_job_id set)
+            run: The Run to cancel
 
         Raises:
-            ValueError: If run.aws_batch_job_id is None
+            ValueError: If job not found in AWS Batch
 
         Note:
-            Implementation will call aws_batch.terminate_job internally
+            Implementation will call aws_batch.list_jobs (with name filter)
+            and aws_batch.terminate_job internally.
         """
         ...

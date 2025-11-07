@@ -42,8 +42,8 @@ class TestAWSBatchSimulationRunnerSubmit:
         assert "jobDefinition" in call_kwargs
         assert "jobQueue" in call_kwargs
 
-    def test_submit_run_updates_run_aws_batch_job_id(self):
-        """RED: Test that submit_run updates run.aws_batch_job_id."""
+    def test_submit_run_does_not_modify_run_object(self):
+        """Test that submit_run does not modify the run object (AWS Batch is source of truth)."""
         # ARRANGE
         mock_batch_client = Mock()
         mock_batch_client.submit_job.return_value = {"jobId": "abc-123-job-id"}
@@ -59,11 +59,14 @@ class TestAWSBatchSimulationRunnerSubmit:
             request={"simulation": "test"},
         )
 
+        # Store original attributes
+        original_dict = run.to_dict()
+
         # ACT
         runner.submit_run(run)
 
-        # ASSERT
-        assert run.aws_batch_job_id == "abc-123-job-id"
+        # ASSERT - Run object should be unchanged (AWS Batch is source of truth)
+        assert run.to_dict() == original_dict
 
     def test_submit_run_passes_job_and_run_ids_as_environment_variables(self):
         """RED: Test that submit_run passes job_id and run_id as env vars."""
@@ -98,13 +101,24 @@ class TestAWSBatchSimulationRunnerSubmit:
 class TestAWSBatchSimulationRunnerDescribe:
     """Tests for describe_run method."""
 
-    def test_describe_run_calls_boto3_describe_jobs(self):
-        """RED: Test that describe_run calls boto3 describe_jobs."""
+    def test_describe_run_calls_boto3_list_jobs_with_name_filter(self):
+        """Test that describe_run uses list_jobs with JOB_NAME filter."""
         # ARRANGE
         mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {
+            "jobSummaryList": [
+                {
+                    "jobId": "abc-123-job-id",
+                    "jobName": "job-123-run-42",
+                    "status": "RUNNING",
+                    "createdAt": 1234567890,
+                }
+            ]
+        }
         mock_batch_client.describe_jobs.return_value = {
             "jobs": [
                 {
+                    "jobId": "abc-123-job-id",
                     "status": "RUNNING",
                     "statusReason": "Job is running on compute environment",
                 }
@@ -120,22 +134,34 @@ class TestAWSBatchSimulationRunnerDescribe:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id="abc-123-job-id",
         )
 
         # ACT
         result = runner.describe_run(run)
 
         # ASSERT
+        mock_batch_client.list_jobs.assert_called_once()
+        call_kwargs = mock_batch_client.list_jobs.call_args[1]
+        assert call_kwargs["filters"] == [{"name": "JOB_NAME", "values": ["job-123-run-42"]}]
         mock_batch_client.describe_jobs.assert_called_once_with(jobs=["abc-123-job-id"])
 
     def test_describe_run_returns_status_detail_with_running(self):
-        """RED: Test that describe_run returns RunStatusDetail for RUNNING."""
+        """Test that describe_run returns RunStatusDetail for RUNNING."""
         # ARRANGE
         mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {
+            "jobSummaryList": [
+                {
+                    "jobId": "abc-123-job-id",
+                    "jobName": "job-123-run-42",
+                    "status": "RUNNING",
+                }
+            ]
+        }
         mock_batch_client.describe_jobs.return_value = {
             "jobs": [
                 {
+                    "jobId": "abc-123-job-id",
                     "status": "RUNNING",
                     "statusReason": "Job is running on compute environment",
                 }
@@ -151,7 +177,6 @@ class TestAWSBatchSimulationRunnerDescribe:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id="abc-123-job-id",
         )
 
         # ACT
@@ -163,7 +188,7 @@ class TestAWSBatchSimulationRunnerDescribe:
         assert result.message == "Job is running on compute environment"
 
     def test_describe_run_maps_batch_status_to_run_status(self):
-        """RED: Test that describe_run maps AWS Batch statuses to RunStatus."""
+        """Test that describe_run maps AWS Batch statuses to RunStatus."""
         # ARRANGE
         mock_batch_client = Mock()
         runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
@@ -175,8 +200,12 @@ class TestAWSBatchSimulationRunnerDescribe:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id="abc-123-job-id",
         )
+
+        # Mock list_jobs to return a job ID
+        mock_batch_client.list_jobs.return_value = {
+            "jobSummaryList": [{"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}]
+        }
 
         # Test SUBMITTED -> QUEUED
         mock_batch_client.describe_jobs.return_value = {
@@ -227,10 +256,12 @@ class TestAWSBatchSimulationRunnerDescribe:
         result = runner.describe_run(run)
         assert result.status == RunStatus.ERROR
 
-    def test_describe_run_raises_if_no_batch_job_id(self):
-        """RED: Test that describe_run raises ValueError if no aws_batch_job_id."""
+    def test_describe_run_raises_if_job_not_found_in_batch(self):
+        """Test that describe_run raises ValueError if job not found in AWS Batch."""
         # ARRANGE
         mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {"jobSummaryList": []}  # No jobs found
+
         runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
 
         run = Run.create_persisted(
@@ -240,21 +271,29 @@ class TestAWSBatchSimulationRunnerDescribe:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id=None,  # No batch job ID
         )
 
         # ACT & ASSERT
-        with pytest.raises(ValueError, match="aws_batch_job_id"):
+        with pytest.raises(ValueError, match="Job not found"):
             runner.describe_run(run)
 
 
 class TestAWSBatchSimulationRunnerCancel:
     """Tests for cancel_run method."""
 
-    def test_cancel_run_calls_boto3_terminate_job(self):
-        """RED: Test that cancel_run calls boto3 terminate_job."""
+    def test_cancel_run_uses_name_lookup_and_terminates_job(self):
+        """Test that cancel_run looks up job by name then terminates it."""
         # ARRANGE
         mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {
+            "jobSummaryList": [
+                {
+                    "jobId": "abc-123-job-id",
+                    "jobName": "job-123-run-42",
+                    "status": "RUNNING",
+                }
+            ]
+        }
         mock_batch_client.terminate_job.return_value = {}
 
         runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
@@ -266,21 +305,25 @@ class TestAWSBatchSimulationRunnerCancel:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id="abc-123-job-id",
         )
 
         # ACT
         runner.cancel_run(run)
 
         # ASSERT
+        mock_batch_client.list_jobs.assert_called_once()
+        call_kwargs = mock_batch_client.list_jobs.call_args[1]
+        assert call_kwargs["filters"] == [{"name": "JOB_NAME", "values": ["job-123-run-42"]}]
         mock_batch_client.terminate_job.assert_called_once_with(
             jobId="abc-123-job-id", reason="User requested cancellation"
         )
 
-    def test_cancel_run_raises_if_no_batch_job_id(self):
-        """RED: Test that cancel_run raises ValueError if no aws_batch_job_id."""
+    def test_cancel_run_raises_if_job_not_found(self):
+        """Test that cancel_run raises ValueError if job not found in AWS Batch."""
         # ARRANGE
         mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {"jobSummaryList": []}  # No jobs found
+
         runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
 
         run = Run.create_persisted(
@@ -290,11 +333,10 @@ class TestAWSBatchSimulationRunnerCancel:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             request={"simulation": "test"},
-            aws_batch_job_id=None,  # No batch job ID
         )
 
         # ACT & ASSERT
-        with pytest.raises(ValueError, match="aws_batch_job_id"):
+        with pytest.raises(ValueError, match="Job not found"):
             runner.cancel_run(run)
 
 

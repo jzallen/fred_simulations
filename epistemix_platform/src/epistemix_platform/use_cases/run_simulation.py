@@ -25,7 +25,9 @@ def run_simulation(
     This use case orchestrates the process of:
     1. Retrieving the run from the repository
     2. Submitting it to AWS Batch via the simulation runner gateway
-    3. Saving the updated run (with aws_batch_job_id) back to the repository
+
+    AWS Batch is the source of truth for job state. The run object is not
+    modified or saved after submission. Jobs are tracked by name (run.natural_key()).
 
     Args:
         run_id: ID of the run to execute
@@ -33,7 +35,7 @@ def run_simulation(
         simulation_runner: Gateway for AWS Batch integration
 
     Returns:
-        The updated Run with aws_batch_job_id set
+        The Run (unmodified - AWS Batch is source of truth)
 
     Raises:
         ValueError: If run not found in repository
@@ -43,14 +45,11 @@ def run_simulation(
     if run is None:
         raise ValueError(f"Run not found: {run_id}")
 
-    # Submit run to AWS Batch via gateway
+    # Submit run to AWS Batch via gateway (does not modify run object)
     simulation_runner.submit_run(run)
 
-    # Save updated run (now has aws_batch_job_id)
-    run_repository.save(run)
-
     logger.info(
-        f"Submitted run {run_id} to AWS Batch with job ID: {run.aws_batch_job_id}"
+        f"Submitted run {run_id} to AWS Batch with job name: {run.natural_key()}"
     )
 
     return run

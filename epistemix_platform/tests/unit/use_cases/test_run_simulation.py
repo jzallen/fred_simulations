@@ -42,8 +42,8 @@ class TestRunSimulationUseCase:
         # ASSERT
         mock_simulation_runner.submit_run.assert_called_once_with(run)
 
-    def test_run_simulation_updates_run_in_repository(self):
-        """RED: Test that run_simulation saves updated run to repository."""
+    def test_run_simulation_does_not_save_run_after_submit(self):
+        """Test that run_simulation does NOT save run after submit (AWS Batch is source of truth)."""
         # ARRANGE
         mock_run_repository = Mock()
         mock_simulation_runner = Mock()
@@ -58,12 +58,6 @@ class TestRunSimulationUseCase:
         )
         mock_run_repository.find_by_id.return_value = run
 
-        # Simulate gateway updating aws_batch_job_id
-        def submit_side_effect(run):
-            run.aws_batch_job_id = "batch-job-123"
-
-        mock_simulation_runner.submit_run.side_effect = submit_side_effect
-
         # ACT
         run_simulation(
             run_id=42,
@@ -71,10 +65,8 @@ class TestRunSimulationUseCase:
             simulation_runner=mock_simulation_runner,
         )
 
-        # ASSERT
-        mock_run_repository.save.assert_called_once()
-        saved_run = mock_run_repository.save.call_args[0][0]
-        assert saved_run.aws_batch_job_id == "batch-job-123"
+        # ASSERT - Repository save should NOT be called (no ephemeral fields to store)
+        mock_run_repository.save.assert_not_called()
 
     def test_run_simulation_retrieves_run_from_repository(self):
         """RED: Test that run_simulation retrieves run by ID."""
@@ -102,8 +94,8 @@ class TestRunSimulationUseCase:
         # ASSERT
         mock_run_repository.find_by_id.assert_called_once_with(42)
 
-    def test_run_simulation_returns_updated_run(self):
-        """RED: Test that run_simulation returns the updated run."""
+    def test_run_simulation_returns_run(self):
+        """Test that run_simulation returns the run unchanged."""
         # ARRANGE
         mock_run_repository = Mock()
         mock_simulation_runner = Mock()
@@ -118,11 +110,6 @@ class TestRunSimulationUseCase:
         )
         mock_run_repository.find_by_id.return_value = run
 
-        def submit_side_effect(run):
-            run.aws_batch_job_id = "batch-job-123"
-
-        mock_simulation_runner.submit_run.side_effect = submit_side_effect
-
         # ACT
         result = run_simulation(
             run_id=42,
@@ -132,7 +119,7 @@ class TestRunSimulationUseCase:
 
         # ASSERT
         assert result.id == run.id
-        assert result.aws_batch_job_id == "batch-job-123"
+        assert result is run  # Same object, unmodified
 
     def test_run_simulation_raises_if_run_not_found(self):
         """RED: Test that run_simulation raises if run doesn't exist."""

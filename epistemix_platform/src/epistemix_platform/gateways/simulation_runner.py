@@ -38,11 +38,15 @@ class AWSBatchSimulationRunner:
         """
         Submit a run to AWS Batch for execution.
 
+        Uses run.natural_key() as the AWS Batch job name for tracking.
+        AWS Batch is the source of truth for job state; no job ID is stored in the database.
+
         Args:
             run: The Run to submit
 
-        Side Effects:
-            Updates run.aws_batch_job_id with the returned job ID
+        Note:
+            Does not modify the run object. AWS Batch maintains job state,
+            and jobs can be looked up by name using run.natural_key().
         """
         # Use natural_key for job name
         job_name = run.natural_key()
@@ -53,38 +57,50 @@ class AWSBatchSimulationRunner:
             {"name": "RUN_ID", "value": str(run.id)},
         ]
 
-        # Submit job to AWS Batch
-        response = self._batch_client.submit_job(
+        # Submit job to AWS Batch (job ID not stored - AWS Batch is source of truth)
+        self._batch_client.submit_job(
             jobName=job_name,
             jobQueue=JOB_QUEUE_NAME,
             jobDefinition=JOB_DEFINITION_ARN,
             containerOverrides={"environment": environment},
         )
 
-        # Update run with Batch job ID
-        run.aws_batch_job_id = response["jobId"]
-
     def describe_run(self, run: Run) -> RunStatusDetail:
         """
-        Get current status of a run from AWS Batch.
+        Get current status of a run from AWS Batch using name-based lookup.
+
+        Looks up the job in AWS Batch by natural key (job name), then retrieves
+        detailed status information. AWS Batch is the source of truth for job state.
 
         Args:
-            run: The Run to query (must have aws_batch_job_id set)
+            run: The Run to query
 
         Returns:
             RunStatusDetail with current status and message
 
         Raises:
-            ValueError: If run.aws_batch_job_id is None
+            ValueError: If job not found in AWS Batch
         """
-        if run.aws_batch_job_id is None:
-            raise ValueError("Cannot describe run: aws_batch_job_id is None")
+        # Look up job by name using natural_key
+        job_name = run.natural_key()
 
-        # Query AWS Batch for job status
-        response = self._batch_client.describe_jobs(jobs=[run.aws_batch_job_id])
+        list_response = self._batch_client.list_jobs(
+            jobQueue=JOB_QUEUE_NAME,
+            filters=[{"name": "JOB_NAME", "values": [job_name]}],
+        )
+
+        job_list = list_response.get("jobSummaryList", [])
+        if not job_list:
+            raise ValueError(f"Job not found in AWS Batch: {job_name}")
+
+        # Get the job ID from list_jobs
+        job_id = job_list[0]["jobId"]
+
+        # Query AWS Batch for detailed job status
+        response = self._batch_client.describe_jobs(jobs=[job_id])
 
         if not response.get("jobs"):
-            raise ValueError(f"Job not found: {run.aws_batch_job_id}")
+            raise ValueError(f"Job not found: {job_id}")
 
         job = response["jobs"][0]
         batch_status = job["status"]
@@ -107,18 +123,33 @@ class AWSBatchSimulationRunner:
 
     def cancel_run(self, run: Run) -> None:
         """
-        Cancel a running simulation on AWS Batch.
+        Cancel a running simulation on AWS Batch using name-based lookup.
+
+        Looks up the job in AWS Batch by natural key (job name), then terminates it.
+        AWS Batch is the source of truth for job state.
 
         Args:
-            run: The Run to cancel (must have aws_batch_job_id set)
+            run: The Run to cancel
 
         Raises:
-            ValueError: If run.aws_batch_job_id is None
+            ValueError: If job not found in AWS Batch
         """
-        if run.aws_batch_job_id is None:
-            raise ValueError("Cannot cancel run: aws_batch_job_id is None")
+        # Look up job by name using natural_key
+        job_name = run.natural_key()
+
+        list_response = self._batch_client.list_jobs(
+            jobQueue=JOB_QUEUE_NAME,
+            filters=[{"name": "JOB_NAME", "values": [job_name]}],
+        )
+
+        job_list = list_response.get("jobSummaryList", [])
+        if not job_list:
+            raise ValueError(f"Job not found in AWS Batch: {job_name}")
+
+        # Get the job ID from list_jobs
+        job_id = job_list[0]["jobId"]
 
         # Terminate the Batch job
         self._batch_client.terminate_job(
-            jobId=run.aws_batch_job_id, reason="User requested cancellation"
+            jobId=job_id, reason="User requested cancellation"
         )
