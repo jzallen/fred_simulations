@@ -19,6 +19,9 @@ from flask_cors import CORS
 from pydantic import ValidationError
 from returns.pipeline import is_successful
 
+# Import configuration
+from epistemix_platform.config import config
+
 # Import our business models and controllers
 from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
@@ -41,6 +44,11 @@ from epistemix_platform.repositories.s3_upload_location_repository import (
 app = Flask(__name__)
 CORS(app)
 
+# Load configuration based on environment
+# Check ENVIRONMENT first (matches Sceptre stack groups), then FLASK_ENV for backward compatibility
+env_name = os.getenv("ENVIRONMENT") or os.getenv("FLASK_ENV", "development")
+app.config.from_object(config[env_name])
+
 # Configure logging to stdout for Docker
 logging.basicConfig(
     level=logging.INFO,
@@ -51,13 +59,6 @@ logging.basicConfig(
     force=True,
 )
 logger = logging.getLogger(__name__)
-
-# Configure database
-database_url = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
-# Handle postgres:// -> postgresql:// conversion for compatibility
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-app.config["DATABASE_URL"] = database_url
 
 
 # Global error handlers
@@ -160,15 +161,15 @@ def get_job_controller():
     upload_location_repository = get_upload_location_repository()
 
     # Create S3 results repository
-    bucket_name = app.config.get("S3_UPLOAD_BUCKET")
-    region_name = app.config.get("AWS_REGION")
+    bucket_name = app.config["S3_UPLOAD_BUCKET"]
+    region_name = app.config["AWS_REGION"]
     s3_client = create_s3_client(region_name=region_name)
     results_repository = S3ResultsRepository(s3_client, bucket_name)
 
     # Create simulation runner gateway (REQUIRED)
     from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-    environment = app.config.get("ENVIRONMENT")
-    aws_region = app.config.get("AWS_REGION")
+    environment = app.config["ENVIRONMENT"]
+    aws_region = app.config["AWS_REGION"]
     simulation_runner = AWSBatchSimulationRunner.create(
         environment=environment,
         region=aws_region
@@ -404,9 +405,9 @@ def root():
 
 
 if __name__ == "__main__":
-    # Load environment variables
+    # Use config for debug mode, allow env vars for host/port override
     host = os.getenv("FLASK_HOST", "0.0.0.0")
-    port = int(os.getenv("FLASK_PORT", 5000))
-    debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+    port = int(os.getenv("FLASK_PORT", "5000"))
+    debug = app.config["DEBUG"]
 
     app.run(host=host, port=port, debug=debug)

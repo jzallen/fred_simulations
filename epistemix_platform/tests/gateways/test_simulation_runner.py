@@ -344,12 +344,16 @@ class TestAWSBatchSimulationRunnerConstants:
     """Tests for gateway constants."""
 
     def test_gateway_uses_correct_job_definition_arn(self):
-        """Test that gateway has correct job definition ARN constant."""
+        """Test that gateway has correct job definition name format."""
         # ARRANGE
         mock_batch_client = Mock()
         mock_batch_client.submit_job.return_value = {"jobId": "test-id"}
 
-        runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+        runner = AWSBatchSimulationRunner(
+            batch_client=mock_batch_client,
+            job_queue_name="fred-batch-queue-dev",
+            job_definition_name="fred-simulation-runner-dev"
+        )
 
         run = Run.create_persisted(
             run_id=42,
@@ -365,17 +369,20 @@ class TestAWSBatchSimulationRunnerConstants:
 
         # ASSERT
         call_kwargs = mock_batch_client.submit_job.call_args[1]
-        # Verify format looks like a job definition ARN
-        assert call_kwargs["jobDefinition"].startswith("arn:aws:batch:")
-        assert "job-definition/simulation-runner" in call_kwargs["jobDefinition"]
+        # Verify job definition name matches expected format
+        assert call_kwargs["jobDefinition"] == "fred-simulation-runner-dev"
 
     def test_gateway_uses_correct_job_queue_name(self):
-        """Test that gateway has correct job queue name constant."""
+        """Test that gateway has correct job queue name format."""
         # ARRANGE
         mock_batch_client = Mock()
         mock_batch_client.submit_job.return_value = {"jobId": "test-id"}
 
-        runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+        runner = AWSBatchSimulationRunner(
+            batch_client=mock_batch_client,
+            job_queue_name="fred-batch-queue-dev",
+            job_definition_name="fred-simulation-runner-dev"
+        )
 
         run = Run.create_persisted(
             run_id=42,
@@ -391,4 +398,4 @@ class TestAWSBatchSimulationRunnerConstants:
 
         # ASSERT
         call_kwargs = mock_batch_client.submit_job.call_args[1]
-        assert call_kwargs["jobQueue"] == "simulation-queue"
+        assert call_kwargs["jobQueue"] == "fred-batch-queue-dev"

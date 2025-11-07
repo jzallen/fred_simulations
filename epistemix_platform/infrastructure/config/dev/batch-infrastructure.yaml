@@ -2,9 +2,10 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on S3 (upload bucket only) and Secrets Manager
+# Layer 4: Batch infrastructure depends on RDS, S3, and Secrets Manager
 dependencies:
   - dev/database-secrets.yaml
+  - dev/rds-postgres.yaml
   - dev/s3-upload-bucket.yaml
 
 # Stack parameters for development environment
@@ -28,21 +29,26 @@ parameters:
       --output text | \
     xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner@{}"
 
-  # Database Secret
-  # References the existing database-secrets stack
+  # Database Configuration
+  # References the existing database-secrets stack (for Secrets Manager ARN)
   DatabaseSecretArn: !stack_output dev/database-secrets.yaml::DatabasePasswordSecretArn
+  # References the existing rds-postgres stack for connection details
+  DatabaseEndpoint: !stack_output dev/rds-postgres.yaml::DBEndpoint
+  DatabasePort: !stack_output dev/rds-postgres.yaml::DBPort
+  DatabaseName: !stack_output dev/rds-postgres.yaml::DBName
+  DatabaseUsername: epistemixuser  # From rds-postgres.yaml config
 
   # S3 Buckets
   # Upload bucket is used for BOTH uploads and results (same bucket)
   UploadBucketName: !stack_output dev/s3-upload-bucket.yaml::BucketName
 
   # Compute Environment Configuration
-  # Proof-of-concept sizing (matches Gitpod t2.micro dev environment capabilities):
+  # Development sizing for cost minimization:
   # - EC2 SPOT instances for ~70% cost savings
-  # - t2.small (1 vCPU, 2 GB) for FRED simulations (proof of concept)
-  # - Max 64 vCPUs = ~32 concurrent t2.medium jobs (or ~64 t2.small jobs)
-  # - Production would use c5.xlarge or larger compute-optimized instances
-  MaxvCpus: 64
+  # - m5.large (2 vCPU, 8 GB) and m5.xlarge (4 vCPU, 16 GB) instance types
+  # - Max 8 vCPUs = ~4 concurrent m5.large jobs OR ~2 concurrent m5.xlarge jobs
+  # - Production would use higher MaxvCpus for greater parallelism
+  MaxvCpus: 8
   SpotBidPercentage: 100  # Use Spot whenever available (fallback to On-Demand)
 
   # CloudWatch Logs

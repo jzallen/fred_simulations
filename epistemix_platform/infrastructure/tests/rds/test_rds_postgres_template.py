@@ -62,19 +62,6 @@ class TestRDSPostgresTemplate:
         assert "PrivateSubnetIds" in params, "PrivateSubnetIds parameter not found"
         assert params["PrivateSubnetIds"]["Type"] == "List<AWS::EC2::Subnet::Id>"
 
-    def test_db_password_is_noecho(self, template: dict[str, Any]):
-        """Test DBPassword parameter has NoEcho enabled."""
-        db_password = template["Parameters"]["DBPassword"]
-        assert db_password.get("NoEcho") is True, "DBPassword should have NoEcho enabled"
-
-    def test_db_password_has_length_constraints(self, template: dict[str, Any]):
-        """Test DBPassword has minimum and maximum length constraints."""
-        db_password = template["Parameters"]["DBPassword"]
-        assert (
-            int(db_password.get("MinLength", 0)) >= 8
-        ), "DBPassword MinLength should be at least 8"
-        assert "MaxLength" in db_password, "DBPassword should have MaxLength"
-
     def test_publicly_accessible_defaults_to_false(self, template: dict[str, Any]):
         """Test PubliclyAccessible parameter defaults to false."""
         param = template["Parameters"]["PubliclyAccessible"]

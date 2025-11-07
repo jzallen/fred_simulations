@@ -23,7 +23,7 @@ import click
 from dotenv import load_dotenv
 from returns.pipeline import is_successful
 
-from epistemix_platform.config import config as config_map
+from epistemix_platform.config import config
 from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
@@ -61,26 +61,11 @@ def get_config():
     Get application configuration based on environment.
 
     Returns:
-        Config class instance (DevelopmentConfig, TestingConfig, or ProductionConfig)
+        Config class instance (DevelopmentConfig, StagingConfig, or ProductionConfig)
     """
-    # Map EPISTEMIX_ENV or FLASK_ENV to config names
-    env_name = os.getenv("EPISTEMIX_ENV") or os.getenv("FLASK_ENV", "development")
-
-    # Normalize environment name
-    env_map = {
-        "PRODUCTION": "production",
-        "production": "production",
-        "prod": "production",
-        "TESTING": "testing",
-        "testing": "testing",
-        "staging": "testing",
-        "DEVELOPMENT": "development",
-        "development": "development",
-        "dev": "development",
-    }
-
-    config_name = env_map.get(env_name, "development")
-    return config_map.get(config_name, config_map["default"])
+    # Check ENVIRONMENT first (matches Sceptre stack groups), then FLASK_ENV for backward compatibility
+    env_name = os.getenv("ENVIRONMENT") or os.getenv("FLASK_ENV", "development")
+    return config.get(env_name, config["default"])
 
 
 def get_database_session():

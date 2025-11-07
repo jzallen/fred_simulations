@@ -232,8 +232,7 @@ def bootstrap_config(environment: str | None = None) -> None:
         - No runtime AWS API calls needed
 
     In local development:
-        - .env file contains all required configuration
-        - No AWS credentials or API calls required
+        - .env file can be used to set config values
 
     Args:
         environment: Optional environment name (currently unused, kept for compatibility).
@@ -244,3 +243,6 @@ def bootstrap_config(environment: str | None = None) -> None:
     # Load .env file for local development
     # Existing environment variables take precedence (override=False)
     load_dotenv_if_exists()
+
+    # Build DATABASE_URL from individual DATABASE_* components if not already set
+    _build_database_url_if_needed()

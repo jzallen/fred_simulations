@@ -32,6 +32,23 @@
             "AllowedPattern": "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$",
             "ConstraintDescription": "Must be a valid Secrets Manager ARN"
         },
+        "DatabaseEndpoint": {
+            "Type": "String",
+            "Description": "RDS database endpoint (hostname)"
+        },
+        "DatabasePort": {
+            "Type": "String",
+            "Description": "RDS database port",
+            "Default": "5432"
+        },
+        "DatabaseName": {
+            "Type": "String",
+            "Description": "RDS database name"
+        },
+        "DatabaseUsername": {
+            "Type": "String",
+            "Description": "RDS database username"
+        },
         "UploadBucketName": {
             "Type": "String",
             "Description": "Name of the S3 bucket containing job uploads (input files)",
@@ -283,7 +300,7 @@
                 },
                 "Policies": [
                     {
-                        "PolicyName": "S3UploadsReadAccess",
+                        "PolicyName": "S3BucketAccess",
                         "PolicyDocument": {
                             "Version": "2012-10-17",
                             "Statement": [
@@ -292,28 +309,6 @@
                                     "Action": [
                                         "s3:GetObject",
                                         "s3:GetObjectVersion",
-                                        "s3:ListBucket"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}"
-                                        },
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "PolicyName": "S3ResultsWriteAccess",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
                                         "s3:PutObject",
                                         "s3:PutObjectAcl",
                                         "s3:ListBucket"
@@ -326,21 +321,6 @@
                                             "Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"
                                         }
                                     ]
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "PolicyName": "SecretsManagerDatabaseAccess",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "secretsmanager:GetSecretValue"
-                                    ],
-                                    "Resource": {"Ref": "DatabaseSecretArn"}
                                 }
                             ]
                         }
@@ -527,16 +507,30 @@
                             "Value": {"Ref": "AWS::Region"}
                         },
                         {
-                            "Name": "S3_UPLOAD_BUCKET",
+                            "Name": "EPISTEMIX_S3_BUCKET",
                             "Value": {"Ref": "UploadBucketName"}
                         },
                         {
-                            "Name": "S3_RESULTS_BUCKET",
-                            "Value": {"Ref": "UploadBucketName"}
+                            "Name": "DATABASE_HOST",
+                            "Value": {"Ref": "DatabaseEndpoint"}
                         },
                         {
-                            "Name": "DATABASE_SECRET_ARN",
-                            "Value": {"Ref": "DatabaseSecretArn"}
+                            "Name": "DATABASE_PORT",
+                            "Value": {"Ref": "DatabasePort"}
+                        },
+                        {
+                            "Name": "DATABASE_NAME",
+                            "Value": {"Ref": "DatabaseName"}
+                        },
+                        {
+                            "Name": "DATABASE_USER",
+                            "Value": {"Ref": "DatabaseUsername"}
+                        },
+                        {
+                            "Name": "DATABASE_PASSWORD",
+                            "Value": {
+                                "Fn::Sub": "{{resolve:secretsmanager:${DatabaseSecretArn}:SecretString}}"
+                            }
                         },
                         {
                             "Name": "ENVIRONMENT",

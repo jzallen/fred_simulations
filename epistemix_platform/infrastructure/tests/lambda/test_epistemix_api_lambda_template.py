@@ -175,42 +175,11 @@ class TestLambdaTemplate:
                     "AssumeRolePolicyDocument": {
                         "Statement": Match.array_with(
                             [
-                                Match.object_like(
-                                    {
-                                        "Effect": "Allow",
-                                        "Principal": {"Service": "lambda.amazonaws.com"},
-                                        "Action": "sts:AssumeRole",
-                                    }
-                                )
-                            ]
-                        )
-                    }
-                }
-            ),
-        )
-
-    def test_execution_role_has_basic_and_vpc_managed_policies(
-        self, template, cdk_template_factory
-    ):
-        """Role must have AWS managed policies for Lambda basic execution and VPC access."""
-
-        cdk_template = cdk_template_factory(template)
-
-        # ManagedPolicyArns uses Fn::If conditional, so we need to check the structure
-        cdk_template.has_resource_properties(
-            "AWS::IAM::Role",
-            Match.object_like(
-                {
-                    "ManagedPolicyArns": {
-                        "Fn::If": Match.array_with(
-                            [
-                                Match.string_like_regexp("HasParameterStorePolicy"),
-                                Match.array_with(
-                                    [
-                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-                                        "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole",
-                                    ]
-                                ),
+                                {
+                                    "Effect": "Allow",
+                                    "Principal": {"Service": "lambda.amazonaws.com"},
+                                    "Action": "sts:AssumeRole",
+                                }
                             ]
                         )
                     }

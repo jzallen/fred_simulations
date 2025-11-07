@@ -172,13 +172,12 @@ def test_batch_instance_role_has_ecs_policy(template):
 
 
 def test_batch_job_role_has_s3_permissions(template):
-    """BatchJobRole should have separate read and write S3 policies."""
+    """BatchJobRole should have S3 bucket access policy."""
     role = template["Resources"]["BatchJobRole"]
     policies = role["Properties"]["Policies"]
 
     policy_names = {p["PolicyName"] for p in policies}
-    assert "S3UploadsReadAccess" in policy_names
-    assert "S3ResultsWriteAccess" in policy_names
+    assert "S3BucketAccess" in policy_names
 
 
 def test_batch_compute_environment_uses_spot_instances(template):
@@ -191,13 +190,13 @@ def test_batch_compute_environment_uses_spot_instances(template):
 
 
 def test_compute_environment_uses_correct_instance_types(template):
-    """Compute environment should use t2.small and t2.medium (proof-of-concept sizing)."""
+    """Compute environment should use m5.large and m5.xlarge (AWS Batch compatible instance types)."""
     compute_env = template["Resources"]["BatchComputeEnvironment"]
     compute_resources = compute_env["Properties"]["ComputeResources"]
 
     instance_types = compute_resources["InstanceTypes"]
-    assert "t2.small" in instance_types
-    assert "t2.medium" in instance_types
+    assert "m5.large" in instance_types
+    assert "m5.xlarge" in instance_types
 
 
 def test_compute_environment_scales_to_zero(template):
@@ -346,18 +345,14 @@ def test_all_resources_have_tags(template):
 
 
 def test_batch_job_role_has_secrets_manager_access(template):
-    """BatchJobRole should have permission to read database secrets."""
+    """BatchJobRole no longer needs Secrets Manager access (CloudFormation resolves secrets at deploy time)."""
     role = template["Resources"]["BatchJobRole"]
     policies = role["Properties"]["Policies"]
 
+    # We removed the SecretsManager policy because CloudFormation dynamic references
+    # resolve the secret value at deploy time, so the job doesn't need runtime access
     secrets_policies = [p for p in policies if "SecretsManager" in p["PolicyName"]]
-    assert len(secrets_policies) > 0
-
-    policy_doc = secrets_policies[0]["PolicyDocument"]
-    statements = policy_doc["Statement"]
-    actions = statements[0]["Action"]
-
-    assert "secretsmanager:GetSecretValue" in actions
+    assert len(secrets_policies) == 0
 
 
 def test_job_definition_sets_required_environment_variables(template):
@@ -369,9 +364,12 @@ def test_job_definition_sets_required_environment_variables(template):
     required_vars = {
         "FRED_HOME",
         "AWS_REGION",
-        "S3_UPLOAD_BUCKET",
-        "S3_RESULTS_BUCKET",
-        "DATABASE_SECRET_ARN",
+        "EPISTEMIX_S3_BUCKET",
+        "DATABASE_HOST",
+        "DATABASE_PORT",
+        "DATABASE_NAME",
+        "DATABASE_USER",
+        "DATABASE_PASSWORD",
         "ENVIRONMENT",
     }
 
@@ -388,39 +386,31 @@ def test_job_definition_has_timeout(template):
 
 
 def test_job_definition_uses_same_s3_bucket_for_uploads_and_results(template):
-    """Job definition should use the same S3 bucket for both uploads and results."""
+    """Job definition should use EPISTEMIX_S3_BUCKET (single bucket for both uploads and results)."""
     job_def = template["Resources"]["BatchJobDefinition"]
     env_vars = job_def["Properties"]["ContainerProperties"]["Environment"]
 
     # Extract S3 bucket environment variables
     env_dict = {e["Name"]: e["Value"] for e in env_vars}
 
-    assert "S3_UPLOAD_BUCKET" in env_dict
-    assert "S3_RESULTS_BUCKET" in env_dict
-
-    # Both should reference the same parameter (UploadBucketName)
-    assert env_dict["S3_UPLOAD_BUCKET"] == {"Ref": "UploadBucketName"}
-    assert env_dict["S3_RESULTS_BUCKET"] == {"Ref": "UploadBucketName"}
+    assert "EPISTEMIX_S3_BUCKET" in env_dict
+    assert env_dict["EPISTEMIX_S3_BUCKET"] == {"Ref": "UploadBucketName"}
 
 
 def test_batch_job_role_s3_policies_reference_same_bucket(template):
-    """BatchJobRole S3 policies should both reference UploadBucketName (not separate buckets)."""
+    """BatchJobRole S3BucketAccess policy should reference UploadBucketName (single unified policy)."""
     role = template["Resources"]["BatchJobRole"]
     policies = role["Properties"]["Policies"]
 
-    # Find S3 policies
-    upload_policy = next(p for p in policies if p["PolicyName"] == "S3UploadsReadAccess")
-    results_policy = next(p for p in policies if p["PolicyName"] == "S3ResultsWriteAccess")
+    # Find S3 policy (now a single combined policy)
+    s3_policy = next(p for p in policies if p["PolicyName"] == "S3BucketAccess")
 
-    # Extract bucket ARNs from both policies
-    upload_resources = upload_policy["PolicyDocument"]["Statement"][0]["Resource"]
-    results_resources = results_policy["PolicyDocument"]["Statement"][0]["Resource"]
+    # Extract bucket ARNs from policy
+    resources = s3_policy["PolicyDocument"]["Statement"][0]["Resource"]
 
-    # Both should reference UploadBucketName
+    # Should reference UploadBucketName
     expected_bucket_arn = {"Fn::Sub": "arn:aws:s3:::${UploadBucketName}"}
     expected_objects_arn = {"Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"}
 
-    assert expected_bucket_arn in upload_resources
-    assert expected_objects_arn in upload_resources
-    assert expected_bucket_arn in results_resources
-    assert expected_objects_arn in results_resources
+    assert expected_bucket_arn in resources
+    assert expected_objects_arn in resources

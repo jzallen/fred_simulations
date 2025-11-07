@@ -36,10 +36,14 @@ def client(tmp_path_factory, mock_batch_client):
     app.config["DATABASE_URL"] = test_db_url
     app.config["ENVIRONMENT"] = "TESTING"
 
-    # Patch create_simulation_runner to use mock batch client
-    with patch("epistemix_platform.app.create_simulation_runner") as mock_create:
+    # Patch AWSBatchSimulationRunner.create to use mock batch client
+    with patch("epistemix_platform.gateways.simulation_runner.AWSBatchSimulationRunner.create") as mock_create:
         from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-        mock_create.return_value = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+        mock_create.return_value = AWSBatchSimulationRunner(
+            batch_client=mock_batch_client,
+            job_queue_name="fred-batch-queue-test",
+            job_definition_name="fred-simulation-runner-test"
+        )
 
         with app.test_client() as client:
             yield client
