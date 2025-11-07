@@ -2,7 +2,7 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on VPC, S3, Secrets Manager, and ECR
+# Layer 4: Batch infrastructure depends on VPC, S3 (upload bucket only), Secrets Manager, and ECR
 dependencies:
   - dev/database-secrets.yaml
   - dev/s3-upload-bucket.yaml
@@ -27,16 +27,16 @@ parameters:
   DatabaseSecretArn: !stack_output dev/database-secrets.yaml::SecretArn
 
   # S3 Buckets
-  # Upload bucket already exists, results bucket needs to be created
+  # Upload bucket is used for BOTH uploads and results (same bucket)
   UploadBucketName: !stack_output dev/s3-upload-bucket.yaml::BucketName
-  ResultsBucketName: epistemix-results-dev  # TODO: Create results bucket stack
 
   # Compute Environment Configuration
-  # Based on ENGINEER-01's learnings (ADR-003):
-  # - EC2 SPOT instances for 70% cost savings
-  # - c5.xlarge (4 vCPU, 8 GB) for FRED simulations
-  # - Max 256 vCPUs = ~64 concurrent jobs
-  MaxvCpus: 256
+  # Proof-of-concept sizing (matches Gitpod t2.micro dev environment capabilities):
+  # - EC2 SPOT instances for ~70% cost savings
+  # - t2.small (1 vCPU, 2 GB) for FRED simulations (proof of concept)
+  # - Max 64 vCPUs = ~32 concurrent t2.medium jobs (or ~64 t2.small jobs)
+  # - Production would use c5.xlarge or larger compute-optimized instances
+  MaxvCpus: 64
   SpotBidPercentage: 100  # Use Spot whenever available (fallback to On-Demand)
 
   # CloudWatch Logs

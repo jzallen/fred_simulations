@@ -60,7 +60,6 @@ def test_template_defines_required_parameters(template):
         "ECRRepositoryUri",
         "DatabaseSecretArn",
         "UploadBucketName",
-        "ResultsBucketName",
         "MaxvCpus",
         "LogRetentionDays",
         "SpotBidPercentage",
@@ -192,13 +191,13 @@ def test_batch_compute_environment_uses_spot_instances(template):
 
 
 def test_compute_environment_uses_correct_instance_types(template):
-    """Compute environment should use c5.xlarge and c5.2xlarge (compute-optimized)."""
+    """Compute environment should use t2.small and t2.medium (proof-of-concept sizing)."""
     compute_env = template["Resources"]["BatchComputeEnvironment"]
     compute_resources = compute_env["Properties"]["ComputeResources"]
 
     instance_types = compute_resources["InstanceTypes"]
-    assert "c5.xlarge" in instance_types
-    assert "c5.2xlarge" in instance_types
+    assert "t2.small" in instance_types
+    assert "t2.medium" in instance_types
 
 
 def test_compute_environment_scales_to_zero(template):
@@ -211,12 +210,12 @@ def test_compute_environment_scales_to_zero(template):
 
 
 def test_batch_job_definition_configures_resources_correctly(template):
-    """Job definition should allocate 4 vCPUs and 8192 MB for FRED simulations."""
+    """Job definition should allocate 1 vCPU and 1024 MB for FRED simulations (proof-of-concept)."""
     job_def = template["Resources"]["BatchJobDefinition"]
     container_props = job_def["Properties"]["ContainerProperties"]
 
-    assert container_props["Vcpus"] == 4
-    assert container_props["Memory"] == 8192
+    assert container_props["Vcpus"] == 1
+    assert container_props["Memory"] == 1024
 
 
 def test_job_definition_uses_ec2_platform(template):
@@ -386,3 +385,42 @@ def test_job_definition_has_timeout(template):
 
     assert "AttemptDurationSeconds" in timeout
     assert timeout["AttemptDurationSeconds"] == 14400  # 4 hours
+
+
+def test_job_definition_uses_same_s3_bucket_for_uploads_and_results(template):
+    """Job definition should use the same S3 bucket for both uploads and results."""
+    job_def = template["Resources"]["BatchJobDefinition"]
+    env_vars = job_def["Properties"]["ContainerProperties"]["Environment"]
+
+    # Extract S3 bucket environment variables
+    env_dict = {e["Name"]: e["Value"] for e in env_vars}
+
+    assert "S3_UPLOAD_BUCKET" in env_dict
+    assert "S3_RESULTS_BUCKET" in env_dict
+
+    # Both should reference the same parameter (UploadBucketName)
+    assert env_dict["S3_UPLOAD_BUCKET"] == {"Ref": "UploadBucketName"}
+    assert env_dict["S3_RESULTS_BUCKET"] == {"Ref": "UploadBucketName"}
+
+
+def test_batch_job_role_s3_policies_reference_same_bucket(template):
+    """BatchJobRole S3 policies should both reference UploadBucketName (not separate buckets)."""
+    role = template["Resources"]["BatchJobRole"]
+    policies = role["Properties"]["Policies"]
+
+    # Find S3 policies
+    upload_policy = next(p for p in policies if p["PolicyName"] == "S3UploadsReadAccess")
+    results_policy = next(p for p in policies if p["PolicyName"] == "S3ResultsWriteAccess")
+
+    # Extract bucket ARNs from both policies
+    upload_resources = upload_policy["PolicyDocument"]["Statement"][0]["Resource"]
+    results_resources = results_policy["PolicyDocument"]["Statement"][0]["Resource"]
+
+    # Both should reference UploadBucketName
+    expected_bucket_arn = {"Fn::Sub": "arn:aws:s3:::${UploadBucketName}"}
+    expected_objects_arn = {"Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"}
+
+    assert expected_bucket_arn in upload_resources
+    assert expected_objects_arn in upload_resources
+    assert expected_bucket_arn in results_resources
+    assert expected_objects_arn in results_resources

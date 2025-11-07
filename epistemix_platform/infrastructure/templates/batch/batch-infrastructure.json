@@ -38,16 +38,10 @@
             "MinLength": 3,
             "MaxLength": 63
         },
-        "ResultsBucketName": {
-            "Type": "String",
-            "Description": "Name of the S3 bucket for storing simulation results (output files)",
-            "MinLength": 3,
-            "MaxLength": 63
-        },
         "MaxvCpus": {
             "Type": "Number",
-            "Description": "Maximum number of vCPUs for the compute environment (allows ~N/4 concurrent c5.xlarge jobs)",
-            "Default": 256,
+            "Description": "Maximum number of vCPUs for the compute environment (allows ~N/2 concurrent t2.small jobs in proof-of-concept)",
+            "Default": 64,
             "MinValue": 0,
             "MaxValue": 10000
         },
@@ -326,10 +320,10 @@
                                     ],
                                     "Resource": [
                                         {
-                                            "Fn::Sub": "arn:aws:s3:::${ResultsBucketName}"
+                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}"
                                         },
                                         {
-                                            "Fn::Sub": "arn:aws:s3:::${ResultsBucketName}/*"
+                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"
                                         }
                                     ]
                                 }
@@ -456,8 +450,8 @@
                     "DesiredvCpus": 0,
                     "MaxvCpus": {"Ref": "MaxvCpus"},
                     "InstanceTypes": [
-                        "c5.xlarge",
-                        "c5.2xlarge"
+                        "t2.small",
+                        "t2.medium"
                     ],
                     "Subnets": {"Ref": "SubnetIds"},
                     "SecurityGroupIds": [
@@ -515,8 +509,8 @@
                     "Image": {
                         "Fn::Sub": "${ECRRepositoryUri}:latest"
                     },
-                    "Vcpus": 4,
-                    "Memory": 8192,
+                    "Vcpus": 1,
+                    "Memory": 1024,
                     "JobRoleArn": {
                         "Fn::GetAtt": ["BatchJobRole", "Arn"]
                     },
@@ -538,7 +532,7 @@
                         },
                         {
                             "Name": "S3_RESULTS_BUCKET",
-                            "Value": {"Ref": "ResultsBucketName"}
+                            "Value": {"Ref": "UploadBucketName"}
                         },
                         {
                             "Name": "DATABASE_SECRET_ARN",
