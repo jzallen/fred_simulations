@@ -4,25 +4,8 @@ AWS Batch implementation of simulation runner gateway.
 Uses boto3 to submit and manage simulation runs on AWS Batch.
 """
 
-import os
 import boto3
 from epistemix_platform.models import Run, RunStatus, RunStatusDetail
-
-
-# Constants for AWS Batch configuration
-# These come from environment variables set by the CloudFormation batch-infrastructure stack
-# Default values are placeholders for local development
-#
-# CloudFormation Outputs:
-#   - AWS_BATCH_JOB_DEFINITION: BatchJobDefinitionArn (from batch-infrastructure stack)
-#   - AWS_BATCH_JOB_QUEUE: BatchJobQueueName (from batch-infrastructure stack)
-#
-# See: epistemix_platform/infrastructure/templates/batch/batch-infrastructure.json
-JOB_DEFINITION_ARN = os.getenv(
-    "AWS_BATCH_JOB_DEFINITION",
-    "arn:aws:batch:us-east-1:123456789012:job-definition/simulation-runner:1"
-)
-JOB_QUEUE_NAME = os.getenv("AWS_BATCH_JOB_QUEUE", "simulation-queue")
 
 
 class AWSBatchSimulationRunner:
@@ -33,15 +16,44 @@ class AWSBatchSimulationRunner:
     on AWS Batch compute infrastructure.
     """
 
-    def __init__(self, batch_client=None):
+    def __init__(self, batch_client=None, job_queue_name=None, job_definition_name=None):
         """
         Initialize the AWS Batch simulation runner.
 
         Args:
             batch_client: Optional boto3 Batch client (for testing).
                          If None, creates a new client.
+            job_queue_name: AWS Batch job queue name (set by factory method)
+            job_definition_name: AWS Batch job definition name (set by factory method)
         """
         self._batch_client = batch_client or boto3.client("batch")
+        self._job_queue_name = job_queue_name
+        self._job_definition_name = job_definition_name
+
+    @classmethod
+    def create(cls, environment: str, region: str = "us-east-1", batch_client=None):
+        """
+        Factory method to create an AWS Batch simulation runner for a specific environment.
+
+        Args:
+            environment: Environment name (dev, staging, prod)
+            region: AWS region (default: us-east-1)
+            batch_client: Optional boto3 Batch client (for testing)
+
+        Returns:
+            AWSBatchSimulationRunner configured for the environment
+        """
+        job_queue_name = f"fred-batch-queue-{environment}"
+        job_definition_name = f"fred-simulation-runner-{environment}"
+
+        if batch_client is None:
+            batch_client = boto3.client("batch", region_name=region)
+
+        return cls(
+            batch_client=batch_client,
+            job_queue_name=job_queue_name,
+            job_definition_name=job_definition_name
+        )
 
     def submit_run(self, run: Run) -> None:
         """
@@ -69,8 +81,8 @@ class AWSBatchSimulationRunner:
         # Submit job to AWS Batch (job ID not stored - AWS Batch is source of truth)
         self._batch_client.submit_job(
             jobName=job_name,
-            jobQueue=JOB_QUEUE_NAME,
-            jobDefinition=JOB_DEFINITION_ARN,
+            jobQueue=self._job_queue_name,
+            jobDefinition=self._job_definition_name,
             containerOverrides={"environment": environment},
         )
 
@@ -94,7 +106,7 @@ class AWSBatchSimulationRunner:
         job_name = run.natural_key()
 
         list_response = self._batch_client.list_jobs(
-            jobQueue=JOB_QUEUE_NAME,
+            jobQueue=self._job_queue_name,
             filters=[{"name": "JOB_NAME", "values": [job_name]}],
         )
 
@@ -147,7 +159,7 @@ class AWSBatchSimulationRunner:
         job_name = run.natural_key()
 
         list_response = self._batch_client.list_jobs(
-            jobQueue=JOB_QUEUE_NAME,
+            jobQueue=self._job_queue_name,
             filters=[{"name": "JOB_NAME", "values": [job_name]}],
         )
 
@@ -162,17 +174,3 @@ class AWSBatchSimulationRunner:
         self._batch_client.terminate_job(
             jobId=job_id, reason="User requested cancellation"
         )
-
-
-def create_simulation_runner(batch_client=None):
-    """
-    Factory function to create a simulation runner gateway.
-
-    Args:
-        batch_client: Optional boto3 Batch client (for testing).
-                     If None, creates a new client.
-
-    Returns:
-        AWSBatchSimulationRunner instance
-    """
-    return AWSBatchSimulationRunner(batch_client=batch_client)

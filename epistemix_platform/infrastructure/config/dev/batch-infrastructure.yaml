@@ -2,11 +2,10 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on VPC, S3 (upload bucket only), Secrets Manager, and ECR
+# Layer 4: Batch infrastructure depends on S3 (upload bucket only) and Secrets Manager
 dependencies:
   - dev/database-secrets.yaml
   - dev/s3-upload-bucket.yaml
-  - docker-images/simulation-runner-ecr.yaml
 
 # Stack parameters for development environment
 parameters:
@@ -18,13 +17,20 @@ parameters:
   SubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
 
   # ECR Repository
-  # NOTE: Update this after ECR stack is created
-  # Format: {account-id}.dkr.ecr.{region}.amazonaws.com/{repository-name}
-  ECRRepositoryUri: !stack_output docker-images/simulation-runner-ecr.yaml::RepositoryUri
+  # Dynamically fetch ECR image digest for environment-specific tag (:dev)
+  # This resolves to immutable digest at deploy time (similar to epistemix-api-lambda)
+  ECRRepositoryUri: !rcmd |
+    aws ecr describe-images \
+      --repository-name fred-simulation-runner \
+      --image-ids imageTag=dev \
+      --region us-east-1 \
+      --query 'imageDetails[0].imageDigest' \
+      --output text | \
+    xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner@{}"
 
   # Database Secret
   # References the existing database-secrets stack
-  DatabaseSecretArn: !stack_output dev/database-secrets.yaml::SecretArn
+  DatabaseSecretArn: !stack_output dev/database-secrets.yaml::DatabasePasswordSecretArn
 
   # S3 Buckets
   # Upload bucket is used for BOTH uploads and results (same bucket)

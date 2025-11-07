@@ -9,6 +9,9 @@ from typing import Any
 class Config:
     """Base configuration class."""
 
+    # Environment (overridden in subclasses)
+    ENVIRONMENT = "dev"
+
     # Flask settings
     SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
 
@@ -52,6 +55,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
 
+    ENVIRONMENT = "dev"
     DEBUG = True
     TESTING = False
     S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-dev")
@@ -62,6 +66,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
 
+    ENVIRONMENT = "staging"
     DEBUG = False
     TESTING = True
     S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-test")
@@ -72,6 +77,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
 
+    ENVIRONMENT = "prod"
     DEBUG = False
     TESTING = False
     S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-prod")

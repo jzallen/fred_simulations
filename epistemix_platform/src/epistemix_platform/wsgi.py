@@ -61,7 +61,11 @@ config_name = os.getenv("FLASK_ENV", "production")
 logger.info(f"Loading configuration for environment: {config_name}")
 
 # Apply configuration to Flask app
-app.config.from_object(config.get(config_name, config["default"]))
+config_class = config.get(config_name, config["default"])
+app.config.from_object(config_class)
+
+# Store the config class for factory methods
+app.config["CONFIG_CLASS"] = config_class
 
 # Additional production configurations
 app.config["PROPAGATE_EXCEPTIONS"] = True

@@ -23,6 +23,7 @@ import click
 from dotenv import load_dotenv
 from returns.pipeline import is_successful
 
+from epistemix_platform.config import config as config_map
 from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
@@ -55,19 +56,31 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_default_config() -> dict[str, str]:
-    """Get default configuration from environment variables."""
-    config = {
-        "env": os.getenv("EPISTEMIX_ENV", "PRODUCTION"),
-        "bucket": os.getenv("EPISTEMIX_S3_BUCKET"),  # None if not set
-        "region": os.getenv("AWS_REGION"),  # None if not set
+def get_config():
+    """
+    Get application configuration based on environment.
+
+    Returns:
+        Config class instance (DevelopmentConfig, TestingConfig, or ProductionConfig)
+    """
+    # Map EPISTEMIX_ENV or FLASK_ENV to config names
+    env_name = os.getenv("EPISTEMIX_ENV") or os.getenv("FLASK_ENV", "development")
+
+    # Normalize environment name
+    env_map = {
+        "PRODUCTION": "production",
+        "production": "production",
+        "prod": "production",
+        "TESTING": "testing",
+        "testing": "testing",
+        "staging": "testing",
+        "DEVELOPMENT": "development",
+        "development": "development",
+        "dev": "development",
     }
-    # Handle postgres:// -> postgresql:// conversion for compatibility
-    database_url = os.getenv("DATABASE_URL", "sqlite:///epistemix_jobs.db")
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-    config["database_url"] = database_url
-    return config
+
+    config_name = env_map.get(env_name, "development")
+    return config_map.get(config_name, config_map["default"])
 
 
 def get_database_session():
@@ -80,8 +93,9 @@ def get_database_session():
     Returns:
         SQLAlchemy session instance
     """
-    config = get_default_config()
-    db_manager = get_database_manager(config["database_url"])
+    config_class = get_config()
+    database_url = config_class.get_database_url()
+    db_manager = get_database_manager(database_url)
     db_manager.create_tables()
     return db_manager.get_session()
 
@@ -96,11 +110,11 @@ def get_job_controller() -> JobController:
     Returns:
         Configured JobController instance
     """
-    # Get configuration from environment/config file
-    config = get_default_config()
-    env = config["env"]
-    bucket_name = config["bucket"] or "epistemix-uploads-dev"
-    region_name = config["region"]
+    # Get configuration class
+    config_class = get_config()
+    environment = config_class.ENVIRONMENT
+    bucket_name = config_class.S3_UPLOAD_BUCKET
+    region_name = config_class.AWS_REGION
 
     # Get database session
     session = get_database_session()
@@ -116,7 +130,7 @@ def get_job_controller() -> JobController:
 
     # Create upload location repository
     upload_location_repository = create_upload_location_repository(
-        env=env, bucket_name=bucket_name, region_name=region_name
+        env=environment, bucket_name=bucket_name, region_name=region_name
     )
 
     # Create S3 results repository (reuses create_s3_client for consistency)
@@ -124,8 +138,11 @@ def get_job_controller() -> JobController:
     results_repository = S3ResultsRepository(s3_client, bucket_name)
 
     # Create simulation runner gateway (REQUIRED)
-    from epistemix_platform.gateways.simulation_runner import create_simulation_runner
-    simulation_runner = create_simulation_runner()
+    from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+    simulation_runner = AWSBatchSimulationRunner.create(
+        environment=environment,
+        region=region_name
+    )
 
     # Create and return JobController
     return JobController.create_with_repositories(
@@ -467,9 +484,9 @@ def list_job_uploads(job_id: int, json_output: bool):
         job_controller = get_job_controller()
         # Get the session created by get_job_controller for cleanup
         session = get_database_session()
-        config = get_default_config()
-        env = config["env"]
-        bucket_name = config["bucket"] or "epistemix-uploads-dev"
+        config_class = get_config()
+        env = config_class.ENVIRONMENT
+        bucket_name = config_class.S3_UPLOAD_BUCKET
 
         # Get uploads WITHOUT content (just metadata and sanitized URLs)
         result = job_controller.get_job_uploads(job_id=job_id, include_content=False)
@@ -533,10 +550,10 @@ def archive_uploads(
     """Archive uploads for a job to reduce storage costs."""
     try:
         # Get configuration
-        config = get_default_config()
-        env = config["env"]
+        config_class = get_config()
+        env = config_class.ENVIRONMENT
 
-        if env == "TESTING":
+        if env == "staging":
             click.echo("Error: Cannot archive uploads in TESTING mode", err=True)
             sys.exit(1)
 

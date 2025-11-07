@@ -450,8 +450,8 @@
                     "DesiredvCpus": 0,
                     "MaxvCpus": {"Ref": "MaxvCpus"},
                     "InstanceTypes": [
-                        "t2.small",
-                        "t2.medium"
+                        "m5.large",
+                        "m5.xlarge"
                     ],
                     "Subnets": {"Ref": "SubnetIds"},
                     "SecurityGroupIds": [

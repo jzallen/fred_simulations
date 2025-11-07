@@ -21,7 +21,6 @@ from returns.pipeline import is_successful
 
 # Import our business models and controllers
 from epistemix_platform.controllers.job_controller import JobController
-from epistemix_platform.gateways.simulation_runner import create_simulation_runner
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
 from epistemix_platform.models.requests import (
@@ -167,7 +166,13 @@ def get_job_controller():
     results_repository = S3ResultsRepository(s3_client, bucket_name)
 
     # Create simulation runner gateway (REQUIRED)
-    simulation_runner = create_simulation_runner()
+    from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+    environment = app.config.get("ENVIRONMENT")
+    aws_region = app.config.get("AWS_REGION")
+    simulation_runner = AWSBatchSimulationRunner.create(
+        environment=environment,
+        region=aws_region
+    )
 
     return JobController.create_with_repositories(
         job_repository, run_repository, upload_location_repository, results_repository, simulation_runner
