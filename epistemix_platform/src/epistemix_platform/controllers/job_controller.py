@@ -100,7 +100,6 @@ class JobController:
         """
         service = cls()
 
-        # Wire use case dependencies using factory functions
         service._register_job = create_register_job(job_repository)
         service._submit_job = create_submit_job(job_repository, upload_location_repository)
         service._submit_job_config = create_submit_job_config(
@@ -124,8 +123,6 @@ class JobController:
             results_repository,
             SystemTimeProvider(),
         )
-
-        # Wire simulation runner (REQUIRED - no longer optional)
         service._run_simulation = create_run_simulation(simulation_runner)
 
         return service

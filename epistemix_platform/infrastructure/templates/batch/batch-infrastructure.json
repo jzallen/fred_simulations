@@ -1,0 +1,686 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS Batch infrastructure for FRED simulations with EC2 SPOT compute environment, job queue, job definition, and required IAM roles",
+    "Parameters": {
+        "Environment": {
+            "Type": "String",
+            "Description": "Environment name for tagging and resource naming",
+            "Default": "dev",
+            "AllowedValues": [
+                "dev",
+                "staging",
+                "production"
+            ]
+        },
+        "VpcId": {
+            "Type": "AWS::EC2::VPC::Id",
+            "Description": "VPC ID where Batch compute environment will launch instances"
+        },
+        "SubnetIds": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "List of private subnet IDs for Batch compute environment (should have NAT gateway for outbound access)"
+        },
+        "ECRRepositoryUri": {
+            "Type": "String",
+            "Description": "URI of the ECR repository containing the simulation-runner Docker image",
+            "AllowedPattern": "^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/.+$",
+            "ConstraintDescription": "Must be a valid ECR repository URI"
+        },
+        "DatabaseSecretArn": {
+            "Type": "String",
+            "Description": "ARN of the Secrets Manager secret containing database credentials",
+            "AllowedPattern": "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$",
+            "ConstraintDescription": "Must be a valid Secrets Manager ARN"
+        },
+        "UploadBucketName": {
+            "Type": "String",
+            "Description": "Name of the S3 bucket containing job uploads (input files)",
+            "MinLength": 3,
+            "MaxLength": 63
+        },
+        "ResultsBucketName": {
+            "Type": "String",
+            "Description": "Name of the S3 bucket for storing simulation results (output files)",
+            "MinLength": 3,
+            "MaxLength": 63
+        },
+        "MaxvCpus": {
+            "Type": "Number",
+            "Description": "Maximum number of vCPUs for the compute environment (allows ~N/4 concurrent c5.xlarge jobs)",
+            "Default": 256,
+            "MinValue": 0,
+            "MaxValue": 10000
+        },
+        "LogRetentionDays": {
+            "Type": "Number",
+            "Description": "Number of days to retain CloudWatch logs",
+            "Default": 7,
+            "AllowedValues": [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]
+        },
+        "SpotBidPercentage": {
+            "Type": "Number",
+            "Description": "Maximum percentage of On-Demand price to bid for Spot instances (100 = use Spot whenever available)",
+            "Default": 100,
+            "MinValue": 0,
+            "MaxValue": 100
+        }
+    },
+    "Conditions": {
+        "IsProduction": {
+            "Fn::Equals": [
+                {"Ref": "Environment"},
+                "production"
+            ]
+        }
+    },
+    "Resources": {
+        "BatchServiceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "fred-batch-service-role-${Environment}"
+                },
+                "Description": "Service role for AWS Batch to manage compute environments and job queues",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "batch.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchService"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchInstanceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "fred-batch-instance-role-${Environment}"
+                },
+                "Description": "Instance role for EC2 instances in Batch compute environment to join ECS cluster",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "ECSAgentPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ecs:RegisterContainerInstance",
+                                        "ecs:DeregisterContainerInstance",
+                                        "ecs:SubmitContainerStateChange",
+                                        "ecs:SubmitTaskStateChange",
+                                        "ecs:Poll",
+                                        "ecs:StartTelemetrySession"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/fred-*"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchInstance"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchInstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "InstanceProfileName": {
+                    "Fn::Sub": "fred-batch-instance-profile-${Environment}"
+                },
+                "Roles": [
+                    {"Ref": "BatchInstanceRole"}
+                ]
+            }
+        },
+        "BatchExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "fred-batch-execution-role-${Environment}"
+                },
+                "Description": "Execution role for ECS tasks to pull Docker images, write logs, and retrieve secrets",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "SecretsManagerAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:GetSecretValue"
+                                    ],
+                                    "Resource": {"Ref": "DatabaseSecretArn"}
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "CloudWatchLogsAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/fred-simulations-${Environment}*"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchExecution"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchJobRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "fred-batch-job-role-${Environment}"
+                },
+                "Description": "Job role for application code inside containers to access S3, database, and other AWS services",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ecs-tasks.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "S3UploadsReadAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:GetObjectVersion",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "S3ResultsWriteAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:PutObjectAcl",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${ResultsBucketName}"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${ResultsBucketName}/*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "SecretsManagerDatabaseAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:GetSecretValue"
+                                    ],
+                                    "Resource": {"Ref": "DatabaseSecretArn"}
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchJob"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": {
+                    "Fn::Sub": "fred-batch-sg-${Environment}"
+                },
+                "GroupDescription": "Security group for AWS Batch compute environment - allows outbound HTTPS and PostgreSQL access",
+                "VpcId": {"Ref": "VpcId"},
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "HTTPS for S3, ECR, Secrets Manager, API access"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 5432,
+                        "ToPort": 5432,
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "PostgreSQL database access"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "fred-batch-sg-${Environment}"
+                        }
+                    },
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchCompute"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/batch/fred-simulations-${Environment}"
+                },
+                "RetentionInDays": {"Ref": "LogRetentionDays"},
+                "Tags": [
+                    {
+                        "Key": "Environment",
+                        "Value": {"Ref": "Environment"}
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchLogs"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchComputeEnvironment": {
+            "Type": "AWS::Batch::ComputeEnvironment",
+            "Properties": {
+                "ComputeEnvironmentName": {
+                    "Fn::Sub": "fred-batch-compute-${Environment}"
+                },
+                "Type": "MANAGED",
+                "State": "ENABLED",
+                "ServiceRole": {
+                    "Fn::GetAtt": ["BatchServiceRole", "Arn"]
+                },
+                "ComputeResources": {
+                    "Type": "SPOT",
+                    "AllocationStrategy": "SPOT_CAPACITY_OPTIMIZED",
+                    "BidPercentage": {"Ref": "SpotBidPercentage"},
+                    "MinvCpus": 0,
+                    "DesiredvCpus": 0,
+                    "MaxvCpus": {"Ref": "MaxvCpus"},
+                    "InstanceTypes": [
+                        "c5.xlarge",
+                        "c5.2xlarge"
+                    ],
+                    "Subnets": {"Ref": "SubnetIds"},
+                    "SecurityGroupIds": [
+                        {"Ref": "BatchSecurityGroup"}
+                    ],
+                    "InstanceRole": {
+                        "Fn::GetAtt": ["BatchInstanceProfile", "Arn"]
+                    },
+                    "Tags": {
+                        "Name": {
+                            "Fn::Sub": "fred-batch-instance-${Environment}"
+                        },
+                        "Environment": {"Ref": "Environment"},
+                        "Purpose": "FredSimulation",
+                        "ManagedBy": "AWSBatch"
+                    }
+                },
+                "Tags": {
+                    "Environment": {"Ref": "Environment"},
+                    "Purpose": "BatchCompute",
+                    "ManagedBy": "CloudFormation"
+                }
+            }
+        },
+        "BatchJobQueue": {
+            "Type": "AWS::Batch::JobQueue",
+            "Properties": {
+                "JobQueueName": {
+                    "Fn::Sub": "fred-batch-queue-${Environment}"
+                },
+                "Priority": 1,
+                "State": "ENABLED",
+                "ComputeEnvironmentOrder": [
+                    {
+                        "Order": 1,
+                        "ComputeEnvironment": {"Ref": "BatchComputeEnvironment"}
+                    }
+                ],
+                "Tags": {
+                    "Environment": {"Ref": "Environment"},
+                    "Purpose": "BatchQueue",
+                    "ManagedBy": "CloudFormation"
+                }
+            }
+        },
+        "BatchJobDefinition": {
+            "Type": "AWS::Batch::JobDefinition",
+            "Properties": {
+                "JobDefinitionName": {
+                    "Fn::Sub": "fred-simulation-runner-${Environment}"
+                },
+                "Type": "container",
+                "PlatformCapabilities": ["EC2"],
+                "ContainerProperties": {
+                    "Image": {
+                        "Fn::Sub": "${ECRRepositoryUri}:latest"
+                    },
+                    "Vcpus": 4,
+                    "Memory": 8192,
+                    "JobRoleArn": {
+                        "Fn::GetAtt": ["BatchJobRole", "Arn"]
+                    },
+                    "ExecutionRoleArn": {
+                        "Fn::GetAtt": ["BatchExecutionRole", "Arn"]
+                    },
+                    "Environment": [
+                        {
+                            "Name": "FRED_HOME",
+                            "Value": "/fred-framework"
+                        },
+                        {
+                            "Name": "AWS_REGION",
+                            "Value": {"Ref": "AWS::Region"}
+                        },
+                        {
+                            "Name": "S3_UPLOAD_BUCKET",
+                            "Value": {"Ref": "UploadBucketName"}
+                        },
+                        {
+                            "Name": "S3_RESULTS_BUCKET",
+                            "Value": {"Ref": "ResultsBucketName"}
+                        },
+                        {
+                            "Name": "DATABASE_SECRET_ARN",
+                            "Value": {"Ref": "DatabaseSecretArn"}
+                        },
+                        {
+                            "Name": "ENVIRONMENT",
+                            "Value": {"Ref": "Environment"}
+                        }
+                    ],
+                    "LogConfiguration": {
+                        "LogDriver": "awslogs",
+                        "Options": {
+                            "awslogs-group": {"Ref": "BatchLogGroup"},
+                            "awslogs-region": {"Ref": "AWS::Region"},
+                            "awslogs-stream-prefix": "fred-simulation"
+                        }
+                    },
+                    "ResourceRequirements": []
+                },
+                "RetryStrategy": {
+                    "Attempts": 3,
+                    "EvaluateOnExit": [
+                        {
+                            "Action": "RETRY",
+                            "OnStatusReason": "Host EC2*"
+                        },
+                        {
+                            "Action": "EXIT",
+                            "OnExitCode": "0"
+                        }
+                    ]
+                },
+                "Timeout": {
+                    "AttemptDurationSeconds": 14400
+                },
+                "Tags": {
+                    "Environment": {"Ref": "Environment"},
+                    "Purpose": "BatchJobDefinition",
+                    "ManagedBy": "CloudFormation"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "BatchServiceRoleArn": {
+            "Description": "ARN of the Batch service role",
+            "Value": {
+                "Fn::GetAtt": ["BatchServiceRole", "Arn"]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ServiceRoleArn"
+                }
+            }
+        },
+        "BatchInstanceRoleArn": {
+            "Description": "ARN of the Batch instance role",
+            "Value": {
+                "Fn::GetAtt": ["BatchInstanceRole", "Arn"]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-InstanceRoleArn"
+                }
+            }
+        },
+        "BatchExecutionRoleArn": {
+            "Description": "ARN of the Batch execution role",
+            "Value": {
+                "Fn::GetAtt": ["BatchExecutionRole", "Arn"]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ExecutionRoleArn"
+                }
+            }
+        },
+        "BatchJobRoleArn": {
+            "Description": "ARN of the Batch job role",
+            "Value": {
+                "Fn::GetAtt": ["BatchJobRole", "Arn"]
+            },
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-JobRoleArn"
+                }
+            }
+        },
+        "BatchSecurityGroupId": {
+            "Description": "ID of the Batch security group",
+            "Value": {"Ref": "BatchSecurityGroup"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-SecurityGroupId"
+                }
+            }
+        },
+        "BatchLogGroupName": {
+            "Description": "Name of the CloudWatch Logs group for Batch jobs",
+            "Value": {"Ref": "BatchLogGroup"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-LogGroupName"
+                }
+            }
+        },
+        "BatchComputeEnvironmentArn": {
+            "Description": "ARN of the Batch compute environment",
+            "Value": {"Ref": "BatchComputeEnvironment"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ComputeEnvironmentArn"
+                }
+            }
+        },
+        "BatchJobQueueArn": {
+            "Description": "ARN of the Batch job queue",
+            "Value": {"Ref": "BatchJobQueue"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-JobQueueArn"
+                }
+            }
+        },
+        "BatchJobQueueName": {
+            "Description": "Name of the Batch job queue",
+            "Value": {"Ref": "BatchJobQueue"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-JobQueueName"
+                }
+            }
+        },
+        "BatchJobDefinitionArn": {
+            "Description": "ARN of the Batch job definition",
+            "Value": {"Ref": "BatchJobDefinition"},
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-JobDefinitionArn"
+                }
+            }
+        }
+    }
+}

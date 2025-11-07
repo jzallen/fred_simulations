@@ -10,7 +10,14 @@ from epistemix_platform.models import Run, RunStatus, RunStatusDetail
 
 
 # Constants for AWS Batch configuration
-# These come from environment variables or use defaults
+# These come from environment variables set by the CloudFormation batch-infrastructure stack
+# Default values are placeholders for local development
+#
+# CloudFormation Outputs:
+#   - AWS_BATCH_JOB_DEFINITION: BatchJobDefinitionArn (from batch-infrastructure stack)
+#   - AWS_BATCH_JOB_QUEUE: BatchJobQueueName (from batch-infrastructure stack)
+#
+# See: epistemix_platform/infrastructure/templates/batch/batch-infrastructure.json
 JOB_DEFINITION_ARN = os.getenv(
     "AWS_BATCH_JOB_DEFINITION",
     "arn:aws:batch:us-east-1:123456789012:job-definition/simulation-runner:1"
