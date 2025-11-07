@@ -252,6 +252,33 @@
                 }
               ]
             }
+          },
+          {
+            "PolicyName": "BatchAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:SubmitJob",
+                    "batch:DescribeJobs",
+                    "batch:ListJobs"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/fred-batch-queue-*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/fred-simulation-runner-*:*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/fred-simulation-runner-*"
+                    }
+                  ]
+                }
+              ]
+            }
           }
         ],
         "Tags": [

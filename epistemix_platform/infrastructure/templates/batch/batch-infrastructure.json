@@ -490,7 +490,7 @@
                         "Fn::Sub": "${ECRRepositoryUri}:latest"
                     },
                     "Vcpus": 1,
-                    "Memory": 1024,
+                    "Memory": 2048,
                     "JobRoleArn": {
                         "Fn::GetAtt": ["BatchJobRole", "Arn"]
                     },
