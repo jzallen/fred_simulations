@@ -4,16 +4,18 @@ AWS Batch implementation of simulation runner gateway.
 Uses boto3 to submit and manage simulation runs on AWS Batch.
 """
 
+import os
 import boto3
 from epistemix_platform.models import Run, RunStatus, RunStatusDetail
 
 
 # Constants for AWS Batch configuration
-# These should eventually come from environment variables or config
-JOB_DEFINITION_ARN = (
+# These come from environment variables or use defaults
+JOB_DEFINITION_ARN = os.getenv(
+    "AWS_BATCH_JOB_DEFINITION",
     "arn:aws:batch:us-east-1:123456789012:job-definition/simulation-runner:1"
 )
-JOB_QUEUE_NAME = "simulation-queue"
+JOB_QUEUE_NAME = os.getenv("AWS_BATCH_JOB_QUEUE", "simulation-queue")
 
 
 class AWSBatchSimulationRunner:
@@ -153,3 +155,17 @@ class AWSBatchSimulationRunner:
         self._batch_client.terminate_job(
             jobId=job_id, reason="User requested cancellation"
         )
+
+
+def create_simulation_runner(batch_client=None):
+    """
+    Factory function to create a simulation runner gateway.
+
+    Args:
+        batch_client: Optional boto3 Batch client (for testing).
+                     If None, creates a new client.
+
+    Returns:
+        AWSBatchSimulationRunner instance
+    """
+    return AWSBatchSimulationRunner(batch_client=batch_client)

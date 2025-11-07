@@ -123,12 +123,17 @@ def get_job_controller() -> JobController:
     s3_client = create_s3_client(region_name=region_name)
     results_repository = S3ResultsRepository(s3_client, bucket_name)
 
+    # Create simulation runner gateway (REQUIRED)
+    from epistemix_platform.gateways.simulation_runner import create_simulation_runner
+    simulation_runner = create_simulation_runner()
+
     # Create and return JobController
     return JobController.create_with_repositories(
         job_repository=job_repository,
         run_repository=run_repository,
         upload_location_repository=upload_location_repository,
         results_repository=results_repository,
+        simulation_runner=simulation_runner,
     )
 
 

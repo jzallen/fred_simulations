@@ -411,10 +411,10 @@ class TestJobController:
         assert calls[0][1]['run'].id == run1.id
         assert calls[1][1]['run'].id == run2.id
 
-    def test_submit_runs__does_not_call_run_simulation_when_not_configured(
+    def test_submit_runs__always_calls_run_simulation(
         self, service, run_requests
     ):
-        """Test that submit_runs does NOT call _run_simulation when simulation_runner is not configured."""
+        """Test that submit_runs ALWAYS calls _run_simulation for each run (simulation_runner is required)."""
         bearer_token = "Bearer valid_token"
         run1 = Run.create_persisted(
             run_id=1,
@@ -427,14 +427,13 @@ class TestJobController:
             updated_at=datetime(2025, 1, 1, 12, 0, 0),
         )
         service._submit_runs.return_value = [run1]
-        # Remove _run_simulation to simulate not being configured
-        if hasattr(service, '_run_simulation'):
-            delattr(service, '_run_simulation')
+        service._run_simulation = Mock(return_value=run1)
 
         result = service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
 
-        # Should still succeed, just without Batch submission
+        # Should succeed and call _run_simulation
         assert is_successful(result)
+        assert service._run_simulation.call_count == 1
 
 
 @pytest.fixture
@@ -487,9 +486,17 @@ def results_repository(s3_stubber):
 
 
 @pytest.fixture
-def job_controller(job_repository, run_repository, upload_location_repository, results_repository):
+def simulation_runner_mock():
+    """Create a mock simulation runner gateway."""
+    from unittest.mock import Mock
+    mock_runner = Mock()
+    return mock_runner
+
+
+@pytest.fixture
+def job_controller(job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock):
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository, results_repository
+        job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock
     )
 
 

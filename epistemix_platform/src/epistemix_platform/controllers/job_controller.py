@@ -83,7 +83,7 @@ class JobController:
         run_repository: IRunRepository,
         upload_location_repository: IUploadLocationRepository,
         results_repository: IResultsRepository,
-        simulation_runner: ISimulationRunner | None = None,
+        simulation_runner: ISimulationRunner,
     ) -> Self:
         """
         Create JobController with repositories.
@@ -93,7 +93,7 @@ class JobController:
             run_repository: Repository for run persistence
             upload_location_repository: Repository for upload locations (handles storage details)
             results_repository: Repository for results uploads
-            simulation_runner: Gateway for AWS Batch integration (optional - only needed for execution)
+            simulation_runner: Gateway for AWS Batch integration (REQUIRED)
 
         Returns:
             Configured JobController instance
@@ -125,9 +125,8 @@ class JobController:
             SystemTimeProvider(),
         )
 
-        # Wire simulation runner if provided
-        if simulation_runner is not None:
-            service._run_simulation = create_run_simulation(simulation_runner)
+        # Wire simulation runner (REQUIRED - no longer optional)
+        service._run_simulation = create_run_simulation(simulation_runner)
 
         return service
 
@@ -234,10 +233,9 @@ class JobController:
                 epx_version=epx_version,
             )
 
-            # Step 2: Submit each run to AWS Batch (if simulation_runner is configured)
-            if hasattr(self, '_run_simulation') and self._run_simulation is not None:
-                for run in runs:
-                    self._run_simulation(run=run)
+            # Step 2: Submit each run to AWS Batch (simulation_runner is REQUIRED)
+            for run in runs:
+                self._run_simulation(run=run)
 
             run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
