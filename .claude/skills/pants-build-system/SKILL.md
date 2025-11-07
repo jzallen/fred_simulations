@@ -1,36 +1,28 @@
 ---
 name: "Pants Build System"
 description: "Expert guidance on using Pants build system for Python projects, focusing on optimal caching, test execution, and target-based workflows."
-version: "1.0.0"
+version: "2.0.0"
 ---
 
-You are a Pants build system expert with deep understanding of caching mechanisms, dependency inference, target specifications, and optimal testing workflows. Your expertise helps developers maximize build performance and leverage Pants' advanced caching capabilities.
+# Pants Build System
 
-## Core Concepts
+You are a Pants build system expert helping developers maximize build performance and leverage Pants' advanced caching capabilities through proper target-based workflows.
 
-### What is Pants?
+## What is Pants?
 
-Pants is a modern build system that provides:
-- **Fine-grained caching**: File-level dependency tracking for maximum cache hits
-- **Parallel execution**: Concurrent builds and tests across all CPU cores
-- **Dependency inference**: Automatic dependency detection without manual BUILD file maintenance
-- **Hermetic builds**: Reproducible results across machines
+Pants is a modern build system providing:
+- **Fine-grained caching** - File-level dependency tracking for maximum cache hits
+- **Parallel execution** - Concurrent builds and tests across all CPU cores
+- **Dependency inference** - Automatic dependency detection without manual BUILD maintenance
+- **Hermetic builds** - Reproducible results across machines
 
-### Key Terminology
+## The #1 Critical Rule
 
-- **Target**: An addressable unit of metadata describing code (e.g., `python_test`, `pex_binary`)
-- **BUILD file**: Contains target definitions with metadata like dependencies and configuration
-- **Target address**: Format `path/to/dir:name` uniquely identifies a target
-- **Goal**: A Pants command like `test`, `package`, `fmt`, `lint`
-- **Resolve**: A set of Python dependencies defined in a lockfile
+### ALWAYS Use Target Addresses, NEVER File Paths
 
-## Critical Caching Principle
+This is the most important concept in Pants. Understanding this prevents 80% of common mistakes.
 
-**ALWAYS use target addresses, NEVER use file paths for test execution.**
-
-### Why This Matters
-
-Pants maintains **separate cache keys** for target-based and file-based test invocations:
+**Target addresses and file paths create SEPARATE caches**:
 
 ```bash
 # ✅ CORRECT: Uses target cache, maximizes cache hits
@@ -40,499 +32,209 @@ pants test epistemix_platform:src-tests
 pants test epistemix_platform/tests/test_something.py
 ```
 
-### How Caching Works
+**Why This Matters:**
 
 When you run `pants test epistemix_platform:src-tests`:
+1. First run executes all tests and caches results per file
+2. Subsequent runs only re-run tests affected by changed files
+3. Unchanged tests return cached results instantly
 
-1. **First run**: Pants executes all tests and caches results per file
-2. **Subsequent runs**:
-   - Pants analyzes file-level dependencies
-   - Only re-runs tests affected by changed files
-   - Returns cached results for unaffected tests
-3. **After code changes**: Only tests depending on modified files re-execute
+**File-path invocations break this** because they create different cache keys, losing all accumulated cache benefits.
 
-**File-path invocations break this optimization** because:
-- They create a different cache key than the target address
-- You lose accumulated cache benefits from previous target-based runs
-- Each file path creates its own isolated cache entry
+**When file paths are acceptable:** Only for one-off debugging sessions. Always return to target-based execution for normal development.
 
-## Test Execution Best Practices
+> **Deep dive**: [caching-deep-dive.md](reference/caching-deep-dive.md)
 
-### Running Tests - The Right Way
+## Essential Commands
 
+### Running Tests
 ```bash
-# Run all tests in repository (uses top-level cache)
-pants test ::
+pants test ::                           # All tests (top-level cache)
+pants test epistemix_platform::         # Component tests
+pants test epistemix_platform:src-tests # Specific target (PREFERRED)
 
-# Run all tests in a component (uses component-level cache)
-pants test epistemix_platform::
-
-# Run specific target (uses target-specific cache)
-pants test epistemix_platform:src-tests
-
-# Run infrastructure tests with different resolve
-pants test epistemix_platform:infrastructure-tests
-
-# Run tests in a subdirectory (still uses target cache)
-pants test epistemix_platform/tests::
+# Pass arguments to pytest with --
+pants test epistemix_platform:src-tests -- -vv  # Verbose
+pants test epistemix_platform:src-tests -- -k test_user  # Pattern
+pants test epistemix_platform:src-tests -- -x  # Stop on first failure
 ```
 
-### Running Tests - What to Avoid
-
+### Code Quality
 ```bash
-# ❌ AVOID: File paths create separate caches
-pants test epistemix_platform/tests/test_models.py
-pants test epistemix_platform/tests/unit/test_user.py
-
-# ❌ AVOID: Mixing targets and file paths
-pants test epistemix_platform:src-tests epistemix_platform/tests/test_foo.py
+pants fmt ::              # Format all code
+pants lint ::             # Lint all code
+pants fmt lint ::         # Both together
+pants fmt --changed-since=HEAD  # Only changed files
 ```
 
-### When File Paths Are Acceptable
-
-File paths are acceptable for **one-off debugging** when you're:
-- Rapidly iterating on a single test file
-- Not concerned about cache accumulation
-- Testing in isolation intentionally
-
-But **always return to target-based execution** for normal development.
-
-### Passing Arguments to pytest
-
-Use `--` to separate Pants arguments from pytest arguments:
-
+### Building
 ```bash
-# Run with verbose output
-pants test epistemix_platform:src-tests -- -vv
-
-# Run specific test by name
-pants test epistemix_platform:src-tests -- -k test_user_login
-
-# Stop on first failure
-pants test epistemix_platform:src-tests -- -x
-
-# Show print statements
-pants test epistemix_platform:src-tests -- -s
-
-# Run with coverage
-pants test epistemix_platform:src-tests -- --cov=epistemix_platform --cov-report=html
+pants package epistemix_platform:epistemix-cli  # Build PEX binary
 ```
+
+### Dependency Management
+```bash
+pants generate-lockfiles  # Update all lockfiles
+pants export --resolve=epistemix_platform_env  # Export to virtualenv
+```
+
+> **Complete command reference**: [command-reference.md](reference/command-reference.md)
 
 ## Target Specifications
 
 ### The :: Wildcard
-
-The `::` syntax means "this directory and all subdirectories":
-
 ```bash
-# All targets in repository
-pants test ::
-
-# All targets in epistemix_platform and subdirectories
-pants test epistemix_platform::
-
-# All targets in tests subdirectory
-pants test epistemix_platform/tests::
+pants test ::               # All targets in repository
+pants test epistemix_platform::  # All targets in directory + subdirs
 ```
 
-### Single : for Specific Targets
-
+### Specific Targets
 ```bash
-# Specific named target in BUILD file
-pants test epistemix_platform:src-tests
-
-# Multiple specific targets
-pants test epistemix_platform:src-tests epistemix_platform:infrastructure-tests
+pants test epistemix_platform:src-tests  # Named target in BUILD file
 ```
 
 ### Listing Targets
-
 ```bash
-# List all targets in a directory
-pants list epistemix_platform::
-
-# List targets that own a specific file
-pants list epistemix_platform/tests/test_models.py
-
-# List all test targets
-pants list :: --filter-target-type=python_tests
+pants list epistemix_platform::  # List all targets
+pants list epistemix_platform/tests/test_models.py  # Find owners
 ```
 
-## Understanding BUILD Files
-
-### python_tests Target Structure
-
-```python
-python_tests(
-    name="src-tests",  # Target name, addressable as epistemix_platform:src-tests
-    sources=[
-        "tests/**/test_*.py",  # Glob pattern for test files
-        "tests/test_*.py",
-    ],
-    dependencies=[
-        "./src/epistemix_platform:lib",  # Production code dependency
-        "./tests:test-utils",             # Test utilities
-        ":test-reqs#pytest",              # Test framework from requirements
-    ],
-)
-```
-
-### Target Naming Conventions
-
-- **Name field**: Short, descriptive name for the target (`src-tests`, `integration-tests`)
-- **Sources field**: Glob patterns for files owned by this target
-- **Dependencies field**: Other targets and requirements this target depends on
-
-### Multiple Test Targets
-
-Projects often have multiple test targets for different purposes:
-
-```python
-# Unit tests (fast, isolated)
-python_tests(
-    name="unit-tests",
-    sources=["tests/unit/**/*.py"],
-)
-
-# Integration tests (slower, with real dependencies)
-python_tests(
-    name="integration-tests",
-    sources=["tests/integration/**/*.py"],
-)
-
-# Infrastructure tests (different resolve)
-python_tests(
-    name="infrastructure-tests",
-    sources=["infrastructure/tests/**/*.py"],
-    resolve="infrastructure_env",
-)
-```
-
-Run them separately to leverage caching:
-
-```bash
-pants test epistemix_platform:unit-tests        # Fast feedback
-pants test epistemix_platform:integration-tests # After unit tests pass
-```
-
-## Dependency Inference
-
-Pants automatically infers dependencies by analyzing imports:
-
-```python
-# In epistemix_platform/models/user.py
-from epistemix_platform.repositories import IUserRepository
-
-# Pants automatically adds epistemix_platform/repositories:lib as dependency
-# No manual BUILD file updates needed!
-```
-
-### Viewing Inferred Dependencies
-
-```bash
-# Show all dependencies for a target (including inferred)
-pants dependencies epistemix_platform:src-tests
-
-# Show dependency tree
-pants dependencies --transitive epistemix_platform:src-tests
-```
-
-## Common Pants Commands
-
-### Testing
-
-```bash
-pants test ::                           # All tests
-pants test epistemix_platform::         # Component tests
-pants test epistemix_platform:src-tests # Specific target
-pants test --changed-since=main         # Only affected by changes
-```
-
-### Code Quality
-
-```bash
-pants fmt ::                      # Format all code with Ruff
-pants lint ::                     # Lint all code with Ruff
-pants fmt lint ::                 # Format and lint together
-pants fmt --changed-since=HEAD    # Only format changed files
-```
-
-### Building
-
-```bash
-pants package epistemix_platform:epistemix-cli  # Build PEX binary
-pants package ::                                # Build all packages
-```
-
-### Dependency Management
-
-```bash
-pants generate-lockfiles                              # Update all lockfiles
-pants generate-lockfiles --resolve=epistemix_platform_env  # Specific resolve
-pants export --resolve=epistemix_platform_env         # Export to virtualenv
-```
-
-### Inspection
-
-```bash
-pants list ::                                    # List all targets
-pants list epistemix_platform::                  # List component targets
-pants peek epistemix_platform:src-tests          # Show target metadata
-pants dependencies epistemix_platform:src-tests  # Show dependencies
-pants dependents epistemix_platform/src:lib      # Show what depends on target
-```
-
-## Cache Optimization Strategies
-
-### 1. Always Use Target Addresses
-
-The single most important rule: **Run tests using target addresses, not file paths.**
-
-```bash
-# ✅ Optimal caching
-pants test epistemix_platform:src-tests
-
-# ❌ Poor caching
-pants test epistemix_platform/tests/test_*.py
-```
-
-### 2. Run from Top-Down
-
-Start with broad targets and let Pants optimize:
-
-```bash
-# Best: Run all tests, Pants caches and only re-runs affected
-pants test ::
-
-# Good: Run component tests
-pants test epistemix_platform::
-
-# Okay: Run specific target
-pants test epistemix_platform:src-tests
-```
-
-### 3. Use --changed-since for CI
-
-In continuous integration, only test affected code:
-
-```bash
-# Only test code affected by changes since main branch
-pants test --changed-since=main
-
-# Only test code affected by last commit
-pants test --changed-since=HEAD~1
-```
-
-### 4. Leverage Parallel Execution
-
-Pants automatically parallelizes across CPUs. Don't manually parallelize:
-
-```bash
-# ✅ Good: Pants handles parallelization
-pants test epistemix_platform::
-
-# ❌ Bad: Manual parallelization fights with Pants
-pants test epistemix_platform:src-tests & pants test simulation_runner:src-tests &
-```
-
-## Test Batching Considerations
-
-### Default Behavior: One Process Per File
-
-By default, Pants runs each test file in a separate process:
-- **Pros**: Fine-grained caching, better parallelism
-- **Cons**: Package/session-scoped fixtures execute per file, not once overall
-
-### When to Use Batching
-
-Enable batching for tests with expensive setup fixtures:
-
-```python
-python_tests(
-    name="src-tests",
-    sources=["tests/**/*.py"],
-    batch_compatibility_tag="expensive-fixtures",  # Mark as batch-compatible
-)
-```
-
-Configure batch size:
-
-```toml
-[test]
-batch_size = 10  # Lower values = better cache granularity
-```
-
-**Trade-off**: Batched tests cache together—if any file in batch changes, entire batch re-runs.
-
-## Resolves: Multiple Dependency Sets
-
-This project uses multiple Python dependency sets (resolves):
-
-```toml
-[python.resolves]
-epistemix_platform_env = "epistemix_platform/epistemix_platform_env.lock"
-infrastructure_env = "epistemix_platform/infrastructure/infrastructure_env.lock"
-tcr_env = "tcr/tcr_env.lock"
-```
-
-### Why Multiple Resolves?
-
-- **Separation**: Infrastructure tools (Sceptre, CloudFormation) separate from application code
-- **Isolation**: Avoid dependency conflicts between tool environments
-- **Optimization**: Smaller lockfiles, faster dependency resolution
-
-### Working with Resolves
-
-```bash
-# Generate lockfile for specific resolve
-pants generate-lockfiles --resolve=epistemix_platform_env
-
-# Export resolve to virtualenv for IDE/editor support
-pants export --resolve=epistemix_platform_env
-
-# Test targets specify their resolve in BUILD file
-python_tests(
-    name="infrastructure-tests",
-    resolve="infrastructure_env",  # Uses infrastructure dependencies
-)
-```
-
-## Performance Tips
-
-### 1. Cache Warmth
-
-After major changes, warm the cache by running tests once:
-
-```bash
-# Warms entire test cache
-pants test ::
-```
-
-Subsequent runs will be dramatically faster as Pants reuses cached results.
-
-### 2. Local vs Remote Caching
-
-Pants supports remote caching for teams:
-- **Local cache**: `~/.cache/pants/` (default)
-- **Remote cache**: Shared across team members (configuration required)
-
-### 3. Clean Cache Sparingly
-
-Only clean cache when troubleshooting:
-
-```bash
-# Nuclear option: removes all cached data
-pants clean-all
-```
-
-Cache is your friend—don't delete it unnecessarily.
-
-### 4. Incremental Development
-
-During development, rely on target-based caching:
-
-```bash
-# Edit some code
-vim epistemix_platform/src/epistemix_platform/models/user.py
-
-# Run tests - only affected tests re-run!
-pants test epistemix_platform:src-tests
-```
-
-Pants tracks file-level dependencies and only re-tests what's affected.
-
-## Integration with TDD Workflow
-
-When practicing Test-Driven Development with Pants:
-
-### Red Phase
-```bash
-# Write failing test, run target to see it fail
-pants test epistemix_platform:src-tests -- -k test_new_feature
-```
-
-### Green Phase
-```bash
-# Implement minimal code, run same target
-pants test epistemix_platform:src-tests -- -k test_new_feature
-```
-
-### Refactor Phase
-```bash
-# Refactor with confidence, run full target to ensure nothing breaks
-pants test epistemix_platform:src-tests
-```
-
-**Key**: Always use the same target address throughout the cycle to benefit from caching.
-
-## Common Mistakes to Avoid
-
-### ❌ Mistake 1: Using File Paths Habitually
-
-```bash
-# DON'T: Bypasses target cache
-pants test epistemix_platform/tests/test_models.py
-```
-
-### ❌ Mistake 2: Running Individual Files During TDD
-
-```bash
-# DON'T: Creates fragmented caches
-pants test file1.py  # Cache key A
-pants test file2.py  # Cache key B
-pants test file1.py  # Cache key A again (but not related to target cache)
-```
-
-### ❌ Mistake 3: Not Leveraging :: Syntax
-
-```bash
-# DON'T: Manually list all directories
-pants test epistemix_platform/tests pants test simulation_runner/tests
-
-# DO: Use wildcard
-pants test ::
-```
-
-### ❌ Mistake 4: Fighting Pants' Parallelization
-
-```bash
-# DON'T: Manually parallelize
-pants test component1:: & pants test component2:: &
-
-# DO: Let Pants handle it
-pants test ::
-```
+> **Complete target guide**: [target-specifications.md](reference/target-specifications.md)
 
 ## Project-Specific Targets
 
-In this repository, key test targets are:
-
+Key test targets in this repository:
 ```bash
-# Epistemix Platform tests (main application)
-pants test epistemix_platform:src-tests
-
-# Infrastructure tests (CloudFormation/Sceptre)
-pants test epistemix_platform:infrastructure-tests
-
-# Simulation Runner tests
-pants test simulation_runner:src-tests
-
-# TCR tool tests
-pants test tcr:src-tests
-
-# All tests (recommended for pre-push verification)
-pants test ::
+pants test epistemix_platform:src-tests        # Platform tests
+pants test epistemix_platform:infrastructure-tests  # Infrastructure tests
+pants test simulation_runner:src-tests         # Simulation runner tests
+pants test ::                                  # All tests (recommended)
 ```
 
-## Summary: Golden Rules
+## Available Resources
+
+### Core Documentation
+
+- **[caching-deep-dive.md](reference/caching-deep-dive.md)** - How Pants caching works
+  - Target vs file-path cache keys explained
+  - Cache invalidation and optimization
+  - Local vs remote caching
+  - Performance tuning
+  - Read when: Optimizing build performance or troubleshooting cache
+
+- **[command-reference.md](reference/command-reference.md)** - Complete command catalog
+  - All goals with options (test, fmt, lint, package, etc.)
+  - Passing arguments to underlying tools
+  - Inspection commands (list, peek, dependencies)
+  - Read when: Need full syntax for a specific command
+
+- **[target-specifications.md](reference/target-specifications.md)** - BUILD files and targets
+  - Target address format
+  - BUILD file structure
+  - python_tests target anatomy
+  - Multiple test target organization
+  - Read when: Setting up BUILD files or organizing targets
+
+### Advanced Topics
+
+- **[advanced-topics.md](reference/advanced-topics.md)** - Configuration and optimization
+  - Test batching for expensive fixtures
+  - Multiple resolves (epistemix_platform_env, infrastructure_env)
+  - CI/CD patterns with --changed-since
+  - Performance tuning
+  - Read when: Configuring batching, using multiple resolves, or CI setup
+
+- **[tdd-integration.md](reference/tdd-integration.md)** - TDD workflow with Pants
+  - Red-Green-Refactor cycle optimization
+  - Effective pytest arguments
+  - Watch mode alternatives
+  - Fast feedback strategies
+  - Read when: Practicing TDD or setting up rapid iteration
+
+## Golden Rules
 
 1. **ALWAYS use target addresses** (`epistemix_platform:src-tests`), NEVER file paths
-2. **Run from top-down** (`pants test ::` or `pants test epistemix_platform::`)
-3. **Trust Pants' caching**—it only re-runs what's affected
-4. **Use :: wildcard** for directory-based test execution
+2. **Run from top-down** (`pants test ::` or `pants test component::`)
+3. **Trust Pants' caching** - it only re-runs what's affected
+4. **Use :: wildcard** for directory-based execution
 5. **Separate Pants args from pytest args** with `--`
 6. **Leverage --changed-since** in CI pipelines
-7. **Keep cache warm**—don't clean unnecessarily
+7. **Keep cache warm** - don't clean unnecessarily
 8. **Use consistent targets** throughout TDD cycles
 
-Following these principles ensures maximum performance, optimal cache utilization, and efficient development workflows with Pants.
+## Quick Workflow Examples
+
+### TDD Cycle
+```bash
+# Red: Write failing test, run to see it fail
+pants test epistemix_platform:src-tests -- -k test_new_feature
+
+# Green: Implement, run same command
+pants test epistemix_platform:src-tests -- -k test_new_feature
+
+# Refactor: Run full target to ensure nothing breaks
+pants test epistemix_platform:src-tests
+```
+
+### Pre-Push Verification
+```bash
+# Format, lint, and test everything
+pants fmt lint test ::
+```
+
+### Rapid Iteration
+```bash
+# Edit code, run tests - only affected tests re-run
+vim epistemix_platform/src/epistemix_platform/models/user.py
+pants test epistemix_platform:src-tests  # Fast!
+```
+
+## Common Mistakes to Avoid
+
+❌ **Using file paths habitually**
+```bash
+pants test epistemix_platform/tests/test_models.py  # DON'T
+```
+
+❌ **Running individual files during TDD**
+```bash
+pants test file1.py  # Creates fragmented cache
+pants test file2.py  # Separate cache key
+```
+
+❌ **Not leveraging :: syntax**
+```bash
+pants test epistemix_platform/tests pants test simulation_runner/tests  # DON'T
+pants test ::  # DO - Let Pants handle it
+```
+
+❌ **Fighting Pants' parallelization**
+```bash
+pants test component1:: & pants test component2:: &  # DON'T
+pants test ::  # DO - Pants parallelizes automatically
+```
+
+## Key Concepts
+
+- **Targets** - Addressable units of metadata in BUILD files (e.g., `python_tests`)
+- **BUILD files** - Define targets with dependencies and configuration
+- **Goal** - A Pants command like `test`, `fmt`, `lint`
+- **Resolve** - Set of Python dependencies (epistemix_platform_env, infrastructure_env, etc.)
+- **Dependency inference** - Pants automatically detects imports and creates dependencies
+
+## Performance Tips
+
+1. **Cache warmth** - After major changes, run `pants test ::` once to warm cache
+2. **Top-down execution** - Start with `::`, let Pants optimize
+3. **Use --changed-since** - In CI, only test affected code
+4. **Trust the cache** - Don't use `pants clean-all` unless troubleshooting
+
+## Remember
+
+Pants' power comes from file-level dependency tracking and intelligent caching. The key to unlocking this power is **consistently using target addresses instead of file paths**. This single practice transforms Pants from a build tool into a performance multiplier.
+
+Every time you're tempted to run `pants test path/to/file.py`, remember: you're creating a new cache key and losing all the optimization benefits Pants provides.
+
+---
+
+**For comprehensive guidance, explore the reference/ directory based on your current need.**
