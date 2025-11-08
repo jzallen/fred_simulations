@@ -14,8 +14,8 @@ parameters:
   # Database Configuration
   DBName: epistemixdb
   DBUsername: epistemixuser
-  DBInstanceClass: db.t3.small  # Slightly larger for staging
-  AllocatedStorage: 50  # More storage for staging data
+  DBInstanceClass: db.t3.micro
+  AllocatedStorage: 20
 
   # Security Settings
   PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible

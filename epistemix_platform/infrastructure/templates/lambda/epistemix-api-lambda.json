@@ -328,7 +328,7 @@
             "FLASK_APP": "epistemix_platform.app",
             "FLASK_ENV": {"Ref": "Environment"},
             "DATABASE_URL": {
-              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}"
+              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}?sslmode=require"
             },
             "DB_HOST": {"Ref": "DBHost"},
             "DB_PORT": {"Ref": "DBPort"},

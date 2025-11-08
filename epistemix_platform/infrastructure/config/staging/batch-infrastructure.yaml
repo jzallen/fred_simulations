@@ -2,13 +2,14 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on RDS, S3, and Secrets Manager
+# Layer 4: Batch infrastructure depends on RDS, S3, Secrets Manager, and shared VPC endpoint
 dependencies:
   - staging/database-secrets.yaml
   - staging/rds-postgres.yaml
   - staging/s3-upload-bucket.yaml
+  - batch-vpc-endpoint.yaml
 
-# Stack parameters for staging environment
+# Stack parameters for development environment
 parameters:
   Environment: staging
 
@@ -43,17 +44,17 @@ parameters:
   UploadBucketName: !stack_output staging/s3-upload-bucket.yaml::BucketName
 
   # Compute Environment Configuration
-  # Staging sizing - moderate capacity for testing:
+  # Development sizing for cost minimization:
   # - EC2 SPOT instances for ~70% cost savings
   # - m5.large (2 vCPU, 8 GB) and m5.xlarge (4 vCPU, 16 GB) instance types
-  # - Max 16 vCPUs = ~8 concurrent m5.large jobs OR ~4 concurrent m5.xlarge jobs
+  # - Max 8 vCPUs = ~4 concurrent m5.large jobs OR ~2 concurrent m5.xlarge jobs
   # - Production would use higher MaxvCpus for greater parallelism
-  MaxvCpus: 16
+  MaxvCpus: 8
   SpotBidPercentage: 100  # Use Spot whenever available (fallback to On-Demand)
 
   # CloudWatch Logs
-  # Moderate retention for staging environment (14 days)
-  LogRetentionDays: 14
+  # Short retention for dev environment (7 days)
+  LogRetentionDays: 7
 
 # Stack-specific tags
 tags:

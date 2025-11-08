@@ -1,0 +1,113 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "VPC Endpoint for AWS Batch API - Shared across all environments in the VPC",
+    "Parameters": {
+        "VpcId": {
+            "Type": "AWS::EC2::VPC::Id",
+            "Description": "VPC ID where the Batch VPC endpoint will be created"
+        },
+        "SubnetIds": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "List of subnet IDs for the VPC endpoint (should cover all AZs used by Batch)"
+        },
+        "LambdaSecurityGroupIds": {
+            "Type": "List<AWS::EC2::SecurityGroup::Id>",
+            "Description": "List of Lambda security group IDs that need access to AWS Batch API via this endpoint"
+        }
+    },
+    "Resources": {
+        "BatchVpcEndpointSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupName": "batch-vpc-endpoint-sg",
+                "GroupDescription": "Security group for AWS Batch VPC endpoint - allows HTTPS from Lambda functions",
+                "VpcId": {"Ref": "VpcId"},
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "SourceSecurityGroupId": {
+                            "Fn::Select": [0, {"Ref": "LambdaSecurityGroupIds"}]
+                        },
+                        "Description": "HTTPS from dev Lambda to Batch VPC endpoint"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 443,
+                        "ToPort": 443,
+                        "SourceSecurityGroupId": {
+                            "Fn::Select": [1, {"Ref": "LambdaSecurityGroupIds"}]
+                        },
+                        "Description": "HTTPS from staging Lambda to Batch VPC endpoint"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "batch-vpc-endpoint-sg"
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchVPCEndpoint"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    }
+                ]
+            }
+        },
+        "BatchVpcEndpoint": {
+            "Type": "AWS::EC2::VPCEndpoint",
+            "Properties": {
+                "VpcEndpointType": "Interface",
+                "ServiceName": {
+                    "Fn::Sub": "com.amazonaws.${AWS::Region}.batch"
+                },
+                "VpcId": {"Ref": "VpcId"},
+                "SubnetIds": {"Ref": "SubnetIds"},
+                "SecurityGroupIds": [{"Ref": "BatchVpcEndpointSecurityGroup"}],
+                "PrivateDnsEnabled": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "batch-api-vpc-endpoint"
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "BatchAPIAccess"
+                    },
+                    {
+                        "Key": "ManagedBy",
+                        "Value": "CloudFormation"
+                    },
+                    {
+                        "Key": "Shared",
+                        "Value": "true"
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "VpcEndpointId": {
+            "Description": "ID of the VPC endpoint for AWS Batch API access",
+            "Value": {"Ref": "BatchVpcEndpoint"},
+            "Export": {
+                "Name": "batch-vpc-endpoint-id"
+            }
+        },
+        "VpcEndpointDnsEntries": {
+            "Description": "DNS entries for the VPC endpoint",
+            "Value": {
+                "Fn::Join": [
+                    ",",
+                    {
+                        "Fn::GetAtt": ["BatchVpcEndpoint", "DnsEntries"]
+                    }
+                ]
+            }
+        }
+    }
+}
