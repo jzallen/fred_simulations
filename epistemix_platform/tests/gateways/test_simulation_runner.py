@@ -5,11 +5,12 @@ Tests AWS Batch integration for simulation execution using mocked boto3 client.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timezone
+from botocore.exceptions import ClientError, BotoCoreError
 
 from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-from epistemix_platform.models import Run, RunStatus, RunStatusDetail
+from epistemix_platform.models import Run, RunStatus, RunStatusDetail, PodPhase
 
 
 class TestAWSBatchSimulationRunnerSubmit:
@@ -275,6 +276,119 @@ class TestAWSBatchSimulationRunnerDescribe:
         # ACT & ASSERT
         with pytest.raises(ValueError, match="Job not found"):
             runner.describe_run(run)
+
+    def test_describe_run_retries_on_client_error(self):
+        """Test that describe_run retries on transient AWS Batch errors."""
+        # ARRANGE
+        mock_batch_client = Mock()
+
+        # First call fails with ClientError, second succeeds
+        mock_batch_client.list_jobs.side_effect = [
+            ClientError({"Error": {"Code": "ServiceException"}}, "list_jobs"),
+            {
+                "jobSummaryList": [
+                    {"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}
+                ]
+            },
+        ]
+        mock_batch_client.describe_jobs.return_value = {
+            "jobs": [
+                {
+                    "jobId": "abc-123-job-id",
+                    "status": "RUNNING",
+                    "statusReason": "Job is running",
+                }
+            ]
+        }
+
+        runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+
+        run = Run.create_persisted(
+            run_id=42,
+            job_id=123,
+            user_id=456,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            request={"simulation": "test"},
+        )
+
+        # ACT
+        with patch("time.sleep"):  # Don't actually sleep in tests
+            result = runner.describe_run(run)
+
+        # ASSERT
+        assert result.status == RunStatus.RUNNING
+        assert mock_batch_client.list_jobs.call_count == 2  # First failed, second succeeded
+
+    def test_describe_run_returns_error_status_after_max_retries(self):
+        """Test that describe_run returns ERROR status after exhausting retries."""
+        # ARRANGE
+        mock_batch_client = Mock()
+
+        # All calls fail with ClientError
+        mock_batch_client.list_jobs.side_effect = ClientError(
+            {"Error": {"Code": "ServiceException"}}, "list_jobs"
+        )
+
+        runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+
+        run = Run.create_persisted(
+            run_id=42,
+            job_id=123,
+            user_id=456,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            request={"simulation": "test"},
+        )
+
+        # ACT
+        with patch("time.sleep"):  # Don't actually sleep in tests
+            result = runner.describe_run(run)
+
+        # ASSERT
+        assert result.status == RunStatus.ERROR
+        assert result.pod_phase == PodPhase.UNKNOWN
+        assert "AWS Batch API error" in result.message
+        assert mock_batch_client.list_jobs.call_count == 3  # max_retries = 3
+
+    def test_describe_run_includes_pod_phase(self):
+        """Test that describe_run returns RunStatusDetail with pod_phase field (FRED-46)."""
+        # ARRANGE
+        mock_batch_client = Mock()
+        mock_batch_client.list_jobs.return_value = {
+            "jobSummaryList": [
+                {"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}
+            ]
+        }
+        mock_batch_client.describe_jobs.return_value = {
+            "jobs": [
+                {
+                    "jobId": "abc-123-job-id",
+                    "status": "RUNNING",
+                    "statusReason": "Job is running on compute environment",
+                }
+            ]
+        }
+
+        runner = AWSBatchSimulationRunner(batch_client=mock_batch_client)
+
+        run = Run.create_persisted(
+            run_id=42,
+            job_id=123,
+            user_id=456,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            request={"simulation": "test"},
+        )
+
+        # ACT
+        result = runner.describe_run(run)
+
+        # ASSERT
+        assert isinstance(result, RunStatusDetail)
+        assert result.status == RunStatus.RUNNING
+        assert result.pod_phase == PodPhase.RUNNING
+        assert hasattr(result, "pod_phase")  # FRED-46 requirement
 
 
 class TestAWSBatchSimulationRunnerCancel:
