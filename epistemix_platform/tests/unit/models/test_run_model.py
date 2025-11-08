@@ -74,7 +74,7 @@ class TestRunModelApplicationFields:
 
 
 class TestRunNaturalKey:
-    """Tests for Run.natural_key() method for AWS Batch job naming."""
+    """Tests for Run.natural_key property for AWS Batch job naming."""
 
     def test_natural_key_returns_job_and_run_id(self):
         """RED: Test that natural_key property returns formatted string with job and run ID."""

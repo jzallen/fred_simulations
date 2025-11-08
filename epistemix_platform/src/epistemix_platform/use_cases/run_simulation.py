@@ -26,7 +26,7 @@ def run_simulation(
     from submit_runs use case which already has the Run).
 
     AWS Batch is the source of truth for job state. The run object is not
-    modified or saved after submission. Jobs are tracked by name (run.natural_key()).
+    modified or saved after submission. Jobs are tracked by name (run.natural_key).
 
     Args:
         run: The Run object to execute
@@ -38,9 +38,7 @@ def run_simulation(
     # Submit run to AWS Batch via gateway (does not modify run object)
     simulation_runner.submit_run(run)
 
-    logger.info(
-        f"Submitted run {run.id} to AWS Batch with job name: {run.natural_key}"
-    )
+    logger.info(f"Submitted run {run.id} to AWS Batch with job name: {run.natural_key}")
 
     return run
 
@@ -49,6 +47,4 @@ def create_run_simulation(
     simulation_runner: ISimulationRunner,
 ):
     """Factory to create run_simulation function with simulation_runner wired."""
-    return functools.partial(
-        run_simulation, simulation_runner=simulation_runner
-    )
+    return functools.partial(run_simulation, simulation_runner=simulation_runner)

@@ -5,9 +5,9 @@ Tests AWS Batch integration for simulation execution using mocked boto3 client.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone
-from botocore.exceptions import ClientError, BotoCoreError
+from botocore.exceptions import ClientError
 
 from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
 from epistemix_platform.models import Run, RunStatus, RunStatusDetail, PodPhase
@@ -285,11 +285,7 @@ class TestAWSBatchSimulationRunnerDescribe:
         # First call fails with ClientError, second succeeds
         mock_batch_client.list_jobs.side_effect = [
             ClientError({"Error": {"Code": "ServiceException"}}, "list_jobs"),
-            {
-                "jobSummaryList": [
-                    {"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}
-                ]
-            },
+            {"jobSummaryList": [{"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}]},
         ]
         mock_batch_client.describe_jobs.return_value = {
             "jobs": [
@@ -356,9 +352,7 @@ class TestAWSBatchSimulationRunnerDescribe:
         # ARRANGE
         mock_batch_client = Mock()
         mock_batch_client.list_jobs.return_value = {
-            "jobSummaryList": [
-                {"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}
-            ]
+            "jobSummaryList": [{"jobId": "abc-123-job-id", "jobName": "job-123-run-42"}]
         }
         mock_batch_client.describe_jobs.return_value = {
             "jobs": [
@@ -465,7 +459,7 @@ class TestAWSBatchSimulationRunnerConstants:
         runner = AWSBatchSimulationRunner(
             batch_client=mock_batch_client,
             job_queue_name="fred-batch-queue-dev",
-            job_definition_name="fred-simulation-runner-dev"
+            job_definition_name="fred-simulation-runner-dev",
         )
 
         run = Run.create_persisted(
@@ -494,7 +488,7 @@ class TestAWSBatchSimulationRunnerConstants:
         runner = AWSBatchSimulationRunner(
             batch_client=mock_batch_client,
             job_queue_name="fred-batch-queue-dev",
-            job_definition_name="fred-simulation-runner-dev"
+            job_definition_name="fred-simulation-runner-dev",
         )
 
         run = Run.create_persisted(

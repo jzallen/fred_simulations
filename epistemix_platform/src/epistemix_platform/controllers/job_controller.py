@@ -296,7 +296,10 @@ class JobController:
                         continue  # Keep DB status
 
                     # Update if status or pod_phase changed
-                    if run.status != status_detail.status or run.pod_phase != status_detail.pod_phase:
+                    if (
+                        run.status != status_detail.status
+                        or run.pod_phase != status_detail.pod_phase
+                    ):
                         # Log status transition (ENGINEER-03 pattern)
                         logger.info(
                             f"Status change for run {run.id}: "
@@ -313,7 +316,7 @@ class JobController:
                         updated_count += 1
 
                 except Exception as e:
-                    logger.exception(f"Error synchronizing status for run {run.id}: {e}")
+                    logger.exception(f"Error synchronizing status for run {run.id}")
                     failed_count += 1
 
             # Log metrics (ENGINEER-03 pattern, simplified)
@@ -595,4 +598,3 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in upload_results")
             return Failure("An unexpected error occurred while uploading results")
-

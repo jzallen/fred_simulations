@@ -38,8 +38,8 @@ class AWSBatchSimulationRunner:
             # Configure boto3 with explicit timeouts to fail fast on network issues
             config = Config(
                 connect_timeout=5,  # 5 seconds to establish connection
-                read_timeout=60,    # 60 seconds to read response
-                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+                read_timeout=60,  # 60 seconds to read response
+                retries={"max_attempts": 3, "mode": "standard"},  # Retry on transient failures
             )
             batch_client = boto3.client("batch", config=config)
 
@@ -67,15 +67,15 @@ class AWSBatchSimulationRunner:
             # Configure boto3 with explicit timeouts to fail fast on network issues
             config = Config(
                 connect_timeout=5,  # 5 seconds to establish connection
-                read_timeout=60,    # 60 seconds to read response
-                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+                read_timeout=60,  # 60 seconds to read response
+                retries={"max_attempts": 3, "mode": "standard"},  # Retry on transient failures
             )
             batch_client = boto3.client("batch", region_name=region, config=config)
 
         return cls(
             batch_client=batch_client,
             job_queue_name=job_queue_name,
-            job_definition_name=job_definition_name
+            job_definition_name=job_definition_name,
         )
 
     def submit_run(self, run: Run) -> None:
@@ -99,8 +99,10 @@ class AWSBatchSimulationRunner:
         # Command format: ["run", "--job-id", "11", "--run-id", "3"]
         command = [
             "run",
-            "--job-id", str(run.job_id),
-            "--run-id", str(run.id),
+            "--job-id",
+            str(run.job_id),
+            "--run-id",
+            str(run.id),
         ]
 
         # Submit job to AWS Batch with command override
@@ -175,7 +177,9 @@ class AWSBatchSimulationRunner:
                 run_status = BatchStatusMapper.batch_status_to_run_status(batch_status)
                 pod_phase = BatchStatusMapper.batch_status_to_pod_phase(batch_status)
 
-                return RunStatusDetail(status=run_status, message=status_reason, pod_phase=pod_phase)
+                return RunStatusDetail(
+                    status=run_status, message=status_reason, pod_phase=pod_phase
+                )
 
             except (ClientError, BotoCoreError) as e:
                 # Transient error - retry with exponential backoff
@@ -188,8 +192,8 @@ class AWSBatchSimulationRunner:
                     time.sleep(delay)
                 else:
                     # Max retries exhausted - return ERROR status (graceful degradation)
-                    logger.error(
-                        f"AWS Batch unavailable after {max_retries} retries for run {run.id}: {e}"
+                    logger.exception(
+                        f"AWS Batch unavailable after {max_retries} retries for run {run.id}"
                     )
                     return RunStatusDetail(
                         status=RunStatus.ERROR,
@@ -226,6 +230,4 @@ class AWSBatchSimulationRunner:
         job_id = job_list[0]["jobId"]
 
         # Terminate the Batch job
-        self._batch_client.terminate_job(
-            jobId=job_id, reason="User requested cancellation"
-        )
+        self._batch_client.terminate_job(jobId=job_id, reason="User requested cancellation")
