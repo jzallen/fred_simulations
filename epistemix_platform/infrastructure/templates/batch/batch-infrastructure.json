@@ -411,21 +411,6 @@
                 ]
             }
         },
-        "BatchVpcEndpoint": {
-            "Type": "AWS::EC2::VPCEndpoint",
-            "Properties": {
-                "VpcEndpointType": "Interface",
-                "ServiceName": {
-                    "Fn::Sub": "com.amazonaws.${AWS::Region}.batch"
-                },
-                "VpcId": {"Ref": "VpcId"},
-                "SubnetIds": {"Ref": "SubnetIds"},
-                "SecurityGroupIds": [
-                    {"Ref": "BatchSecurityGroup"}
-                ],
-                "PrivateDnsEnabled": true
-            }
-        },
         "BatchComputeEnvironment": {
             "Type": "AWS::Batch::ComputeEnvironment",
             "Properties": {
@@ -682,15 +667,6 @@
             "Export": {
                 "Name": {
                     "Fn::Sub": "${AWS::StackName}-JobDefinitionArn"
-                }
-            }
-        },
-        "BatchVpcEndpointId": {
-            "Description": "ID of the VPC endpoint for AWS Batch API access",
-            "Value": {"Ref": "BatchVpcEndpoint"},
-            "Export": {
-                "Name": {
-                    "Fn::Sub": "${AWS::StackName}-VpcEndpointId"
                 }
             }
         }

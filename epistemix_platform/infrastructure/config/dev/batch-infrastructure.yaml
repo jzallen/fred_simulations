@@ -2,11 +2,12 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on RDS, S3, and Secrets Manager
+# Layer 4: Batch infrastructure depends on RDS, S3, Secrets Manager, and shared VPC endpoint
 dependencies:
   - dev/database-secrets.yaml
   - dev/rds-postgres.yaml
   - dev/s3-upload-bucket.yaml
+  - batch-vpc-endpoint.yaml
 
 # Stack parameters for development environment
 parameters:
