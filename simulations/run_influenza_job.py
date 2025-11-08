@@ -23,8 +23,8 @@ def main():
     print(f"FRED files: {influenza_job.fred_files}")
 
     try:
-        # Execute the job with a timeout of 300 seconds
-        influenza_job.execute(300)
+        # Execute the job with a timeout of 600 seconds (10 minutes)
+        influenza_job.execute(600)
         print(f"Job completed successfully! Status: {influenza_job.status}")
         return 0
     except Exception as e:
