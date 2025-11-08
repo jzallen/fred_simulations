@@ -74,10 +74,6 @@
             "Default": 100,
             "MinValue": 0,
             "MaxValue": 100
-        },
-        "LambdaSecurityGroupId": {
-            "Type": "AWS::EC2::SecurityGroup::Id",
-            "Description": "Security group ID of the Lambda function that will access AWS Batch API through the VPC endpoint"
         }
     },
     "Conditions": {
@@ -352,17 +348,8 @@
                 "GroupName": {
                     "Fn::Sub": "fred-batch-sg-${Environment}"
                 },
-                "GroupDescription": "Security group for AWS Batch compute environment and VPC endpoint - allows Lambda access and outbound traffic",
+                "GroupDescription": "Security group for AWS Batch compute environment - allows outbound HTTPS and PostgreSQL access",
                 "VpcId": {"Ref": "VpcId"},
-                "SecurityGroupIngress": [
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 443,
-                        "ToPort": 443,
-                        "SourceSecurityGroupId": {"Ref": "LambdaSecurityGroupId"},
-                        "Description": "HTTPS from Lambda to Batch VPC endpoint"
-                    }
-                ],
                 "SecurityGroupEgress": [
                     {
                         "IpProtocol": "tcp",
@@ -515,7 +502,7 @@
                 "PlatformCapabilities": ["EC2"],
                 "ContainerProperties": {
                     "Image": {
-                        "Fn::Sub": "${ECRRepositoryUri}:latest"
+                        "Ref": "ECRRepositoryUri"
                     },
                     "Vcpus": 1,
                     "Memory": 2048,

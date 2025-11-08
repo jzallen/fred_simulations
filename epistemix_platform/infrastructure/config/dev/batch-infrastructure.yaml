@@ -55,10 +55,6 @@ parameters:
   # Short retention for dev environment (7 days)
   LogRetentionDays: 7
 
-  # Lambda Security Group for VPC Endpoint Access
-  # Lambda function needs to access Batch API through VPC endpoint
-  LambdaSecurityGroupId: sg-0a21e94367e079f19  # epistemix-api-lambda-vpc-sg-dev
-
 # Stack-specific tags
 tags:
   Owner: fred-simulations
