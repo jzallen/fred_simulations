@@ -68,8 +68,8 @@ class TestAWSBatchSimulationRunnerSubmit:
         # ASSERT - Run object should be unchanged (AWS Batch is source of truth)
         assert run.to_dict() == original_dict
 
-    def test_submit_run_passes_job_and_run_ids_as_environment_variables(self):
-        """RED: Test that submit_run passes job_id and run_id as env vars."""
+    def test_submit_run_passes_job_and_run_ids_as_command_arguments(self):
+        """Test that submit_run passes job_id and run_id as command args to simulation-runner CLI."""
         # ARRANGE
         mock_batch_client = Mock()
         mock_batch_client.submit_job.return_value = {"jobId": "abc-123-job-id"}
@@ -91,11 +91,10 @@ class TestAWSBatchSimulationRunnerSubmit:
         # ASSERT
         call_kwargs = mock_batch_client.submit_job.call_args[1]
         container_overrides = call_kwargs.get("containerOverrides", {})
-        environment = container_overrides.get("environment", [])
+        command = container_overrides.get("command", [])
 
-        env_dict = {item["name"]: item["value"] for item in environment}
-        assert env_dict.get("JOB_ID") == "123"
-        assert env_dict.get("RUN_ID") == "42"
+        # Expect: ["run", "--job-id", "123", "--run-id", "42"]
+        assert command == ["run", "--job-id", "123", "--run-id", "42"]
 
 
 class TestAWSBatchSimulationRunnerDescribe:

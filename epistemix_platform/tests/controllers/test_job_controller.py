@@ -594,7 +594,7 @@ class TestJobControllerIntegration:
         response = submit_result.unwrap()
 
         url, querystring = response["url"].split("?")
-        key, sig, expir = querystring.split("&")
+        params = querystring.split("&")
         expected_expiration_seconds = 3600
         expected_expiration = int(
             sum(
@@ -605,10 +605,13 @@ class TestJobControllerIntegration:
             )
         )
 
+        # Parse query string parameters into a dict
+        param_dict = dict(param.split("=", 1) for param in params)
+
         assert url == "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/job_input.zip"
-        assert key.startswith("AWSAccessKeyId=")
-        assert sig.startswith("Signature=")
-        assert expir == f"Expires={expected_expiration}"
+        assert "AWSAccessKeyId" in param_dict
+        assert "Signature" in param_dict
+        assert param_dict.get("Expires") == str(expected_expiration)
 
     def test_submit_job__updates_job_status(self, job_controller, job_repository, bearer_token):
         register_result = job_controller.register_job(
