@@ -209,12 +209,12 @@ def test_compute_environment_scales_to_zero(template):
 
 
 def test_batch_job_definition_configures_resources_correctly(template):
-    """Job definition should allocate 1 vCPU and 1024 MB for FRED simulations (proof-of-concept)."""
+    """Job definition should allocate 4 vCPUs and 4096 MB for multi-CPU FRED simulations."""
     job_def = template["Resources"]["BatchJobDefinition"]
     container_props = job_def["Properties"]["ContainerProperties"]
 
-    assert container_props["Vcpus"] == 1
-    assert container_props["Memory"] == 1024
+    assert container_props["Vcpus"] == 4
+    assert container_props["Memory"] == 4096
 
 
 def test_job_definition_uses_ec2_platform(template):
