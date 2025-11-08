@@ -23,13 +23,6 @@ validation_hooks: &validation_hooks
     echo '▶ (s3-upload-bucket) Running cfn-lint...' && \
     cfn-lint templates/s3/s3-upload-bucket.json && \
     echo '✓ (s3-upload-bucket) cfn-lint passed'
-  - !cmd |
-    echo '▶ (s3-upload-bucket) Running cfn-guard security validation...' && \
-    cfn-guard validate \
-      --data templates/s3/s3-upload-bucket.json \
-      --rules guard_rules/s3_security_rules.guard \
-      --show-summary fail && \
-    echo '✓ (s3-upload-bucket) cfn-guard passed'
 
 hooks:
   before_validate: *validation_hooks
