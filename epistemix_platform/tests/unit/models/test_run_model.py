@@ -77,7 +77,7 @@ class TestRunNaturalKey:
     """Tests for Run.natural_key() method for AWS Batch job naming."""
 
     def test_natural_key_returns_job_and_run_id(self):
-        """RED: Test that natural_key() returns formatted string with job and run ID."""
+        """RED: Test that natural_key property returns formatted string with job and run ID."""
         # ARRANGE
         run = Run.create_persisted(
             run_id=42,
@@ -89,13 +89,13 @@ class TestRunNaturalKey:
         )
 
         # ACT
-        natural_key = run.natural_key()
+        natural_key = run.natural_key
 
         # ASSERT
         assert natural_key == "job-123-run-42"
 
     def test_natural_key_with_different_ids(self):
-        """RED: Test that natural_key() works with different IDs."""
+        """RED: Test that natural_key property works with different IDs."""
         # ARRANGE
         run = Run.create_persisted(
             run_id=999,
@@ -107,13 +107,13 @@ class TestRunNaturalKey:
         )
 
         # ACT
-        natural_key = run.natural_key()
+        natural_key = run.natural_key
 
         # ASSERT
         assert natural_key == "job-1-run-999"
 
     def test_natural_key_raises_for_unpersisted_run(self):
-        """RED: Test that natural_key() raises ValueError for unpersisted run."""
+        """RED: Test that natural_key property raises ValueError for unpersisted run."""
         # ARRANGE
         run = Run.create_unpersisted(
             job_id=123,
@@ -123,4 +123,4 @@ class TestRunNaturalKey:
 
         # ACT & ASSERT
         with pytest.raises(ValueError, match="Cannot generate natural_key for unpersisted run"):
-            run.natural_key()
+            _ = run.natural_key
