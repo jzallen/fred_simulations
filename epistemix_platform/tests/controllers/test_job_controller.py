@@ -487,9 +487,18 @@ def results_repository(s3_stubber):
 
 @pytest.fixture
 def simulation_runner_mock():
-    """Create a mock simulation runner gateway."""
+    """Create a mock simulation runner gateway with describe_run support (FRED-46)."""
     from unittest.mock import Mock
+    from epistemix_platform.models import RunStatus, RunStatusDetail, PodPhase
+
     mock_runner = Mock()
+    # Mock describe_run to return current DB status (no change scenario)
+    # Tests that need different behavior can override this
+    mock_runner.describe_run.side_effect = lambda run: RunStatusDetail(
+        status=run.status,
+        pod_phase=run.pod_phase,
+        message="Job status unchanged",
+    )
     return mock_runner
 
 

@@ -125,6 +125,10 @@ class JobController:
         )
         service._run_simulation = create_run_simulation(simulation_runner)
 
+        # Store dependencies for AWS Batch status synchronization (FRED-46)
+        service._simulation_runner = simulation_runner
+        service._run_repository = run_repository
+
         return service
 
     def register_job(
@@ -245,21 +249,81 @@ class JobController:
 
     def get_runs(self, job_id: int) -> Result[list[dict[str, Any]], str]:
         """
-        Get all runs for a specific job.
+        Get all runs for a specific job with AWS Batch status synchronization (FRED-46).
 
-        This is a public interface that delegates to the get_runs_by_job_id use case.
-        The service layer orchestrates the call to the business use case.
+        Fetches runs from database, then queries AWS Batch for current status of ALL runs
+        (per FRED-46 requirements: no conditionals, query all runs).
+        Updates database with fresh status if changed.
+
+        Implements graceful degradation: if AWS Batch is unavailable, returns stale
+        database status with warning log (system stays operational).
+
+        This is a public interface that delegates to the get_runs_by_job_id use case
+        and adds AWS Batch synchronization.
 
         Args:
             job_id: ID of the job to get runs for
 
         Returns:
-            Result containing either the list of runs (Success)
+            Result containing either the list of runs with updated status (Success)
             or an error message (Failure)
         """
         try:
+            # Get runs from database
             runs = self._get_runs_by_job_id(job_id=job_id)
+
+            # Synchronize status from AWS Batch for ALL runs (FRED-46)
+            # Track metrics for observability (ENGINEER-03 pattern)
+            updated_count = 0
+            failed_count = 0
+
+            for run in runs:
+                try:
+                    # Query AWS Batch using run.natural_key (FRED-46 requirement)
+                    status_detail = self._simulation_runner.describe_run(run)
+
+                    # Check if AWS Batch returned ERROR (API unavailable)
+                    if (
+                        status_detail.status.name == "ERROR"
+                        and "AWS Batch API error" in status_detail.message
+                    ):
+                        # AWS Batch unavailable - fallback to stale DB status (ENGINEER-02 pattern)
+                        logger.warning(
+                            f"AWS Batch unavailable for run {run.id}, using stale DB status. "
+                            f"Current DB status: {run.status.name}, pod_phase: {run.pod_phase.name}"
+                        )
+                        failed_count += 1
+                        continue  # Keep DB status
+
+                    # Update if status or pod_phase changed
+                    if run.status != status_detail.status or run.pod_phase != status_detail.pod_phase:
+                        # Log status transition (ENGINEER-03 pattern)
+                        logger.info(
+                            f"Status change for run {run.id}: "
+                            f"{run.status.name}/{run.pod_phase.name} → "
+                            f"{status_detail.status.name}/{status_detail.pod_phase.name}"
+                        )
+
+                        # Update run model
+                        run.status = status_detail.status
+                        run.pod_phase = status_detail.pod_phase
+
+                        # Persist to database
+                        self._run_repository.save(run)
+                        updated_count += 1
+
+                except Exception as e:
+                    logger.exception(f"Error synchronizing status for run {run.id}: {e}")
+                    failed_count += 1
+
+            # Log metrics (ENGINEER-03 pattern, simplified)
+            logger.info(
+                f"Status sync for job {job_id}: {len(runs)} runs, "
+                f"{updated_count} updated, {failed_count} failed"
+            )
+
             return Success([run.to_dict() for run in runs])
+
         except ValueError as e:
             logger.exception("Validation error in get_runs_by_job_id")
             return Failure(str(e))

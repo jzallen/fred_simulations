@@ -39,7 +39,7 @@ def run_simulation(
     simulation_runner.submit_run(run)
 
     logger.info(
-        f"Submitted run {run.id} to AWS Batch with job name: {run.natural_key()}"
+        f"Submitted run {run.id} to AWS Batch with job name: {run.natural_key}"
     )
 
     return run
