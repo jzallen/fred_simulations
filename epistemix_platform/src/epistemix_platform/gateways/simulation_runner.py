@@ -86,7 +86,7 @@ class AWSBatchSimulationRunner:
             and jobs can be looked up by name using run.natural_key().
         """
         # Use natural_key for job name
-        job_name = run.natural_key()
+        job_name = run.natural_key
 
         # Prepare command to invoke simulation-runner CLI with job and run IDs
         # Command format: ["run", "--job-id", "11", "--run-id", "3"]

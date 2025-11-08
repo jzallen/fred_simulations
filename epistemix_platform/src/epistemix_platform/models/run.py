@@ -207,6 +207,7 @@ class Run:
         """Update the pod phase."""
         self.pod_phase = pod_phase
 
+    @property
     def natural_key(self) -> str:
         """
         Generate a natural key for AWS Batch job naming.
