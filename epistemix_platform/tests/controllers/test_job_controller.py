@@ -77,6 +77,7 @@ def service():
     service._write_to_local = Mock(return_value=None)
     service._archive_uploads = Mock(return_value=[mock_location1, mock_location2])
     service._run_simulation = Mock(return_value=run)
+    service._update_run_status = Mock(return_value=True)
     return service
 
 

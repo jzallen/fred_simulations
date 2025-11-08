@@ -35,6 +35,7 @@ from epistemix_platform.use_cases.submit_job import create_submit_job
 from epistemix_platform.use_cases.submit_job_config import create_submit_job_config
 from epistemix_platform.use_cases.submit_run_config import create_submit_run_config
 from epistemix_platform.use_cases.submit_runs import create_submit_runs
+from epistemix_platform.use_cases.update_run_status import create_update_run_status
 from epistemix_platform.use_cases.upload_results import create_upload_results
 from epistemix_platform.use_cases.write_to_local import write_to_local
 
@@ -124,10 +125,9 @@ class JobController:
             SystemTimeProvider(),
         )
         service._run_simulation = create_run_simulation(simulation_runner)
-
-        # Store dependencies for AWS Batch status synchronization (FRED-46)
-        service._simulation_runner = simulation_runner
-        service._run_repository = run_repository
+        service._update_run_status = create_update_run_status(
+            simulation_runner, run_repository
+        )
 
         return service
 
@@ -260,38 +260,9 @@ class JobController:
         """
         try:
             runs = self._get_runs_by_job_id(job_id=job_id)
-            updated_count = 0
-            failed_count = 0
 
             for run in runs:
-                try:
-                    status_detail = self._simulation_runner.describe_run(run)
-
-                    is_batch_unavailable = (
-                        status_detail.status.name == "ERROR"
-                        and "AWS Batch API error" in status_detail.message
-                    )
-
-                    if is_batch_unavailable:
-                        logger.warning(
-                            f"AWS Batch unavailable for run {run.id}, using stale DB status: "
-                            f"{run.status.name}/{run.pod_phase.name}"
-                        )
-                        failed_count += 1
-                        continue
-
-                    status_updated = self._update_run_status(run, status_detail)
-
-                    if status_updated:
-                        updated_count += 1
-                except Exception:
-                    self._log_run_error(run)
-                    failed_count += 1
-
-            logger.info(
-                f"Status sync for job {job_id}: {len(runs)} runs, "
-                f"{updated_count} updated, {failed_count} failed"
-            )
+                self._update_run_status(run)
 
             return Success([run.to_dict() for run in runs])
 
@@ -301,30 +272,6 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in get_runs_by_job_id")
             return Failure("An unexpected error occurred while retrieving the runs")
-
-    def _update_run_status(self, run: Run, status_detail) -> bool:
-        """Update run status if changed, return True if updated."""
-        status_changed = (
-            run.status != status_detail.status
-            or run.pod_phase != status_detail.pod_phase
-        )
-
-        if status_changed:
-            logger.info(
-                f"Status change for run {run.id}: "
-                f"{run.status.name}/{run.pod_phase.name} → "
-                f"{status_detail.status.name}/{status_detail.pod_phase.name}"
-            )
-            run.status = status_detail.status
-            run.pod_phase = status_detail.pod_phase
-            self._run_repository.save(run)
-            return True
-
-        return False
-
-    def _log_run_error(self, run: Run) -> None:
-        """Log exception when run status synchronization fails."""
-        logger.exception(f"Error synchronizing status for run {run.id}")
 
     def get_job_uploads(
         self, job_id: int, include_content: bool = True
