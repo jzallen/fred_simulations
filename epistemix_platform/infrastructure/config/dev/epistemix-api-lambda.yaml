@@ -5,11 +5,13 @@ template:
 # Let Sceptre auto-generate stack name (enables !stack_output usage)
 # Pattern: <project_code>-<command_path>
 
-# Dependencies - External stacks (ECR, RDS, S3) must exist before deploying
+# Dependencies - External stacks (ECR, RDS, S3, Batch) must exist before deploying
 # Note: API Gateway depends on Lambda, so Lambda is deployed first without API Gateway permission
+# Batch dependency ensures VPC endpoint for AWS Batch API is available
 dependencies:
   - dev/rds-postgres.yaml
   - dev/s3-upload-bucket.yaml
+  - dev/batch-infrastructure.yaml
 
 # Stack parameters for development environment
 parameters:

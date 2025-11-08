@@ -5,6 +5,7 @@ Uses boto3 to submit and manage simulation runs on AWS Batch.
 """
 
 import boto3
+from botocore.config import Config
 from epistemix_platform.models import Run, RunStatus, RunStatusDetail
 
 
@@ -22,11 +23,20 @@ class AWSBatchSimulationRunner:
 
         Args:
             batch_client: Optional boto3 Batch client (for testing).
-                         If None, creates a new client.
+                         If None, creates a new client with timeout configuration.
             job_queue_name: AWS Batch job queue name (set by factory method)
             job_definition_name: AWS Batch job definition name (set by factory method)
         """
-        self._batch_client = batch_client or boto3.client("batch")
+        if batch_client is None:
+            # Configure boto3 with explicit timeouts to fail fast on network issues
+            config = Config(
+                connect_timeout=5,  # 5 seconds to establish connection
+                read_timeout=60,    # 60 seconds to read response
+                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+            )
+            batch_client = boto3.client("batch", config=config)
+
+        self._batch_client = batch_client
         self._job_queue_name = job_queue_name
         self._job_definition_name = job_definition_name
 
@@ -47,7 +57,13 @@ class AWSBatchSimulationRunner:
         job_definition_name = f"fred-simulation-runner-{environment}"
 
         if batch_client is None:
-            batch_client = boto3.client("batch", region_name=region)
+            # Configure boto3 with explicit timeouts to fail fast on network issues
+            config = Config(
+                connect_timeout=5,  # 5 seconds to establish connection
+                read_timeout=60,    # 60 seconds to read response
+                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+            )
+            batch_client = boto3.client("batch", region_name=region, config=config)
 
         return cls(
             batch_client=batch_client,
