@@ -100,3 +100,34 @@ class BatchStatusMapper:
             return PodPhase.UNKNOWN
 
         return phase_mapping[batch_status]
+
+    @staticmethod
+    def pod_phase_to_run_status(pod_phase: PodPhase) -> RunStatus:
+        """
+        Map PodPhase to RunStatus for epx alignment.
+
+        This provides the semantic mapping between Kubernetes pod execution phases
+        and application-level run statuses as expected by epx.
+
+        Args:
+            pod_phase: PodPhase enum value
+
+        Returns:
+            Corresponding RunStatus enum value
+
+        Mapping:
+            Pending → QUEUED (job waiting to start)
+            Running → RUNNING (job actively executing)
+            Succeeded → DONE (job completed successfully)
+            Failed → ERROR (job failed or terminated)
+            Unknown → ERROR (unknown state, treat as error)
+        """
+        phase_to_status = {
+            PodPhase.PENDING: RunStatus.QUEUED,
+            PodPhase.RUNNING: RunStatus.RUNNING,
+            PodPhase.SUCCEEDED: RunStatus.DONE,
+            PodPhase.FAILED: RunStatus.ERROR,
+            PodPhase.UNKNOWN: RunStatus.ERROR,
+        }
+
+        return phase_to_status[pod_phase]

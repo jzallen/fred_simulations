@@ -191,3 +191,62 @@ class TestBatchStatusToPodPhase:
 
         # ASSERT
         assert result == PodPhase.UNKNOWN
+
+
+class TestPodPhaseToRunStatus:
+    """Test PodPhase to RunStatus mapping for epx alignment."""
+
+    def test_pending_maps_to_queued(self):
+        """PodPhase.PENDING maps to RunStatus.QUEUED."""
+        # ARRANGE
+        pod_phase = PodPhase.PENDING
+
+        # ACT
+        result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)
+
+        # ASSERT
+        assert result == RunStatus.QUEUED
+
+    def test_running_maps_to_running(self):
+        """PodPhase.RUNNING maps to RunStatus.RUNNING."""
+        # ARRANGE
+        pod_phase = PodPhase.RUNNING
+
+        # ACT
+        result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)
+
+        # ASSERT
+        assert result == RunStatus.RUNNING
+
+    def test_succeeded_maps_to_done(self):
+        """PodPhase.SUCCEEDED maps to RunStatus.DONE."""
+        # ARRANGE
+        pod_phase = PodPhase.SUCCEEDED
+
+        # ACT
+        result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)
+
+        # ASSERT
+        assert result == RunStatus.DONE
+
+    def test_failed_maps_to_error(self):
+        """PodPhase.FAILED maps to RunStatus.ERROR."""
+        # ARRANGE
+        pod_phase = PodPhase.FAILED
+
+        # ACT
+        result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)
+
+        # ASSERT
+        assert result == RunStatus.ERROR
+
+    def test_unknown_maps_to_error(self):
+        """PodPhase.UNKNOWN maps to RunStatus.ERROR."""
+        # ARRANGE
+        pod_phase = PodPhase.UNKNOWN
+
+        # ACT
+        result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)
+
+        # ASSERT
+        assert result == RunStatus.ERROR
