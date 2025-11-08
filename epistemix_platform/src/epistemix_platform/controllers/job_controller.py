@@ -266,6 +266,20 @@ class JobController:
             for run in runs:
                 try:
                     status_detail = self._simulation_runner.describe_run(run)
+
+                    is_batch_unavailable = (
+                        status_detail.status.name == "ERROR"
+                        and "AWS Batch API error" in status_detail.message
+                    )
+
+                    if is_batch_unavailable:
+                        logger.warning(
+                            f"AWS Batch unavailable for run {run.id}, using stale DB status: "
+                            f"{run.status.name}/{run.pod_phase.name}"
+                        )
+                        failed_count += 1
+                        continue
+
                     status_updated = self._update_run_status(run, status_detail)
 
                     if status_updated:
@@ -290,18 +304,6 @@ class JobController:
 
     def _update_run_status(self, run: Run, status_detail) -> bool:
         """Update run status if changed, return True if updated."""
-        is_batch_unavailable = (
-            status_detail.status.name == "ERROR"
-            and "AWS Batch API error" in status_detail.message
-        )
-
-        if is_batch_unavailable:
-            logger.warning(
-                f"AWS Batch unavailable for run {run.id}, using stale DB status: "
-                f"{run.status.name}/{run.pod_phase.name}"
-            )
-            return False
-
         status_changed = (
             run.status != status_detail.status
             or run.pod_phase != status_detail.pod_phase
