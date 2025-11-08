@@ -135,24 +135,17 @@ rule s3_https_only {
 
     when %bucket_policies !empty {
         some %bucket_policies.Properties.PolicyDocument.Statement[*] {
-            Effect == 'Deny'
-            Condition.Bool.'aws:SecureTransport' == 'false'
-        } <<
-            Violation: Bucket policy must deny requests without SecureTransport
-            Fix: Add Deny statement with Condition.Bool."aws:SecureTransport": "false"
-            Rationale: Ensures all data in transit is encrypted using TLS
-            Reference: Security Hub control [S3.5]
-            Example:
-              Effect: Deny
-              Principal: "*"
-              Action: "s3:*"
-              Resource:
-                - !Sub "${Bucket.Arn}/*"
-                - !GetAtt Bucket.Arn
-              Condition:
-                Bool:
-                  aws:SecureTransport: "false"
-        >>
+            Effect == 'Deny' <<
+                Violation: Bucket policy must have Deny statement for SecureTransport
+                Fix: Add statement with Effect: Deny
+            >>
+            Condition.Bool.'aws:SecureTransport' == 'false' <<
+                Violation: Bucket policy must deny requests without SecureTransport
+                Fix: Add Condition.Bool with aws:SecureTransport set to false
+                Rationale: Ensures all data in transit is encrypted using TLS
+                Reference: Security Hub control [S3.5]
+            >>
+        }
     }
 }
 

@@ -148,15 +148,16 @@ class S3UploadLocationRepository:
 
         try:
             # Generate pre-signed URL for PUT operation
-            # Note: ServerSideEncryption is handled by bucket default encryption
-            # and should NOT be included in presigned URL Params as it would require
-            # the client to send the x-amz-server-side-encryption header, which
-            # standard HTTP clients (like epx) don't do.
+            # Note: ServerSideEncryption MUST be included in presigned URL Params
+            # to ensure S3 applies encryption. When included in Params, boto3 signs
+            # it into the URL and S3 applies it automatically - the client does NOT
+            # need to send any x-amz-server-side-encryption headers.
             presigned_url = self.s3_client.generate_presigned_url(
                 "put_object",
                 Params={
                     "Bucket": self.bucket_name,
                     "Key": object_key,
+                    "ServerSideEncryption": "AES256",
                 },
                 ExpiresIn=self.expiration_seconds,
                 HttpMethod="PUT",

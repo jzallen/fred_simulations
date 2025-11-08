@@ -16,6 +16,7 @@ from epistemix_platform.models.requests import RunRequest
 from epistemix_platform.models.run import Run
 from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
+from epistemix_platform.gateways.interfaces import ISimulationRunner
 from epistemix_platform.repositories import (
     IJobRepository,
     IRunRepository,
@@ -29,6 +30,7 @@ from epistemix_platform.use_cases.get_job_uploads import create_get_job_uploads
 from epistemix_platform.use_cases.get_runs import create_get_runs_by_job_id
 from epistemix_platform.use_cases.read_upload_content import create_read_upload_content
 from epistemix_platform.use_cases.register_job import create_register_job
+from epistemix_platform.use_cases.run_simulation import create_run_simulation
 from epistemix_platform.use_cases.submit_job import create_submit_job
 from epistemix_platform.use_cases.submit_job_config import create_submit_job_config
 from epistemix_platform.use_cases.submit_run_config import create_submit_run_config
@@ -68,6 +70,7 @@ class JobController:
         job_controller._write_to_local = Mock()
         job_controller._archive_uploads = Mock(return_value=[])
         job_controller._upload_results = Mock(return_value="http://s3.url/results.zip")
+        job_controller._run_simulation = Mock(return_value=mock_job)
 
         Use `create_with_repositories` to instantiate with repositories for production use.
         """
@@ -80,6 +83,7 @@ class JobController:
         run_repository: IRunRepository,
         upload_location_repository: IUploadLocationRepository,
         results_repository: IResultsRepository,
+        simulation_runner: ISimulationRunner,
     ) -> Self:
         """
         Create JobController with repositories.
@@ -89,13 +93,13 @@ class JobController:
             run_repository: Repository for run persistence
             upload_location_repository: Repository for upload locations (handles storage details)
             results_repository: Repository for results uploads
+            simulation_runner: Gateway for AWS Batch integration (REQUIRED)
 
         Returns:
             Configured JobController instance
         """
         service = cls()
 
-        # Wire use case dependencies using factory functions
         service._register_job = create_register_job(job_repository)
         service._submit_job = create_submit_job(job_repository, upload_location_repository)
         service._submit_job_config = create_submit_job_config(
@@ -119,6 +123,7 @@ class JobController:
             results_repository,
             SystemTimeProvider(),
         )
+        service._run_simulation = create_run_simulation(simulation_runner)
 
         return service
 
@@ -202,26 +207,33 @@ class JobController:
         epx_version: str = "epx_client_1.2.2",
     ) -> Result[dict[str, list[dict[str, Any]]], str]:
         """
-        Submit multiple run requests for processing.
+        Submit multiple run requests for processing and execute them on AWS Batch.
 
-        This is a public interface that delegates to the submit_runs use case.
-        The service layer orchestrates the call to the business use case.
+        This is a public interface that:
+        1. Calls submit_runs use case to create Run records in DB
+        2. Calls run_simulation for each run to submit to AWS Batch
 
         Args:
             user_token_value: User token value for authentication
             run_requests: List of run requests to process
-            user_agent: User agent from request headers for client version
+            epx_version: User agent from request headers for client version
 
         Returns:
             Result containing either the run responses dict (Success)
             or an error message (Failure)
         """
         try:
+            # Step 1: Create Run records in database
             runs = self._submit_runs(
                 run_requests=run_requests,
                 user_token_value=user_token_value,
                 epx_version=epx_version,
             )
+
+            # Step 2: Submit each run to AWS Batch (simulation_runner is REQUIRED)
+            for run in runs:
+                self._run_simulation(run=run)
+
             run_responses = [run.to_run_response_dict() for run in runs]
             return Success(run_responses)
         except ValueError as e:
@@ -519,3 +531,4 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in upload_results")
             return Failure("An unexpected error occurred while uploading results")
+

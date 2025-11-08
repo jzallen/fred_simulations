@@ -30,8 +30,6 @@ class SimulationConfig:
         Path to FRED framework installation
     workspace_dir : Path
         Directory for job downloads and simulation outputs
-    api_url : str
-        Epistemix API endpoint URL
     s3_bucket : str
         S3 bucket name for uploads
     aws_region : str
@@ -44,7 +42,6 @@ class SimulationConfig:
     run_id: int | None
     fred_home: Path
     workspace_dir: Path
-    api_url: str
     s3_bucket: str
     aws_region: str
     database_url: str
@@ -87,9 +84,6 @@ class SimulationConfig:
         workspace_str = os.getenv("WORKSPACE_DIR", f"/workspace/job_{job_id}")
         workspace_dir = Path(workspace_str)
 
-        # Get API URL (optional, falls back to config file or defaults)
-        api_url = os.getenv("EPISTEMIX_API_URL", "")
-
         # Get S3 bucket (optional)
         s3_bucket = os.getenv("EPISTEMIX_S3_BUCKET", "")
 
@@ -108,7 +102,6 @@ class SimulationConfig:
             run_id=run_id,
             fred_home=fred_home,
             workspace_dir=workspace_dir,
-            api_url=api_url,
             s3_bucket=s3_bucket,
             aws_region=aws_region,
             database_url=database_url,
@@ -189,7 +182,6 @@ class SimulationConfig:
             f"run_id={self.run_id}, "
             f"fred_home={self.fred_home}, "
             f"workspace_dir={self.workspace_dir}, "
-            f"api_url={'***' if self.api_url else 'None'}, "
             f"s3_bucket={self.s3_bucket}, "
             f"aws_region={self.aws_region})"
         )

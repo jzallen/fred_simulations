@@ -1,0 +1,85 @@
+template:
+  type: file
+  path: batch/batch-infrastructure.json
+
+# Layer 4: Batch infrastructure depends on RDS, S3, Secrets Manager, and shared VPC endpoint
+dependencies:
+  - dev/database-secrets.yaml
+  - dev/rds-postgres.yaml
+  - dev/s3-upload-bucket.yaml
+  - batch-vpc-endpoint.yaml
+
+# Stack parameters for development environment
+parameters:
+  Environment: dev
+
+  # Network Configuration
+  # IMPORTANT: These are default VPC values - update with actual private subnets when available
+  VpcId: vpc-00bb33feebfb59191
+  SubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
+
+  # ECR Repository
+  # Dynamically fetch ECR image digest for environment-specific tag (:dev)
+  # This resolves to immutable digest at deploy time (similar to epistemix-api-lambda)
+  ECRRepositoryUri: !rcmd |
+    aws ecr describe-images \
+      --repository-name fred-simulation-runner \
+      --image-ids imageTag=dev \
+      --region us-east-1 \
+      --query 'imageDetails[0].imageDigest' \
+      --output text | \
+    xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner@{}"
+
+  # Database Configuration
+  # References the existing database-secrets stack (for Secrets Manager ARN)
+  DatabaseSecretArn: !stack_output dev/database-secrets.yaml::DatabasePasswordSecretArn
+  # References the existing rds-postgres stack for connection details
+  DatabaseEndpoint: !stack_output dev/rds-postgres.yaml::DBEndpoint
+  DatabasePort: !stack_output dev/rds-postgres.yaml::DBPort
+  DatabaseName: !stack_output dev/rds-postgres.yaml::DBName
+  DatabaseUsername: epistemixuser  # From rds-postgres.yaml config
+
+  # S3 Buckets
+  # Upload bucket is used for BOTH uploads and results (same bucket)
+  UploadBucketName: !stack_output dev/s3-upload-bucket.yaml::BucketName
+
+  # Compute Environment Configuration
+  # Development sizing for cost minimization:
+  # - EC2 SPOT instances for ~70% cost savings
+  # - m5.large (2 vCPU, 8 GB) and m5.xlarge (4 vCPU, 16 GB) instance types
+  # - Max 8 vCPUs = ~4 concurrent m5.large jobs OR ~2 concurrent m5.xlarge jobs
+  # - Production would use higher MaxvCpus for greater parallelism
+  MaxvCpus: 8
+  SpotBidPercentage: 100  # Use Spot whenever available (fallback to On-Demand)
+
+  # CloudWatch Logs
+  # Short retention for dev environment (7 days)
+  LogRetentionDays: 7
+
+# Stack-specific tags
+tags:
+  Owner: fred-simulations
+  CostCenter: Development
+  Component: Batch
+  Service: FredSimulations
+  Purpose: ComputeOrchestration
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (batch-infrastructure) Running cfn-lint...' && \
+    cfn-lint templates/batch/batch-infrastructure.json && \
+    echo '✓ (batch-infrastructure) cfn-lint passed'
+  # NOTE: cfn-guard rules for Batch can be added later
+  # - !cmd |
+  #   echo '▶ (batch-infrastructure) Running cfn-guard security validation...' && \
+  #   cfn-guard validate \
+  #     --data templates/batch/batch-infrastructure.json \
+  #     --rules guard_rules/batch_security_rules.guard \
+  #     --show-summary fail && \
+  #   echo '✓ (batch-infrastructure) cfn-guard passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks

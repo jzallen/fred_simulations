@@ -6,13 +6,11 @@ to serve the Epistemix API in production environments.
 """
 
 import logging
-import os
 import sys
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from epistemix_platform.app import app
-from epistemix_platform.config import config
 
 
 # Configure logging for production with level-based stream separation
@@ -56,21 +54,11 @@ logger = logging.getLogger(__name__)
 app.logger.handlers = root.handlers
 app.logger.setLevel(logging.INFO)
 
-# Get configuration from environment
-config_name = os.getenv("FLASK_ENV", "production")
-logger.info(f"Loading configuration for environment: {config_name}")
-
-# Apply configuration to Flask app
-app.config.from_object(config.get(config_name, config["default"]))
-
-# Additional production configurations
-app.config["PROPAGATE_EXCEPTIONS"] = True
-
 # Log startup information
-logger.info(f"Epistemix API WSGI application initialized for {config_name} environment")
+logger.info(f"Epistemix API WSGI application initialized for {app.config['ENVIRONMENT']} environment")
 
 # WSGI application object - this is what Gunicorn will import
 application = app
 
-# Optional: Add middleware for production (e.g., ProxyFix for reverse proxy)
+# Add middleware for production (ProxyFix for reverse proxy)
 application = ProxyFix(application, x_for=1, x_proto=1, x_host=1, x_prefix=1)

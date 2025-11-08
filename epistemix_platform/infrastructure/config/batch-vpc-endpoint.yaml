@@ -1,0 +1,32 @@
+template:
+  type: file
+  path: vpc/batch-vpc-endpoint.json
+
+# No dependencies - this is shared infrastructure deployed independently
+# Note: The existing VPC endpoint from dev batch stack needs to be deleted first
+
+parameters:
+  # VPC configuration (shared across all environments)
+  VpcId: vpc-00bb33feebfb59191
+  SubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
+  # Lambda security group IDs that need access to AWS Batch API
+  # Includes dev and staging Lambda security groups
+  LambdaSecurityGroupIds: sg-0a21e94367e079f19,sg-0e66f850cb3dab0c5
+
+stack_tags:
+  Project: epistemix-platform
+  Environment: shared
+  ManagedBy: sceptre
+  Purpose: BatchVPCEndpoint
+
+# Sceptre hooks for template validation
+validation_hooks: &validation_hooks
+  - !cmd |
+    echo '▶ (batch-vpc-endpoint) Running cfn-lint...' && \
+    cfn-lint templates/vpc/batch-vpc-endpoint.json && \
+    echo '✓ (batch-vpc-endpoint) cfn-lint passed'
+
+hooks:
+  before_validate: *validation_hooks
+  before_create: *validation_hooks
+  before_update: *validation_hooks

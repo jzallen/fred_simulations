@@ -1,6 +1,9 @@
 template:
   path: ec2/ssm-bastion.json
 
+dependencies:
+  - staging/rds-postgres.yaml
+
 parameters:
   # Network Configuration
   VPCId: vpc-00bb33feebfb59191

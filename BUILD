@@ -26,6 +26,8 @@ docker_image(
     image_tags=["latest"],
     instructions=[
         "FROM python:3.11-slim",
+        # Install OpenMP runtime library for multi-threaded FRED execution
+        "RUN apt-get update && apt-get install -y libgomp1 && rm -rf /var/lib/apt/lists/*",
         # Copy epistemix-cli PEX binary
         "COPY epistemix_platform/epistemix-cli.pex /usr/local/bin/epistemix-cli",
         "RUN chmod +x /usr/local/bin/epistemix-cli",
@@ -41,6 +43,9 @@ docker_image(
         # Set environment variables
         "ENV PYTHONUNBUFFERED=1",
         "ENV FRED_HOME=/fred-framework",
+        # Configure OpenMP to use 4 threads (matches NCPU=4 in Makefile)
+        # Can be overridden at runtime via container environment variables
+        "ENV OMP_NUM_THREADS=4",
         # Use Python CLI as entrypoint
         "ENTRYPOINT [\"/usr/local/bin/simulation-runner\"]",
         # Default command shows help

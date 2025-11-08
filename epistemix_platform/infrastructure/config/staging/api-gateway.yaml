@@ -2,26 +2,22 @@ template:
   type: file
   path: api-gateway/epistemix-api-gateway.json
 
-stack_name: epistemix-api-gateway-staging
-
 # Dependencies - Deploy Lambda first, then API Gateway
-dependencies: []
+dependencies:
+  - staging/epistemix-api-lambda.yaml
 
-# Stack parameters for staging environment
+# Stack parameters for development environment
 parameters:
   Environment: staging
   ServiceName: epistemix-api
-  # Lambda function ARN (using staging alias for version control)
-  LambdaFunctionArn: !stack_output_external epistemix-api-lambda-staging::AliasArn
-  # CORS origins for staging
-  AllowedOrigins: "https://staging.epistemix.io"
+  # Lambda function ARN (resolved via !stack_output from Sceptre-managed stack)
+  LambdaFunctionArn: !stack_output staging/epistemix-api-lambda.yaml::FunctionArn
+  # CORS origins for development
+  AllowedOrigins: "http://localhost:3000,https://localhost:3000,http://localhost:5000,https://localhost:5000"
   # Stage configuration
   StageName: v1
-  ThrottlingBurstLimit: 200
-  ThrottlingRateLimit: 100
-  # Deployment timestamp - set via environment variable to force new deployments
-  # Usage: DEPLOYMENT_TIMESTAMP=$(date +%s) sceptre update staging/api-gateway.yaml
-  DeploymentTimestamp: !environment_variable DEPLOYMENT_TIMESTAMP
+  ThrottlingBurstLimit: 100
+  ThrottlingRateLimit: 50
 
 # Stack-specific tags
 tags:

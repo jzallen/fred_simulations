@@ -79,7 +79,7 @@
       "Default": 60,
       "MinValue": 3,
       "MaxValue": 900
-    },
+    }
   },
 
   "Conditions": {
@@ -252,6 +252,33 @@
                 }
               ]
             }
+          },
+          {
+            "PolicyName": "BatchAccessPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:SubmitJob",
+                    "batch:DescribeJobs",
+                    "batch:ListJobs"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/fred-batch-queue-*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/fred-simulation-runner-*:*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/fred-simulation-runner-*"
+                    }
+                  ]
+                }
+              ]
+            }
           }
         ],
         "Tags": [
@@ -301,7 +328,7 @@
             "FLASK_APP": "epistemix_platform.app",
             "FLASK_ENV": {"Ref": "Environment"},
             "DATABASE_URL": {
-              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}"
+              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}?sslmode=require"
             },
             "DB_HOST": {"Ref": "DBHost"},
             "DB_PORT": {"Ref": "DBPort"},

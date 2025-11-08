@@ -35,6 +35,19 @@ class PodPhase(Enum):
 
 
 @dataclass
+class RunStatusDetail:
+    """
+    Detailed run status information from AWS Batch.
+
+    Contains both the status enum and a descriptive message
+    from the AWS Batch service for debugging and monitoring.
+    """
+
+    status: RunStatus
+    message: str
+
+
+@dataclass
 class Run:
     """
     Run domain entity representing a run in the Epistemix system.
@@ -66,6 +79,7 @@ class Run:
     config_url: str | None = None  # Presigned URL for run configuration
     results_url: str | None = None  # Presigned URL for run results ZIP
     results_uploaded_at: datetime | None = None  # Timestamp when results were uploaded
+    results_uploaded: bool = False  # CRITICAL: Track if results uploaded to S3
 
     @classmethod
     def create_unpersisted(
@@ -81,6 +95,7 @@ class Run:
         config_url: str | None = None,
         results_url: str | None = None,
         results_uploaded_at: datetime | None = None,
+        results_uploaded: bool = False,
     ) -> "Run":
         """
         Create a new unpersisted run.
@@ -97,6 +112,7 @@ class Run:
             config_url: Presigned URL for run configuration
             results_url: Presigned URL for run results ZIP
             results_uploaded_at: Timestamp when results were uploaded
+            results_uploaded: Whether results have been uploaded to S3
 
         Returns:
             A new Run instance with id=None
@@ -116,6 +132,7 @@ class Run:
             config_url=config_url,
             results_url=results_url,
             results_uploaded_at=results_uploaded_at,
+            results_uploaded=results_uploaded,
         )
 
     @classmethod
@@ -135,6 +152,7 @@ class Run:
         config_url: str | None = None,
         results_url: str | None = None,
         results_uploaded_at: datetime | None = None,
+        results_uploaded: bool = False,
     ) -> "Run":
         """
         Create a persisted run (loaded from repository).
@@ -154,6 +172,7 @@ class Run:
             config_url: Presigned URL for run configuration
             results_url: Presigned URL for run results ZIP
             results_uploaded_at: Timestamp when results were uploaded
+            results_uploaded: Whether results have been uploaded to S3
 
         Returns:
             A new Run instance with the specified ID
@@ -173,6 +192,7 @@ class Run:
             config_url=config_url,
             results_url=results_url,
             results_uploaded_at=results_uploaded_at,
+            results_uploaded=results_uploaded,
         )
 
     def is_persisted(self) -> bool:
@@ -186,6 +206,24 @@ class Run:
     def update_pod_phase(self, pod_phase: PodPhase) -> None:
         """Update the pod phase."""
         self.pod_phase = pod_phase
+
+    def natural_key(self) -> str:
+        """
+        Generate a natural key for AWS Batch job naming.
+
+        Returns:
+            Formatted string like "job-123-run-42" for use as AWS Batch job name
+
+        Raises:
+            ValueError: If run is not persisted (id is None)
+
+        Note:
+            This key is used as the AWS Batch job name for tracking and debugging.
+            It uniquely identifies the run across the system.
+        """
+        if self.id is None:
+            raise ValueError("Cannot generate natural_key for unpersisted run")
+        return f"job-{self.job_id}-run-{self.id}"
 
     # TODO: See if field from dataclass lets you alias names, if so asdict can be used which
     # supports serializing nested dataclasses and enums automatically.

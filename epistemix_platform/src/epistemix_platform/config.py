@@ -9,6 +9,9 @@ from typing import Any
 class Config:
     """Base configuration class."""
 
+    # Environment (overridden in subclasses)
+    ENVIRONMENT = "dev"
+
     # Flask settings
     SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
 
@@ -21,6 +24,9 @@ class Config:
 
     # Logging
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
+
+    # Flask settings
+    PROPAGATE_EXCEPTIONS = True
 
     # Database settings
     @staticmethod
@@ -38,6 +44,9 @@ class Config:
         # Default to SQLite for backward compatibility
         return "sqlite:///epistemix_jobs.db"
 
+    # Set DATABASE_URL as a class property
+    DATABASE_URL = get_database_url.__func__()
+
     # Connection pool settings for PostgreSQL
     DATABASE_POOL_SIZE = int(os.environ.get("DATABASE_POOL_SIZE", "10"))
     DATABASE_MAX_OVERFLOW = int(os.environ.get("DATABASE_MAX_OVERFLOW", "20"))
@@ -52,6 +61,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
 
+    ENVIRONMENT = "dev"
     DEBUG = True
     TESTING = False
     S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-dev")
@@ -59,19 +69,21 @@ class DevelopmentConfig(Config):
     WTF_CSRF_ENABLED = False
 
 
-class TestingConfig(Config):
-    """Testing configuration."""
+class StagingConfig(Config):
+    """Staging configuration."""
 
+    ENVIRONMENT = "staging"
     DEBUG = False
-    TESTING = True
-    S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-test")
+    TESTING = False
+    S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-staging")
     AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-    WTF_CSRF_ENABLED = False
+    WTF_CSRF_ENABLED = True
 
 
 class ProductionConfig(Config):
     """Production configuration."""
 
+    ENVIRONMENT = "prod"
     DEBUG = False
     TESTING = False
     S3_UPLOAD_BUCKET = os.environ.get("S3_UPLOAD_BUCKET", "epistemix-uploads-prod")
@@ -79,10 +91,12 @@ class ProductionConfig(Config):
     WTF_CSRF_ENABLED = True
 
 
-# Configuration mapping
+# Configuration mapping (matches Sceptre stack groups: dev, staging, prod)
 config: dict[str, Any] = {
-    "development": DevelopmentConfig,
-    "testing": TestingConfig,
-    "production": ProductionConfig,
+    "dev": DevelopmentConfig,
+    "development": DevelopmentConfig,  # Alias for compatibility
+    "staging": StagingConfig,
+    "prod": ProductionConfig,
+    "production": ProductionConfig,  # Alias for compatibility
     "default": DevelopmentConfig,
 }

@@ -291,7 +291,6 @@ def config():
         click.echo("Current Configuration:")
         click.echo("=" * 60)
         click.echo(f"FRED_HOME:          {test_config.fred_home}")
-        click.echo(f"EPISTEMIX_API_URL:  {test_config.api_url or '(not set)'}")
         click.echo(f"EPISTEMIX_S3_BUCKET: {test_config.s3_bucket or '(not set)'}")
         click.echo(f"AWS_REGION:         {test_config.aws_region}")
         click.echo(f"DATABASE_URL:       {test_config.database_url}")

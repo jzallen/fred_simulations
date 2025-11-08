@@ -6,6 +6,7 @@ import base64
 import json
 import os
 from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 from freezegun import freeze_time
@@ -14,7 +15,15 @@ from epistemix_platform.app import app
 
 
 @pytest.fixture
-def client(tmp_path_factory):
+def mock_batch_client():
+    """Create a mock AWS Batch client for testing."""
+    mock_client = Mock()
+    mock_client.submit_job.return_value = {"jobId": "batch-job-123"}
+    return mock_client
+
+
+@pytest.fixture
+def client(tmp_path_factory, mock_batch_client):
     """Create a test client for the Flask app with a fresh test database using tmp_path_factory."""
 
     # Create a unique temporary database using tmp_path_factory
@@ -27,8 +36,17 @@ def client(tmp_path_factory):
     app.config["DATABASE_URL"] = test_db_url
     app.config["ENVIRONMENT"] = "TESTING"
 
-    with app.test_client() as client:
-        yield client
+    # Patch AWSBatchSimulationRunner.create to use mock batch client
+    with patch("epistemix_platform.gateways.simulation_runner.AWSBatchSimulationRunner.create") as mock_create:
+        from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+        mock_create.return_value = AWSBatchSimulationRunner(
+            batch_client=mock_batch_client,
+            job_queue_name="fred-batch-queue-test",
+            job_definition_name="fred-simulation-runner-test"
+        )
+
+        with app.test_client() as client:
+            yield client
 
 
 @pytest.fixture

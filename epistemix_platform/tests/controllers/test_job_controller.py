@@ -76,6 +76,7 @@ def service():
     service._read_upload_content = Mock(return_value=UploadContent.create_text("test content"))
     service._write_to_local = Mock(return_value=None)
     service._archive_uploads = Mock(return_value=[mock_location1, mock_location2])
+    service._run_simulation = Mock(return_value=run)
     return service
 
 
@@ -373,6 +374,67 @@ class TestJobController:
         assert not is_successful(result)
         assert result.failure() == "An unexpected error occurred while archiving uploads"
 
+    def test_submit_runs__calls_run_simulation_for_each_run_when_configured(
+        self, service, run_requests
+    ):
+        """Test that submit_runs calls _run_simulation for each run when simulation_runner is configured."""
+        bearer_token = "Bearer valid_token"
+        run1 = Run.create_persisted(
+            run_id=1,
+            job_id=1,
+            user_id=456,
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request={},
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0),
+        )
+        run2 = Run.create_persisted(
+            run_id=2,
+            job_id=1,
+            user_id=456,
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request={},
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0),
+        )
+        service._submit_runs.return_value = [run1, run2]
+        service._run_simulation = Mock(return_value=run1)
+
+        service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
+
+        # Verify _run_simulation was called twice (once per run)
+        assert service._run_simulation.call_count == 2
+        # Verify the runs were passed correctly by checking the call arguments
+        calls = service._run_simulation.call_args_list
+        assert calls[0][1]['run'].id == run1.id
+        assert calls[1][1]['run'].id == run2.id
+
+    def test_submit_runs__always_calls_run_simulation(
+        self, service, run_requests
+    ):
+        """Test that submit_runs ALWAYS calls _run_simulation for each run (simulation_runner is required)."""
+        bearer_token = "Bearer valid_token"
+        run1 = Run.create_persisted(
+            run_id=1,
+            job_id=1,
+            user_id=456,
+            status=RunStatus.SUBMITTED,
+            pod_phase=PodPhase.PENDING,
+            request={},
+            created_at=datetime(2025, 1, 1, 12, 0, 0),
+            updated_at=datetime(2025, 1, 1, 12, 0, 0),
+        )
+        service._submit_runs.return_value = [run1]
+        service._run_simulation = Mock(return_value=run1)
+
+        result = service.submit_runs(user_token_value=bearer_token, run_requests=run_requests)
+
+        # Should succeed and call _run_simulation
+        assert is_successful(result)
+        assert service._run_simulation.call_count == 1
+
 
 @pytest.fixture
 def job_repository(db_session):
@@ -424,9 +486,17 @@ def results_repository(s3_stubber):
 
 
 @pytest.fixture
-def job_controller(job_repository, run_repository, upload_location_repository, results_repository):
+def simulation_runner_mock():
+    """Create a mock simulation runner gateway."""
+    from unittest.mock import Mock
+    mock_runner = Mock()
+    return mock_runner
+
+
+@pytest.fixture
+def job_controller(job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock):
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository, results_repository
+        job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock
     )
 
 
@@ -524,7 +594,7 @@ class TestJobControllerIntegration:
         response = submit_result.unwrap()
 
         url, querystring = response["url"].split("?")
-        key, sig, expir = querystring.split("&")
+        params = querystring.split("&")
         expected_expiration_seconds = 3600
         expected_expiration = int(
             sum(
@@ -535,10 +605,13 @@ class TestJobControllerIntegration:
             )
         )
 
+        # Parse query string parameters into a dict
+        param_dict = dict(param.split("=", 1) for param in params)
+
         assert url == "https://test-bucket.s3.amazonaws.com/jobs/1/2025/01/01/120000/job_input.zip"
-        assert key.startswith("AWSAccessKeyId=")
-        assert sig.startswith("Signature=")
-        assert expir == f"Expires={expected_expiration}"
+        assert "AWSAccessKeyId" in param_dict
+        assert "Signature" in param_dict
+        assert param_dict.get("Expires") == str(expected_expiration)
 
     def test_submit_job__updates_job_status(self, job_controller, job_repository, bearer_token):
         register_result = job_controller.register_job(
