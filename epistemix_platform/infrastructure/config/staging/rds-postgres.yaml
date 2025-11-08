@@ -1,25 +1,27 @@
 template:
   path: rds/rds-postgres.json
 
+# Layer 3: RDS depends on Secrets Manager for database password
+dependencies:
+  - staging/database-secrets.yaml
+
 parameters:
   # Network Configuration
-  # TODO: Update these values with actual staging VPC and subnet IDs
   VPCId: vpc-00bb33feebfb59191
   PrivateSubnetIds: subnet-0c6dc4a43d6d2269c,subnet-0065bf40913be1672
-  VpcCidr: "172.31.0.0/16"
+  VpcCidr: "172.31.0.0/16"  # Default VPC CIDR
 
   # Database Configuration
   DBName: epistemixdb
   DBUsername: epistemixuser
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD_STAGING
   DBInstanceClass: db.t3.small  # Slightly larger for staging
   AllocatedStorage: 50  # More storage for staging data
 
   # Security Settings
   PubliclyAccessible: "false"  # FRED-30: Database is NOT publicly accessible
-  DeveloperIP: ""  # Set to your IP/32 for direct access if needed
+  DeveloperIP: !environment_variable DEVELOPER_IP
   EnableVPCAccess: "true"  # Allows access from VPC CIDR block
-  LambdaSecurityGroupId: ""  # TODO: Set staging Lambda security group ID
+  LambdaSecurityGroupId: sg-05f10285a853e5085  # Lambda security group for RDS access
 
 stack_tags:
   Project: epistemix-platform
