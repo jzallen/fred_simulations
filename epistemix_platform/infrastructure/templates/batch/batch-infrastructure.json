@@ -504,8 +504,8 @@
                     "Image": {
                         "Ref": "ECRRepositoryUri"
                     },
-                    "Vcpus": 1,
-                    "Memory": 2048,
+                    "Vcpus": 4,
+                    "Memory": 4096,
                     "JobRoleArn": {
                         "Fn::GetAtt": ["BatchJobRole", "Arn"]
                     },
