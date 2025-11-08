@@ -39,12 +39,15 @@ class RunStatusDetail:
     """
     Detailed run status information from AWS Batch.
 
-    Contains both the status enum and a descriptive message
+    Contains the status enum, pod phase, and a descriptive message
     from the AWS Batch service for debugging and monitoring.
+
+    Added pod_phase field for FRED-46 status synchronization.
     """
 
     status: RunStatus
     message: str
+    pod_phase: PodPhase
 
 
 @dataclass
@@ -207,6 +210,7 @@ class Run:
         """Update the pod phase."""
         self.pod_phase = pod_phase
 
+    @property
     def natural_key(self) -> str:
         """
         Generate a natural key for AWS Batch job naming.
@@ -220,6 +224,7 @@ class Run:
         Note:
             This key is used as the AWS Batch job name for tracking and debugging.
             It uniquely identifies the run across the system.
+            Converted to property for FRED-46.
         """
         if self.id is None:
             raise ValueError("Cannot generate natural_key for unpersisted run")

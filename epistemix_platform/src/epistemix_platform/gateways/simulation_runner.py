@@ -6,6 +6,7 @@ Uses boto3 to submit and manage simulation runs on AWS Batch.
 
 import boto3
 from botocore.config import Config
+from epistemix_platform.mappers.batch_status_mapper import BatchStatusMapper
 from epistemix_platform.models import Run, RunStatus, RunStatusDetail
 
 
@@ -75,7 +76,7 @@ class AWSBatchSimulationRunner:
         """
         Submit a run to AWS Batch for execution.
 
-        Uses run.natural_key() as the AWS Batch job name for tracking.
+        Uses run.natural_key property as the AWS Batch job name for tracking.
         AWS Batch is the source of truth for job state; no job ID is stored in the database.
 
         Args:
@@ -83,10 +84,10 @@ class AWSBatchSimulationRunner:
 
         Note:
             Does not modify the run object. AWS Batch maintains job state,
-            and jobs can be looked up by name using run.natural_key().
+            and jobs can be looked up by name using run.natural_key property.
         """
-        # Use natural_key for job name
-        job_name = run.natural_key()
+        # Use natural_key property for job name
+        job_name = run.natural_key
 
         # Prepare command to invoke simulation-runner CLI with job and run IDs
         # Command format: ["run", "--job-id", "11", "--run-id", "3"]
@@ -110,19 +111,23 @@ class AWSBatchSimulationRunner:
         Get current status of a run from AWS Batch using name-based lookup.
 
         Looks up the job in AWS Batch by natural key (job name), then retrieves
-        detailed status information. AWS Batch is the source of truth for job state.
+        detailed status information including both RunStatus and PodPhase.
+        AWS Batch is the source of truth for job state.
 
         Args:
             run: The Run to query
 
         Returns:
-            RunStatusDetail with current status and message
+            RunStatusDetail with current status, pod_phase, and message
 
         Raises:
             ValueError: If job not found in AWS Batch
+
+        Note:
+            Uses BatchStatusMapper for consistent status mapping (FRED-46).
         """
-        # Look up job by name using natural_key
-        job_name = run.natural_key()
+        # Look up job by name using natural_key property (not method call)
+        job_name = run.natural_key
 
         list_response = self._batch_client.list_jobs(
             jobQueue=self._job_queue_name,
@@ -146,20 +151,11 @@ class AWSBatchSimulationRunner:
         batch_status = job["status"]
         status_reason = job.get("statusReason", "")
 
-        # Map AWS Batch status to RunStatus
-        status_mapping = {
-            "SUBMITTED": RunStatus.QUEUED,
-            "PENDING": RunStatus.QUEUED,
-            "RUNNABLE": RunStatus.QUEUED,
-            "STARTING": RunStatus.RUNNING,
-            "RUNNING": RunStatus.RUNNING,
-            "SUCCEEDED": RunStatus.DONE,
-            "FAILED": RunStatus.ERROR,
-        }
+        # Use BatchStatusMapper for consistent mapping (FRED-46)
+        run_status = BatchStatusMapper.batch_status_to_run_status(batch_status)
+        pod_phase = BatchStatusMapper.batch_status_to_pod_phase(batch_status)
 
-        run_status = status_mapping.get(batch_status, RunStatus.ERROR)
-
-        return RunStatusDetail(status=run_status, message=status_reason)
+        return RunStatusDetail(status=run_status, message=status_reason, pod_phase=pod_phase)
 
     def cancel_run(self, run: Run) -> None:
         """
@@ -174,8 +170,8 @@ class AWSBatchSimulationRunner:
         Raises:
             ValueError: If job not found in AWS Batch
         """
-        # Look up job by name using natural_key
-        job_name = run.natural_key()
+        # Look up job by name using natural_key property
+        job_name = run.natural_key
 
         list_response = self._batch_client.list_jobs(
             jobQueue=self._job_queue_name,
