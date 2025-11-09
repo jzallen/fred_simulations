@@ -19,6 +19,17 @@ def mock_batch_client():
     """Create a mock AWS Batch client for testing."""
     mock_client = Mock()
     mock_client.submit_job.return_value = {"jobId": "batch-job-123"}
+    # Mock for describe_run() status synchronization
+    mock_client.list_jobs.return_value = {
+        "jobSummaryList": [{"jobId": "batch-job-123"}]
+    }
+    mock_client.describe_jobs.return_value = {
+        "jobs": [{
+            "jobId": "batch-job-123",
+            "status": "RUNNING",
+            "statusReason": ""
+        }]
+    }
     return mock_client
 
 
@@ -327,9 +338,9 @@ class TestJobRoutes:
                             "agent_info.fred"
                         ],
                     },
-                    "podPhase": "Pending",
+                    "podPhase": "Running",
                     "containerStatus": None,
-                    "status": "QUEUED",
+                    "status": "RUNNING",
                     "userDeleted": False,
                     "epxClientVersion": "1.2.2",
                     "config_url": "http://localhost:5001/pre-signed-url",
