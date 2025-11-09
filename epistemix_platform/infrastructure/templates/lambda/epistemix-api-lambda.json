@@ -260,11 +260,7 @@
               "Statement": [
                 {
                   "Effect": "Allow",
-                  "Action": [
-                    "batch:SubmitJob",
-                    "batch:DescribeJobs",
-                    "batch:ListJobs"
-                  ],
+                  "Action": "batch:SubmitJob",
                   "Resource": [
                     {
                       "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/fred-batch-queue-*"
@@ -276,6 +272,14 @@
                       "Fn::Sub": "arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/fred-simulation-runner-*"
                     }
                   ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:ListJobs",
+                    "batch:DescribeJobs"
+                  ],
+                  "Resource": "*"
                 }
               ]
             }

@@ -17,14 +17,14 @@ class ISimulationRunner(Protocol):
     of simulation runs on external compute infrastructure (e.g., AWS Batch).
 
     AWS Batch is the source of truth for job state. Jobs are tracked by
-    name (run.natural_key()) rather than storing job IDs in the database.
+    name (run.natural_key) rather than storing job IDs in the database.
     """
 
     def submit_run(self, run: Run) -> None:
         """
         Submit a run for execution.
 
-        Uses run.natural_key() as the job name for tracking in AWS Batch.
+        Uses run.natural_key as the job name for tracking in AWS Batch.
         Does not modify the run object; AWS Batch is the source of truth.
 
         Args:
@@ -32,7 +32,7 @@ class ISimulationRunner(Protocol):
 
         Note:
             Implementation will call aws_batch.submit_job internally with
-            jobName=run.natural_key(). Job definition ARN and queue name
+            jobName=run.natural_key. Job definition ARN and queue name
             are constants within the implementation.
         """
         ...
@@ -41,7 +41,7 @@ class ISimulationRunner(Protocol):
         """
         Get current status of a run from AWS Batch.
 
-        Looks up the job by name (run.natural_key()), then queries status.
+        Looks up the job by name (run.natural_key), then queries status.
         AWS Batch is the source of truth for job state.
 
         Args:
@@ -64,7 +64,7 @@ class ISimulationRunner(Protocol):
         """
         Cancel a running simulation on AWS Batch.
 
-        Looks up the job by name (run.natural_key()), then terminates it.
+        Looks up the job by name (run.natural_key), then terminates it.
         AWS Batch is the source of truth for job state.
 
         Args:

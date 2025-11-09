@@ -2,11 +2,18 @@
 AWS Batch implementation of simulation runner gateway.
 
 Uses boto3 to submit and manage simulation runs on AWS Batch.
+Includes retry logic with exponential backoff for resilience (FRED-46).
 """
 
+import time
+import logging
 import boto3
 from botocore.config import Config
-from epistemix_platform.models import Run, RunStatus, RunStatusDetail
+from botocore.exceptions import ClientError, BotoCoreError
+from epistemix_platform.mappers.batch_status_mapper import BatchStatusMapper
+from epistemix_platform.models import Run, RunStatus, RunStatusDetail, PodPhase
+
+logger = logging.getLogger(__name__)
 
 
 class AWSBatchSimulationRunner:
@@ -31,8 +38,8 @@ class AWSBatchSimulationRunner:
             # Configure boto3 with explicit timeouts to fail fast on network issues
             config = Config(
                 connect_timeout=5,  # 5 seconds to establish connection
-                read_timeout=60,    # 60 seconds to read response
-                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+                read_timeout=60,  # 60 seconds to read response
+                retries={"max_attempts": 3, "mode": "standard"},  # Retry on transient failures
             )
             batch_client = boto3.client("batch", config=config)
 
@@ -60,22 +67,22 @@ class AWSBatchSimulationRunner:
             # Configure boto3 with explicit timeouts to fail fast on network issues
             config = Config(
                 connect_timeout=5,  # 5 seconds to establish connection
-                read_timeout=60,    # 60 seconds to read response
-                retries={'max_attempts': 3, 'mode': 'standard'}  # Retry on transient failures
+                read_timeout=60,  # 60 seconds to read response
+                retries={"max_attempts": 3, "mode": "standard"},  # Retry on transient failures
             )
             batch_client = boto3.client("batch", region_name=region, config=config)
 
         return cls(
             batch_client=batch_client,
             job_queue_name=job_queue_name,
-            job_definition_name=job_definition_name
+            job_definition_name=job_definition_name,
         )
 
     def submit_run(self, run: Run) -> None:
         """
         Submit a run to AWS Batch for execution.
 
-        Uses run.natural_key() as the AWS Batch job name for tracking.
+        Uses run.natural_key property as the AWS Batch job name for tracking.
         AWS Batch is the source of truth for job state; no job ID is stored in the database.
 
         Args:
@@ -83,17 +90,19 @@ class AWSBatchSimulationRunner:
 
         Note:
             Does not modify the run object. AWS Batch maintains job state,
-            and jobs can be looked up by name using run.natural_key().
+            and jobs can be looked up by name using run.natural_key property.
         """
-        # Use natural_key for job name
-        job_name = run.natural_key()
+        # Use natural_key property for job name
+        job_name = run.natural_key
 
         # Prepare command to invoke simulation-runner CLI with job and run IDs
         # Command format: ["run", "--job-id", "11", "--run-id", "3"]
         command = [
             "run",
-            "--job-id", str(run.job_id),
-            "--run-id", str(run.id),
+            "--job-id",
+            str(run.job_id),
+            "--run-id",
+            str(run.id),
         ]
 
         # Submit job to AWS Batch with command override
@@ -107,59 +116,90 @@ class AWSBatchSimulationRunner:
 
     def describe_run(self, run: Run) -> RunStatusDetail:
         """
-        Get current status of a run from AWS Batch using name-based lookup.
+        Get current status of a run from AWS Batch using name-based lookup with retry logic.
 
         Looks up the job in AWS Batch by natural key (job name), then retrieves
-        detailed status information. AWS Batch is the source of truth for job state.
+        detailed status information including both RunStatus and PodPhase.
+        AWS Batch is the source of truth for job state.
+
+        Implements simple exponential backoff retry logic for transient failures
+        (network errors, throttling, temporary AWS Batch unavailability).
 
         Args:
             run: The Run to query
 
         Returns:
-            RunStatusDetail with current status and message
+            RunStatusDetail with current status, pod_phase, and message.
+            Returns ERROR status with pod_phase=UNKNOWN if AWS Batch is unavailable
+            after max retries (graceful degradation).
 
         Raises:
-            ValueError: If job not found in AWS Batch
+            ValueError: If job not found in AWS Batch (not a retryable error)
+
+        Note:
+            Uses BatchStatusMapper for consistent status mapping (FRED-46).
+            Retry logic: 3 attempts with exponential backoff (1s, 2s, 4s delays).
         """
-        # Look up job by name using natural_key
-        job_name = run.natural_key()
+        # Look up job by name using natural_key property (not method call)
+        job_name = run.natural_key
 
-        list_response = self._batch_client.list_jobs(
-            jobQueue=self._job_queue_name,
-            filters=[{"name": "JOB_NAME", "values": [job_name]}],
-        )
+        # Retry configuration (ENGINEER-03 pattern, simplified)
+        max_retries = 3
+        base_delay = 1.0  # seconds
 
-        job_list = list_response.get("jobSummaryList", [])
-        if not job_list:
-            raise ValueError(f"Job not found in AWS Batch: {job_name}")
+        for attempt in range(max_retries):
+            try:
+                # Query AWS Batch to find job by name
+                list_response = self._batch_client.list_jobs(
+                    jobQueue=self._job_queue_name,
+                    filters=[{"name": "JOB_NAME", "values": [job_name]}],
+                )
 
-        # Get the job ID from list_jobs
-        job_id = job_list[0]["jobId"]
+                job_list = list_response.get("jobSummaryList", [])
+                if not job_list:
+                    # Job not found is not a retryable error
+                    raise ValueError(f"Job not found in AWS Batch: {job_name}")
 
-        # Query AWS Batch for detailed job status
-        response = self._batch_client.describe_jobs(jobs=[job_id])
+                # Get the job ID from list_jobs
+                job_id = job_list[0]["jobId"]
 
-        if not response.get("jobs"):
-            raise ValueError(f"Job not found: {job_id}")
+                # Query AWS Batch for detailed job status
+                response = self._batch_client.describe_jobs(jobs=[job_id])
 
-        job = response["jobs"][0]
-        batch_status = job["status"]
-        status_reason = job.get("statusReason", "")
+                if not response.get("jobs"):
+                    raise ValueError(f"Job not found: {job_id}")
 
-        # Map AWS Batch status to RunStatus
-        status_mapping = {
-            "SUBMITTED": RunStatus.QUEUED,
-            "PENDING": RunStatus.QUEUED,
-            "RUNNABLE": RunStatus.QUEUED,
-            "STARTING": RunStatus.RUNNING,
-            "RUNNING": RunStatus.RUNNING,
-            "SUCCEEDED": RunStatus.DONE,
-            "FAILED": RunStatus.ERROR,
-        }
+                job = response["jobs"][0]
+                batch_status = job["status"]
+                status_reason = job.get("statusReason", "")
 
-        run_status = status_mapping.get(batch_status, RunStatus.ERROR)
+                # Use BatchStatusMapper for consistent mapping (FRED-46)
+                run_status = BatchStatusMapper.batch_status_to_run_status(batch_status)
+                pod_phase = BatchStatusMapper.batch_status_to_pod_phase(batch_status)
 
-        return RunStatusDetail(status=run_status, message=status_reason)
+                return RunStatusDetail(
+                    status=run_status, message=status_reason, pod_phase=pod_phase
+                )
+
+            except (ClientError, BotoCoreError) as e:
+                # Transient error - retry with exponential backoff
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        f"AWS Batch error on attempt {attempt + 1}/{max_retries} "
+                        f"for run {run.id}, retrying after {delay}s: {e}"
+                    )
+                    time.sleep(delay)
+                else:
+                    # Max retries exhausted - return ERROR status (graceful degradation)
+                    logger.exception(
+                        f"AWS Batch unavailable after {max_retries} retries for run {run.id}"
+                    )
+                    return RunStatusDetail(
+                        status=RunStatus.ERROR,
+                        message=f"AWS Batch API error: {e}",
+                        pod_phase=PodPhase.UNKNOWN,
+                    )
 
     def cancel_run(self, run: Run) -> None:
         """
@@ -174,8 +214,8 @@ class AWSBatchSimulationRunner:
         Raises:
             ValueError: If job not found in AWS Batch
         """
-        # Look up job by name using natural_key
-        job_name = run.natural_key()
+        # Look up job by name using natural_key property
+        job_name = run.natural_key
 
         list_response = self._batch_client.list_jobs(
             jobQueue=self._job_queue_name,
@@ -190,6 +230,4 @@ class AWSBatchSimulationRunner:
         job_id = job_list[0]["jobId"]
 
         # Terminate the Batch job
-        self._batch_client.terminate_job(
-            jobId=job_id, reason="User requested cancellation"
-        )
+        self._batch_client.terminate_job(jobId=job_id, reason="User requested cancellation")

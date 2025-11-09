@@ -35,6 +35,7 @@ from epistemix_platform.use_cases.submit_job import create_submit_job
 from epistemix_platform.use_cases.submit_job_config import create_submit_job_config
 from epistemix_platform.use_cases.submit_run_config import create_submit_run_config
 from epistemix_platform.use_cases.submit_runs import create_submit_runs
+from epistemix_platform.use_cases.update_run_status import create_update_run_status
 from epistemix_platform.use_cases.upload_results import create_upload_results
 from epistemix_platform.use_cases.write_to_local import write_to_local
 
@@ -124,6 +125,9 @@ class JobController:
             SystemTimeProvider(),
         )
         service._run_simulation = create_run_simulation(simulation_runner)
+        service._update_run_status = create_update_run_status(
+            simulation_runner, run_repository
+        )
 
         return service
 
@@ -245,21 +249,23 @@ class JobController:
 
     def get_runs(self, job_id: int) -> Result[list[dict[str, Any]], str]:
         """
-        Get all runs for a specific job.
-
-        This is a public interface that delegates to the get_runs_by_job_id use case.
-        The service layer orchestrates the call to the business use case.
+        Get all runs for a specific job with AWS Batch status synchronization.
 
         Args:
             job_id: ID of the job to get runs for
 
         Returns:
-            Result containing either the list of runs (Success)
+            Result containing either the list of runs with updated status (Success)
             or an error message (Failure)
         """
         try:
             runs = self._get_runs_by_job_id(job_id=job_id)
+
+            for run in runs:
+                self._update_run_status(run)
+
             return Success([run.to_dict() for run in runs])
+
         except ValueError as e:
             logger.exception("Validation error in get_runs_by_job_id")
             return Failure(str(e))
@@ -531,4 +537,3 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in upload_results")
             return Failure("An unexpected error occurred while uploading results")
-
