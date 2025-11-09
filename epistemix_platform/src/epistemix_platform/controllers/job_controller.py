@@ -14,6 +14,7 @@ from epistemix_platform.models.job import Job
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.requests import RunRequest
 from epistemix_platform.models.run import Run
+from epistemix_platform.models.run_results import RunResults
 from epistemix_platform.models.upload_content import UploadContent
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.gateways.interfaces import ISimulationRunner
@@ -27,6 +28,7 @@ from epistemix_platform.services.results_packager import FredResultsPackager
 from epistemix_platform.services.time_provider import SystemTimeProvider
 from epistemix_platform.use_cases.archive_uploads import create_archive_uploads
 from epistemix_platform.use_cases.get_job_uploads import create_get_job_uploads
+from epistemix_platform.use_cases.get_run_results import get_run_results
 from epistemix_platform.use_cases.get_runs import create_get_runs_by_job_id
 from epistemix_platform.use_cases.read_upload_content import create_read_upload_content
 from epistemix_platform.use_cases.register_job import create_register_job
@@ -72,6 +74,7 @@ class JobController:
         job_controller._archive_uploads = Mock(return_value=[])
         job_controller._upload_results = Mock(return_value="http://s3.url/results.zip")
         job_controller._run_simulation = Mock(return_value=mock_job)
+        job_controller._get_run_results_download = Mock(return_value={"run_id": 1, "url": "http://s3.url/results.zip"})
 
         Use `create_with_repositories` to instantiate with repositories for production use.
         """
@@ -100,6 +103,9 @@ class JobController:
             Configured JobController instance
         """
         service = cls()
+        service.results_repository = results_repository
+        service.job_repository = job_repository
+        service.run_repository = run_repository
 
         service._register_job = create_register_job(job_repository)
         service._submit_job = create_submit_job(job_repository, upload_location_repository)
@@ -128,6 +134,7 @@ class JobController:
         service._update_run_status = create_update_run_status(
             simulation_runner, run_repository
         )
+        service._get_run_results = get_run_results
 
         return service
 
@@ -272,6 +279,53 @@ class JobController:
         except Exception:
             logger.exception("Unexpected error in get_runs_by_job_id")
             return Failure("An unexpected error occurred while retrieving the runs")
+
+    def get_run_results_download(
+        self, job_id: int, bucket_name: str, expiration_seconds: int = 86400
+    ) -> Result[list[dict[str, Any]], str]:
+        """
+        Get presigned download URLs for all runs in a job (batch operation).
+
+        This method generates presigned S3 URLs by reconstructing S3 keys from
+        job metadata (job.created_at) and run IDs, eliminating the need for
+        persisted results_url fields.
+
+        Args:
+            job_id: ID of the job
+            bucket_name: S3 bucket name for results
+            expiration_seconds: URL expiration time in seconds (default 24 hours)
+
+        Returns:
+            Result containing either:
+            - Success with list of dicts [{"run_id": int, "url": str}, ...]
+            - Failure with error message if URL generation fails
+
+        Example:
+            result = controller.get_run_results_download(
+                job_id=6,
+                bucket_name="epistemix-uploads-staging"
+            )
+            if result.is_success():
+                urls = result.unwrap()
+                for url_dict in urls:
+                    print(f"Run {url_dict['run_id']}: {url_dict['url']}")
+        """
+        try:
+            run_results_list = self._get_run_results(
+                job_id=job_id,
+                job_repository=self.job_repository,
+                run_repository=self.run_repository,
+                results_repository=self.results_repository,
+                bucket_name=bucket_name,
+                expiration_seconds=expiration_seconds,
+            )
+            return Success([result.to_dict() for result in run_results_list])
+        except ValueError as e:
+            logger.exception(f"Validation error generating presigned URLs for job {job_id}")
+            return Failure(str(e))
+        except Exception as e:
+            logger.exception(f"Error generating presigned URLs for job {job_id}")
+            return Failure(f"Failed to generate download URLs: {e}")
 
     def get_job_uploads(
         self, job_id: int, include_content: bool = True
