@@ -108,9 +108,7 @@ ENVIRONMENT=dev
         monkeypatch.setenv("EPISTEMIX_API_URL", "http://localhost:5000")
         monkeypatch.setenv("EPISTEMIX_S3_BUCKET", "test-bucket")
         monkeypatch.setenv("AWS_REGION", "us-west-2")
-        monkeypatch.setenv(
-            "DATABASE_URL", "postgresql://testuser:testpass@localhost:5432/testdb"
-        )
+        monkeypatch.setenv("DATABASE_URL", "postgresql://testuser:testpass@localhost:5432/testdb")
 
         # Import after setting environment (to get fresh config)
         from simulation_runner.config import SimulationConfig
@@ -125,10 +123,7 @@ ENVIRONMENT=dev
         assert config.api_url == "http://localhost:5000"
         assert config.s3_bucket == "test-bucket"
         assert config.aws_region == "us-west-2"
-        assert (
-            config.database_url
-            == "postgresql://testuser:testpass@localhost:5432/testdb"
-        )
+        assert config.database_url == "postgresql://testuser:testpass@localhost:5432/testdb"
 
     def test_environment_variables_override_dotenv(self, tmp_path, cli_pex, fred_home):
         """Test that environment variables have higher priority than .env file."""

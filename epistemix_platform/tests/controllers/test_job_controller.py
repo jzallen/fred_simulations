@@ -409,12 +409,10 @@ class TestJobController:
         assert service._run_simulation.call_count == 2
         # Verify the runs were passed correctly by checking the call arguments
         calls = service._run_simulation.call_args_list
-        assert calls[0][1]['run'].id == run1.id
-        assert calls[1][1]['run'].id == run2.id
+        assert calls[0][1]["run"].id == run1.id
+        assert calls[1][1]["run"].id == run2.id
 
-    def test_submit_runs__always_calls_run_simulation(
-        self, service, run_requests
-    ):
+    def test_submit_runs__always_calls_run_simulation(self, service, run_requests):
         """Test that submit_runs ALWAYS calls _run_simulation for each run (simulation_runner is required)."""
         bearer_token = "Bearer valid_token"
         run1 = Run.create_persisted(
@@ -490,7 +488,8 @@ def results_repository(s3_stubber):
 def simulation_runner_mock():
     """Create a mock simulation runner gateway with describe_run support (FRED-46)."""
     from unittest.mock import Mock
-    from epistemix_platform.models import RunStatus, RunStatusDetail, PodPhase
+
+    from epistemix_platform.models import RunStatusDetail
 
     mock_runner = Mock()
     # Mock describe_run to return current DB status (no change scenario)
@@ -504,9 +503,19 @@ def simulation_runner_mock():
 
 
 @pytest.fixture
-def job_controller(job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock):
+def job_controller(
+    job_repository,
+    run_repository,
+    upload_location_repository,
+    results_repository,
+    simulation_runner_mock,
+):
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository, results_repository, simulation_runner_mock
+        job_repository,
+        run_repository,
+        upload_location_repository,
+        results_repository,
+        simulation_runner_mock,
     )
 
 

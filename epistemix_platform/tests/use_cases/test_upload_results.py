@@ -555,7 +555,7 @@ class TestUploadResultsWithJobS3Prefix:
         # Act
         from epistemix_platform.use_cases.upload_results import upload_results
 
-        results_url = upload_results(
+        upload_results(
             run_repository=mock_run_repository,
             job_repository=mock_job_repository,  # NEW parameter
             results_packager=mock_results_packager,

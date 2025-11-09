@@ -20,15 +20,9 @@ def mock_batch_client():
     mock_client = Mock()
     mock_client.submit_job.return_value = {"jobId": "batch-job-123"}
     # Mock for describe_run() status synchronization
-    mock_client.list_jobs.return_value = {
-        "jobSummaryList": [{"jobId": "batch-job-123"}]
-    }
+    mock_client.list_jobs.return_value = {"jobSummaryList": [{"jobId": "batch-job-123"}]}
     mock_client.describe_jobs.return_value = {
-        "jobs": [{
-            "jobId": "batch-job-123",
-            "status": "RUNNING",
-            "statusReason": ""
-        }]
+        "jobs": [{"jobId": "batch-job-123", "status": "RUNNING", "statusReason": ""}]
     }
     return mock_client
 
@@ -48,12 +42,15 @@ def client(tmp_path_factory, mock_batch_client):
     app.config["ENVIRONMENT"] = "TESTING"
 
     # Patch AWSBatchSimulationRunner.create to use mock batch client
-    with patch("epistemix_platform.gateways.simulation_runner.AWSBatchSimulationRunner.create") as mock_create:
+    with patch(
+        "epistemix_platform.gateways.simulation_runner.AWSBatchSimulationRunner.create"
+    ) as mock_create:
         from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+
         mock_create.return_value = AWSBatchSimulationRunner(
             batch_client=mock_batch_client,
             job_queue_name="fred-batch-queue-test",
-            job_definition_name="fred-simulation-runner-test"
+            job_definition_name="fred-simulation-runner-test",
         )
 
         with app.test_client() as client:

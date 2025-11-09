@@ -19,10 +19,7 @@ import pytest
 def template():
     """Load the Batch infrastructure CloudFormation template."""
     template_path = (
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / "batch"
-        / "batch-infrastructure.json"
+        Path(__file__).parent.parent.parent / "templates" / "batch" / "batch-infrastructure.json"
     )
     with open(template_path) as f:
         return json.load(f)
@@ -31,10 +28,7 @@ def template():
 def test_template_is_valid_json():
     """Template should be valid JSON format."""
     template_path = (
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / "batch"
-        / "batch-infrastructure.json"
+        Path(__file__).parent.parent.parent / "templates" / "batch" / "batch-infrastructure.json"
     )
     with open(template_path) as f:
         data = json.load(f)
@@ -91,9 +85,7 @@ def test_template_defines_all_iam_roles(template):
         name for name, resource in resources.items() if resource["Type"] == "AWS::IAM::Role"
     }
 
-    assert required_roles.issubset(
-        iam_roles
-    ), f"Missing IAM roles: {required_roles - iam_roles}"
+    assert required_roles.issubset(iam_roles), f"Missing IAM roles: {required_roles - iam_roles}"
 
 
 def test_batch_service_role_has_correct_trust_policy(template):
@@ -259,9 +251,7 @@ def test_security_group_allows_postgres_egress(template):
     sg = template["Resources"]["BatchSecurityGroup"]
     egress_rules = sg["Properties"]["SecurityGroupEgress"]
 
-    postgres_rules = [
-        r for r in egress_rules if r["FromPort"] == 5432 and r["ToPort"] == 5432
-    ]
+    postgres_rules = [r for r in egress_rules if r["FromPort"] == 5432 and r["ToPort"] == 5432]
     assert len(postgres_rules) > 0
     assert postgres_rules[0]["IpProtocol"] == "tcp"
 

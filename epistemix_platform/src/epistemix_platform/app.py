@@ -26,7 +26,6 @@ from epistemix_platform.config import config
 from epistemix_platform.controllers.job_controller import JobController
 from epistemix_platform.mappers.job_mapper import JobMapper
 from epistemix_platform.mappers.run_mapper import RunMapper
-from epistemix_platform.models.run import Run
 from epistemix_platform.models.requests import (
     RegisterJobRequest,
     SubmitJobRequest,
@@ -169,15 +168,17 @@ def get_job_controller():
 
     # Create simulation runner gateway (REQUIRED)
     from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+
     environment = app.config["ENVIRONMENT"]
     aws_region = app.config["AWS_REGION"]
-    simulation_runner = AWSBatchSimulationRunner.create(
-        environment=environment,
-        region=aws_region
-    )
+    simulation_runner = AWSBatchSimulationRunner.create(environment=environment, region=aws_region)
 
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository, results_repository, simulation_runner
+        job_repository,
+        run_repository,
+        upload_location_repository,
+        results_repository,
+        simulation_runner,
     )
 
 

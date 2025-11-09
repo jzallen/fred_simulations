@@ -6,6 +6,7 @@ Gateways handle communication with external systems like AWS Batch.
 """
 
 from typing import Protocol
+
 from epistemix_platform.models import Run, RunStatusDetail
 
 

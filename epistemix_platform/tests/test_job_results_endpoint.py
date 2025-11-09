@@ -5,12 +5,11 @@ Tests for the /jobs/results endpoint.
 import base64
 import json
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from epistemix_platform.app import app
-from epistemix_platform.models.run_results import RunResults
 from epistemix_platform.repositories.database import RunRecord, get_database_manager
 
 
@@ -106,31 +105,32 @@ class TestJobResultsEndpoint:
     ):
         """Test that the endpoint generates presigned URLs for all runs (batch operation)."""
         # Mock the controller's get_run_results_download to return presigned URLs
-        with patch(
-            "epistemix_platform.app.get_job_controller"
-        ) as mock_get_controller:
-            from returns.result import Success
+        with patch("epistemix_platform.app.get_job_controller") as mock_get_controller:
             from unittest.mock import Mock
+
+            from returns.result import Success
 
             # Create a mock controller
             mock_controller = Mock()
 
             # Set up the get_run_results_download method as a batch operation
             # It now takes job_id and bucket_name, returns all URLs for the job
-            mock_controller.get_run_results_download.return_value = Success([
-                {
-                    "run_id": 1,
-                    "url": "https://s3.amazonaws.com/presigned-1?X-Amz-Expires=86400",
-                },
-                {
-                    "run_id": 2,
-                    "url": "https://s3.amazonaws.com/presigned-2?X-Amz-Expires=86400",
-                },
-                {
-                    "run_id": 3,
-                    "url": "https://s3.amazonaws.com/presigned-3?X-Amz-Expires=86400",
-                },
-            ])
+            mock_controller.get_run_results_download.return_value = Success(
+                [
+                    {
+                        "run_id": 1,
+                        "url": "https://s3.amazonaws.com/presigned-1?X-Amz-Expires=86400",
+                    },
+                    {
+                        "run_id": 2,
+                        "url": "https://s3.amazonaws.com/presigned-2?X-Amz-Expires=86400",
+                    },
+                    {
+                        "run_id": 3,
+                        "url": "https://s3.amazonaws.com/presigned-3?X-Amz-Expires=86400",
+                    },
+                ]
+            )
 
             # Return the mock controller
             mock_get_controller.return_value = mock_controller
@@ -267,20 +267,21 @@ class TestJobResultsEndpoint:
             session.close()
 
         # Mock S3 repository to avoid actual S3 calls
-        with patch(
-            "epistemix_platform.app.get_job_controller"
-        ) as mock_get_controller:
-            from returns.result import Success
+        with patch("epistemix_platform.app.get_job_controller") as mock_get_controller:
             from unittest.mock import Mock
+
+            from returns.result import Success
 
             mock_controller = Mock()
             # Batch operation returns URL reconstructed on-the-fly
-            mock_controller.get_run_results_download.return_value = Success([
-                {
-                    "run_id": 1,
-                    "url": "https://test-bucket.s3.amazonaws.com/jobs/300/2025/11/08/205647/run_1_results.zip?X-Amz-Expires=86400",
-                }
-            ])
+            mock_controller.get_run_results_download.return_value = Success(
+                [
+                    {
+                        "run_id": 1,
+                        "url": "https://test-bucket.s3.amazonaws.com/jobs/300/2025/11/08/205647/run_1_results.zip?X-Amz-Expires=86400",
+                    }
+                ]
+            )
 
             mock_get_controller.return_value = mock_controller
 

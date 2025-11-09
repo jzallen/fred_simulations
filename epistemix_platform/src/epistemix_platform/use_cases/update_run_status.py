@@ -6,9 +6,9 @@ This module implements the core business logic for synchronizing run status with
 import functools
 import logging
 
+from epistemix_platform.gateways.interfaces import ISimulationRunner
 from epistemix_platform.models.run import Run
 from epistemix_platform.repositories.interfaces import IRunRepository
-from epistemix_platform.gateways.interfaces import ISimulationRunner
 
 
 logger = logging.getLogger(__name__)
@@ -32,9 +32,7 @@ def update_run_status(
     """
     status_detail = simulation_runner.describe_run(run)
 
-    status_changed = (
-        run.status != status_detail.status or run.pod_phase != status_detail.pod_phase
-    )
+    status_changed = run.status != status_detail.status or run.pod_phase != status_detail.pod_phase
 
     if status_changed:
         logger.info(
@@ -50,8 +48,6 @@ def update_run_status(
     return False
 
 
-def create_update_run_status(
-    simulation_runner: ISimulationRunner, run_repository: IRunRepository
-):
+def create_update_run_status(simulation_runner: ISimulationRunner, run_repository: IRunRepository):
     """Factory to create update_run_status function with dependencies wired."""
     return functools.partial(update_run_status, simulation_runner, run_repository)

@@ -10,14 +10,9 @@ from typing import Any, Self
 
 from returns.result import Failure, Result, Success
 
-from epistemix_platform.models.job import Job
+from epistemix_platform.gateways.interfaces import ISimulationRunner
 from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.requests import RunRequest
-from epistemix_platform.models.run import Run
-from epistemix_platform.models.run_results import RunResults
-from epistemix_platform.models.upload_content import UploadContent
-from epistemix_platform.models.upload_location import UploadLocation
-from epistemix_platform.gateways.interfaces import ISimulationRunner
 from epistemix_platform.repositories import (
     IJobRepository,
     IRunRepository,
@@ -131,9 +126,7 @@ class JobController:
             SystemTimeProvider(),
         )
         service._run_simulation = create_run_simulation(simulation_runner)
-        service._update_run_status = create_update_run_status(
-            simulation_runner, run_repository
-        )
+        service._update_run_status = create_update_run_status(simulation_runner, run_repository)
         service._get_run_results = get_run_results
 
         return service

@@ -4,9 +4,11 @@ Unit tests for Run domain model.
 Tests for core Run model functionality including AWS Batch integration fields.
 """
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
-from epistemix_platform.models.run import Run, RunStatus, PodPhase
+
+from epistemix_platform.models.run import Run
 
 
 class TestRunModelApplicationFields:
@@ -53,8 +55,8 @@ class TestRunModelApplicationFields:
         run_id = 1
         job_id = 123
         user_id = 456
-        created_at = datetime.now(timezone.utc)
-        updated_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
+        updated_at = datetime.now(UTC)
         request = {"simulation": "test"}
         results_uploaded = True
 
@@ -83,8 +85,8 @@ class TestRunNaturalKey:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -101,8 +103,8 @@ class TestRunNaturalKey:
             run_id=999,
             job_id=1,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 

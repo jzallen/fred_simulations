@@ -147,7 +147,9 @@ def load_from_secrets_manager(environment: str = "dev") -> None:
     """
     try:
         # Create Secrets Manager client
-        secrets_client = boto3.client("secretsmanager", region_name=os.getenv("AWS_REGION", "us-east-1"))
+        secrets_client = boto3.client(
+            "secretsmanager", region_name=os.getenv("AWS_REGION", "us-east-1")
+        )
 
         # Fetch database password secret
         secret_name = f"/epistemix/{environment}/database/password"

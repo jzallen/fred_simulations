@@ -1,6 +1,7 @@
-import pytest
 from datetime import datetime
 from unittest.mock import Mock
+
+import pytest
 
 from epistemix_platform.models.job import Job
 from epistemix_platform.models.run import Run, RunStatus
@@ -67,10 +68,7 @@ class TestGetRunResults:
         assert all(isinstance(r, RunResults) for r in results)
         assert results[0].run_id == 1
         assert results[1].run_id == 2
-        assert (
-            results[0].url
-            == "https://presigned-url.s3.amazonaws.com?X-Amz-Expires=86400"
-        )
+        assert results[0].url == "https://presigned-url.s3.amazonaws.com?X-Amz-Expires=86400"
 
     def test_calls_repository_with_reconstructed_s3_urls(self):
         """Test that use case reconstructs S3 URLs from JobS3Prefix."""
@@ -114,7 +112,9 @@ class TestGetRunResults:
         )
 
         # Assert - verify S3 URL was reconstructed correctly
-        expected_url = "https://test-bucket.s3.amazonaws.com/jobs/100/2025/11/08/205647/run_1_results.zip"
+        expected_url = (
+            "https://test-bucket.s3.amazonaws.com/jobs/100/2025/11/08/205647/run_1_results.zip"
+        )
         mock_results_repo.get_download_url.assert_called_once_with(
             results_url=expected_url,
             expiration_seconds=86400,

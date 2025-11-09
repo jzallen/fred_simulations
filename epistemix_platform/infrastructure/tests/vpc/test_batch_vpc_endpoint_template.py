@@ -19,10 +19,7 @@ import pytest
 def template():
     """Load the Batch VPC Endpoint CloudFormation template."""
     template_path = (
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / "vpc"
-        / "batch-vpc-endpoint.json"
+        Path(__file__).parent.parent.parent / "templates" / "vpc" / "batch-vpc-endpoint.json"
     )
     with open(template_path) as f:
         return json.load(f)
@@ -31,10 +28,7 @@ def template():
 def test_template_is_valid_json():
     """Template should be valid JSON format."""
     template_path = (
-        Path(__file__).parent.parent.parent
-        / "templates"
-        / "vpc"
-        / "batch-vpc-endpoint.json"
+        Path(__file__).parent.parent.parent / "templates" / "vpc" / "batch-vpc-endpoint.json"
     )
     with open(template_path) as f:
         data = json.load(f)

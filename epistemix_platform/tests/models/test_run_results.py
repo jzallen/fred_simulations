@@ -1,5 +1,3 @@
-import pytest
-
 from epistemix_platform.models.run_results import RunResults
 
 
