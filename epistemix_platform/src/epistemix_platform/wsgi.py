@@ -55,7 +55,9 @@ app.logger.handlers = root.handlers
 app.logger.setLevel(logging.INFO)
 
 # Log startup information
-logger.info(f"Epistemix API WSGI application initialized for {app.config['ENVIRONMENT']} environment")
+logger.info(
+    f"Epistemix API WSGI application initialized for {app.config['ENVIRONMENT']} environment"
+)
 
 # WSGI application object - this is what Gunicorn will import
 application = app

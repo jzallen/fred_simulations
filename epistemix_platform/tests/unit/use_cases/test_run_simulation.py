@@ -4,13 +4,11 @@ Tests for run_simulation use case.
 Tests the use case that orchestrates simulation execution via AWS Batch.
 """
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import Mock
-from datetime import datetime, timezone
 
+from epistemix_platform.models import Run
 from epistemix_platform.use_cases.run_simulation import run_simulation
-from epistemix_platform.models import Run, RunStatus, RunStatusDetail
-from epistemix_platform.repositories.interfaces import IRunRepository
 
 
 class TestRunSimulationUseCase:
@@ -25,8 +23,8 @@ class TestRunSimulationUseCase:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -48,8 +46,8 @@ class TestRunSimulationUseCase:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -71,8 +69,8 @@ class TestRunSimulationUseCase:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -94,8 +92,8 @@ class TestRunSimulationUseCase:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -118,8 +116,8 @@ class TestRunSimulationUseCase:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 

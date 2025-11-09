@@ -4,7 +4,6 @@ Tests for BatchStatusMapper - AWS Batch status to domain enum conversion.
 Following TDD Red-Green-Refactor cycle for FRED-46.
 """
 
-import pytest
 from epistemix_platform.mappers.batch_status_mapper import BatchStatusMapper
 from epistemix_platform.models.run import PodPhase, RunStatus
 

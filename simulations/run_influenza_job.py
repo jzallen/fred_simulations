@@ -8,6 +8,8 @@ import os
 import sys
 from pathlib import Path
 
+from epx.job.fred_job import FREDJobResults
+
 
 def main():
     """Main function to execute the influenza job."""
@@ -26,6 +28,11 @@ def main():
         # Execute the job with a timeout of 600 seconds (10 minutes)
         influenza_job.execute(600)
         print(f"Job completed successfully! Status: {influenza_job.status}")
+
+        # Download results using the new endpoint
+        print("\nDownloading job results...")
+        FREDJobResults.download(job_id=influenza_job.job_id)
+        print("Results downloaded successfully!")
         return 0
     except Exception as e:
         print(f"Job execution failed ({type(e).__name__}): {e}", file=sys.stderr)

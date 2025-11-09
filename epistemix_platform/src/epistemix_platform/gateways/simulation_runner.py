@@ -5,13 +5,16 @@ Uses boto3 to submit and manage simulation runs on AWS Batch.
 Includes retry logic with exponential backoff for resilience (FRED-46).
 """
 
-import time
 import logging
+import time
+
 import boto3
 from botocore.config import Config
-from botocore.exceptions import ClientError, BotoCoreError
+from botocore.exceptions import BotoCoreError, ClientError
+
 from epistemix_platform.mappers.batch_status_mapper import BatchStatusMapper
-from epistemix_platform.models import Run, RunStatus, RunStatusDetail, PodPhase
+from epistemix_platform.models import PodPhase, Run, RunStatus, RunStatusDetail
+
 
 logger = logging.getLogger(__name__)
 

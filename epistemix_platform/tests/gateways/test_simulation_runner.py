@@ -4,13 +4,14 @@ Tests for AWSBatchSimulationRunner gateway.
 Tests AWS Batch integration for simulation execution using mocked boto3 client.
 """
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
-from datetime import datetime, timezone
+
+import pytest
 from botocore.exceptions import ClientError
 
 from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-from epistemix_platform.models import Run, RunStatus, RunStatusDetail, PodPhase
+from epistemix_platform.models import PodPhase, Run, RunStatus, RunStatusDetail
 
 
 class TestAWSBatchSimulationRunnerSubmit:
@@ -28,8 +29,8 @@ class TestAWSBatchSimulationRunnerSubmit:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -55,8 +56,8 @@ class TestAWSBatchSimulationRunnerSubmit:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -81,8 +82,8 @@ class TestAWSBatchSimulationRunnerSubmit:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -131,13 +132,13 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
         # ACT
-        result = runner.describe_run(run)
+        runner.describe_run(run)
 
         # ASSERT
         mock_batch_client.list_jobs.assert_called_once()
@@ -174,8 +175,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -197,8 +198,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -268,8 +269,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -303,8 +304,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -332,8 +333,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -370,8 +371,8 @@ class TestAWSBatchSimulationRunnerDescribe:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -409,8 +410,8 @@ class TestAWSBatchSimulationRunnerCancel:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -437,8 +438,8 @@ class TestAWSBatchSimulationRunnerCancel:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -466,8 +467,8 @@ class TestAWSBatchSimulationRunnerConstants:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 
@@ -495,8 +496,8 @@ class TestAWSBatchSimulationRunnerConstants:
             run_id=42,
             job_id=123,
             user_id=456,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             request={"simulation": "test"},
         )
 

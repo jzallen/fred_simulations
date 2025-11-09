@@ -7,8 +7,9 @@ via the simulation runner gateway.
 
 import functools
 import logging
-from epistemix_platform.models import Run
+
 from epistemix_platform.gateways.interfaces import ISimulationRunner
+from epistemix_platform.models import Run
 
 
 logger = logging.getLogger(__name__)

@@ -8,6 +8,7 @@ Created for FRED-46: AWS Batch status synchronization.
 """
 
 import logging
+
 from epistemix_platform.models.run import PodPhase, RunStatus
 
 

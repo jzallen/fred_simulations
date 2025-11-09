@@ -168,15 +168,17 @@ def get_job_controller():
 
     # Create simulation runner gateway (REQUIRED)
     from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
+
     environment = app.config["ENVIRONMENT"]
     aws_region = app.config["AWS_REGION"]
-    simulation_runner = AWSBatchSimulationRunner.create(
-        environment=environment,
-        region=aws_region
-    )
+    simulation_runner = AWSBatchSimulationRunner.create(environment=environment, region=aws_region)
 
     return JobController.create_with_repositories(
-        job_repository, run_repository, upload_location_repository, results_repository, simulation_runner
+        job_repository,
+        run_repository,
+        upload_location_repository,
+        results_repository,
+        simulation_runner,
     )
 
 
@@ -351,7 +353,9 @@ def get_runs():
 def get_job_results():
     """
     Get URLs for runs by job ID.
-    Returns a JSON response with URLs for all runs associated with the job.
+    Returns a JSON response with presigned S3 URLs for all runs associated with the job.
+
+    This endpoint batch-generates presigned URLs by reconstructing S3 keys from job metadata.
     """
     job_id = request.args.get("job_id")
     if not job_id:
@@ -363,22 +367,20 @@ def get_job_results():
         return jsonify({"error": "Invalid job_id parameter"}), 400
 
     job_controller = get_job_controller()
-    runs_result = job_controller.get_runs(job_id=job_id)
+    bucket_name = app.config["S3_UPLOAD_BUCKET"]
 
-    if not is_successful(runs_result):
-        error_message = runs_result.failure()
+    # Batch operation: generate presigned URLs for all runs
+    result = job_controller.get_run_results_download(
+        job_id=job_id,
+        bucket_name=bucket_name,
+    )
+
+    if not is_successful(result):
+        error_message = result.failure()
         logger.warning(f"Business logic error in get job results: {error_message}")
         return jsonify({"error": error_message}), 400
 
-    runs = runs_result.unwrap()
-
-    # Extract results URLs from runs (not config URLs)
-    urls = [
-        {"run_id": run.get("id"), "url": run.get("results_url")}
-        for run in runs
-        if run.get("results_url") is not None
-    ]
-
+    urls = result.unwrap()
     return jsonify({"urls": urls}), 200
 
 

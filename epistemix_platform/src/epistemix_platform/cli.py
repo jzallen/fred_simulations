@@ -124,10 +124,8 @@ def get_job_controller() -> JobController:
 
     # Create simulation runner gateway (REQUIRED)
     from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-    simulation_runner = AWSBatchSimulationRunner.create(
-        environment=environment,
-        region=region_name
-    )
+
+    simulation_runner = AWSBatchSimulationRunner.create(environment=environment, region=region_name)
 
     # Create and return JobController
     return JobController.create_with_repositories(

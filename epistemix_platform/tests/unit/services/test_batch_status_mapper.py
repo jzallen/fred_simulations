@@ -4,7 +4,6 @@ Unit tests for AWS Batch status mapping to RunStatus.
 CRITICAL for epx alignment: Only set DONE when results are uploaded.
 """
 
-import pytest
 from epistemix_platform.models.run import RunStatus
 from epistemix_platform.services.batch_status_mapper import map_batch_status_to_run_status
 

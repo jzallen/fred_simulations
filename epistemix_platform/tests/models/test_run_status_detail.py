@@ -4,7 +4,6 @@ Tests for RunStatusDetail model with pod_phase field.
 Following TDD Red-Green-Refactor cycle for FRED-46.
 """
 
-import pytest
 from epistemix_platform.models.run import PodPhase, RunStatus, RunStatusDetail
 
 
@@ -19,11 +18,7 @@ class TestRunStatusDetail:
         pod_phase = PodPhase.RUNNING
 
         # ACT
-        status_detail = RunStatusDetail(
-            status=status,
-            message=message,
-            pod_phase=pod_phase
-        )
+        status_detail = RunStatusDetail(status=status, message=message, pod_phase=pod_phase)
 
         # ASSERT
         assert status_detail.status == RunStatus.RUNNING
@@ -38,11 +33,7 @@ class TestRunStatusDetail:
         pod_phase = PodPhase.PENDING
 
         # ACT
-        status_detail = RunStatusDetail(
-            status=status,
-            message=message,
-            pod_phase=pod_phase
-        )
+        status_detail = RunStatusDetail(status=status, message=message, pod_phase=pod_phase)
 
         # ASSERT
         assert status_detail.status == RunStatus.QUEUED
@@ -56,11 +47,7 @@ class TestRunStatusDetail:
         pod_phase = PodPhase.SUCCEEDED
 
         # ACT
-        status_detail = RunStatusDetail(
-            status=status,
-            message=message,
-            pod_phase=pod_phase
-        )
+        status_detail = RunStatusDetail(status=status, message=message, pod_phase=pod_phase)
 
         # ASSERT
         assert status_detail.status == RunStatus.DONE
@@ -74,11 +61,7 @@ class TestRunStatusDetail:
         pod_phase = PodPhase.FAILED
 
         # ACT
-        status_detail = RunStatusDetail(
-            status=status,
-            message=message,
-            pod_phase=pod_phase
-        )
+        status_detail = RunStatusDetail(status=status, message=message, pod_phase=pod_phase)
 
         # ASSERT
         assert status_detail.status == RunStatus.ERROR

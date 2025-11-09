@@ -4,7 +4,6 @@ Unit tests for RunStatusDetail model.
 Tests for detailed run status information returned from AWS Batch.
 """
 
-import pytest
 from epistemix_platform.models.run import PodPhase, RunStatus, RunStatusDetail
 
 
@@ -29,9 +28,17 @@ class TestRunStatusDetail:
     def test_run_status_detail_accepts_different_statuses(self):
         """RED: Test RunStatusDetail with different status values."""
         # ARRANGE & ACT
-        queued = RunStatusDetail(status=RunStatus.QUEUED, message="Job submitted to queue", pod_phase=PodPhase.PENDING)
-        error = RunStatusDetail(status=RunStatus.ERROR, message="Job failed due to timeout", pod_phase=PodPhase.FAILED)
-        done = RunStatusDetail(status=RunStatus.DONE, message="Job completed successfully", pod_phase=PodPhase.SUCCEEDED)
+        queued = RunStatusDetail(
+            status=RunStatus.QUEUED, message="Job submitted to queue", pod_phase=PodPhase.PENDING
+        )
+        error = RunStatusDetail(
+            status=RunStatus.ERROR, message="Job failed due to timeout", pod_phase=PodPhase.FAILED
+        )
+        done = RunStatusDetail(
+            status=RunStatus.DONE,
+            message="Job completed successfully",
+            pod_phase=PodPhase.SUCCEEDED,
+        )
 
         # ASSERT
         assert queued.status == RunStatus.QUEUED
@@ -57,9 +64,15 @@ class TestRunStatusDetail:
     def test_run_status_detail_equality(self):
         """Test equality based on status, message, and pod_phase."""
         # ARRANGE
-        detail1 = RunStatusDetail(status=RunStatus.RUNNING, message="Test message", pod_phase=PodPhase.RUNNING)
-        detail2 = RunStatusDetail(status=RunStatus.RUNNING, message="Test message", pod_phase=PodPhase.RUNNING)
-        detail3 = RunStatusDetail(status=RunStatus.RUNNING, message="Different message", pod_phase=PodPhase.RUNNING)
+        detail1 = RunStatusDetail(
+            status=RunStatus.RUNNING, message="Test message", pod_phase=PodPhase.RUNNING
+        )
+        detail2 = RunStatusDetail(
+            status=RunStatus.RUNNING, message="Test message", pod_phase=PodPhase.RUNNING
+        )
+        detail3 = RunStatusDetail(
+            status=RunStatus.RUNNING, message="Different message", pod_phase=PodPhase.RUNNING
+        )
 
         # ACT & ASSERT
         assert detail1 == detail2
