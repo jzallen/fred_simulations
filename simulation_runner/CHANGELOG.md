@@ -7,7 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2025-10-18
+## [0.4.0] - 2025-11-08
+
+### Added
+- **FRED-45**: AWS Batch integration for FRED simulation runner
+  - Batch job submission capabilities
+  - Cloud-based simulation execution
+  - Integration with AWS Batch infrastructure
+  - Scalable distributed simulation processing
+
+## [0.3.0] - 2025-11-03
+
+### Added
+- **FRED-42**: Bootstrap module integration in CLI (#69)
+  - Centralized AWS configuration management
+  - Consistent environment variable handling
+  - python-dotenv support for local development
+  - Shared configuration loader across services
+
+## [0.2.0] - 2025-10-28
+
+### Changed
+- **FRED-34**: Updated to use epistemix-cli for results upload (#62)
+  - Replaced custom upload logic with epistemix-cli integration
+  - Shared S3 upload functionality across services
+  - Reduced code duplication
+  - Consistent results handling with epistemix_platform
+
+## [0.1.1] - 2025-10-18
+
+### Changed
+- **FRED-28**: Build system improvements (#58)
+  - Replaced pre-commit framework with Pants-native Ruff linting
+  - Improved CI/CD integration
+  - Faster linting and formatting
+
+## [0.1.0] - 2025-10-18
 
 ### Added
 - **FRED-27**: Complete simulation-runner Python CLI with clean architecture
@@ -44,5 +79,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive docstrings following NumPy style
 - PEP 8 compliance via black, flake8, pylint
 
-[Unreleased]: https://github.com/jzallen/fred_simulations/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/jzallen/fred_simulations/releases/tag/v1.0.0

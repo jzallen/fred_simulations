@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-10-18
+
+### Changed
+- **FRED-28**: Build system improvements (#58)
+  - Replaced pre-commit framework with Pants-native Ruff linting
+  - Integrated TCR tests into Pants build system
+  - Improved development workflow performance
+
+## [0.1.1] - 2025-09-26
+
+### Added
+- PEX test runner integration
+  - Improved VS Code test discovery
+  - Better IDE integration for TCR development
+
 ## [0.1.0] - 2025-09-22
 
 ### Changed
@@ -48,8 +63,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for custom test commands and ignore patterns
 - Git integration for automatic commits and reverts
 
-[Unreleased]: https://github.com/jzallen/fred_simulations/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/jzallen/fred_simulations/compare/v0.0.3...v0.1.0
-[0.0.3]: https://github.com/jzallen/fred_simulations/compare/v0.0.2...v0.0.3
-[0.0.2]: https://github.com/jzallen/fred_simulations/compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/jzallen/fred_simulations/releases/tag/v0.0.1
