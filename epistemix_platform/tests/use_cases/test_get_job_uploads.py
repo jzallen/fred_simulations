@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
 
 from epistemix_platform.models.job import Job
+from epistemix_platform.models.job_upload import JobUpload
 from epistemix_platform.models.run import PodPhase, Run, RunStatus
 from epistemix_platform.models.upload_location import UploadLocation
 from epistemix_platform.use_cases.get_job_uploads import get_job_uploads
@@ -56,13 +57,16 @@ class TestGetJobUploads:
         uploads = get_job_uploads(job_repository, run_repository, job_id=1)
 
         # Assert
-        assert len(uploads) == 1
-        upload = uploads[0]
-        assert upload.context == "job"
-        assert upload.upload_type == "input"
-        assert upload.job_id == 1
-        assert upload.location.url == "https://s3.amazonaws.com/bucket/job_1_input"
-        assert upload.run_id is None
+        expected = [
+            JobUpload(
+                context="job",
+                upload_type="input",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/job_1_input"),
+                run_id=None,
+            )
+        ]
+        assert uploads == expected
 
     def test_get_job_uploads__job_with_config_location__returns_job_config_upload(
         self, job_repository, run_repository
@@ -78,13 +82,16 @@ class TestGetJobUploads:
         uploads = get_job_uploads(job_repository, run_repository, job_id=1)
 
         # Assert
-        assert len(uploads) == 1
-        upload = uploads[0]
-        assert upload.context == "job"
-        assert upload.upload_type == "config"
-        assert upload.job_id == 1
-        assert upload.location.url == "https://s3.amazonaws.com/bucket/job_1_config"
-        assert upload.run_id is None
+        expected = [
+            JobUpload(
+                context="job",
+                upload_type="config",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/job_1_config"),
+                run_id=None,
+            )
+        ]
+        assert uploads == expected
 
     def test_get_job_uploads__job_with_runs__returns_run_uploads(
         self, job_repository, run_repository
@@ -99,8 +106,8 @@ class TestGetJobUploads:
             pod_phase=PodPhase.SUCCEEDED,
             request={},
             config_url="https://s3.amazonaws.com/bucket/run_1_output",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         run2 = Run.create_persisted(
             run_id=2,
@@ -110,8 +117,8 @@ class TestGetJobUploads:
             pod_phase=PodPhase.SUCCEEDED,
             request={},
             config_url="https://s3.amazonaws.com/bucket/run_2_output",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         job_repository.find_by_id.return_value = job
@@ -121,21 +128,23 @@ class TestGetJobUploads:
         uploads = get_job_uploads(job_repository, run_repository, job_id=1)
 
         # Assert
-        assert len(uploads) == 2
-
-        upload1 = uploads[0]
-        assert upload1.context == "run"
-        assert upload1.upload_type == "config"
-        assert upload1.job_id == 1
-        assert upload1.run_id == 1
-        assert upload1.location.url == "https://s3.amazonaws.com/bucket/run_1_output"
-
-        upload2 = uploads[1]
-        assert upload2.context == "run"
-        assert upload2.upload_type == "config"
-        assert upload2.job_id == 1
-        assert upload2.run_id == 2
-        assert upload2.location.url == "https://s3.amazonaws.com/bucket/run_2_output"
+        expected = [
+            JobUpload(
+                context="run",
+                upload_type="config",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/run_1_output"),
+                run_id=1,
+            ),
+            JobUpload(
+                context="run",
+                upload_type="config",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/run_2_output"),
+                run_id=2,
+            ),
+        ]
+        assert uploads == expected
 
     def test_get_job_uploads__complete_job__returns_all_uploads(
         self, job_repository, run_repository
@@ -155,8 +164,8 @@ class TestGetJobUploads:
             pod_phase=PodPhase.SUCCEEDED,
             request={},
             config_url="https://s3.amazonaws.com/bucket/run_1_output",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         job_repository.find_by_id.return_value = job
@@ -166,13 +175,27 @@ class TestGetJobUploads:
         uploads = get_job_uploads(job_repository, run_repository, job_id=1)
 
         # Assert
-        assert len(uploads) == 3
-
-        upload_types = [(u.context, u.upload_type) for u in uploads]
-        assert ("job", "input") in upload_types
-        assert ("job", "config") in upload_types
-        assert ("run", "config") in upload_types
-
-        for upload in uploads:
-            assert upload.job_id == 1
-            assert isinstance(upload.location, UploadLocation)
+        expected = [
+            JobUpload(
+                context="job",
+                upload_type="input",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/job_1_input"),
+                run_id=None,
+            ),
+            JobUpload(
+                context="job",
+                upload_type="config",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/job_1_config"),
+                run_id=None,
+            ),
+            JobUpload(
+                context="run",
+                upload_type="config",
+                job_id=1,
+                location=UploadLocation(url="https://s3.amazonaws.com/bucket/run_1_output"),
+                run_id=1,
+            ),
+        ]
+        assert uploads == expected
