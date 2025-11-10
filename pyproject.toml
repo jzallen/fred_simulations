@@ -2,7 +2,6 @@
 # This file configures Ruff for Pants-native linting and formatting
 
 [tool.ruff]
-# Match existing Black settings
 line-length = 100
 target-version = "py311"
 
@@ -10,16 +9,9 @@ target-version = "py311"
 extend-exclude = ["fred-framework"]
 
 [tool.ruff.format]
-# Use double quotes for strings (Black default)
 quote-style = "double"
-
-# Use spaces for indentation (Black default)
 indent-style = "space"
-
-# Respect magic trailing commas (Black default)
 skip-magic-trailing-comma = false
-
-# Auto-detect line endings (Black default)
 line-ending = "auto"
 
 [tool.ruff.lint]
@@ -35,10 +27,10 @@ line-ending = "auto"
 # ARG: flake8-unused-arguments (detect unused function arguments)
 select = ["E", "F", "I", "UP", "B", "C4", "SIM", "TRY", "ARG"]
 
-# Global ignores for rules with many violations that would require significant refactoring
-#   TRY003: long exception messages in raise statements
-#   SIM117: nested with statements that could be combined
-#   SIM105: try/except blocks that could use contextlib.suppress
+# Global ignores for rules that are stylistic preferences or would require significant refactoring
+#   TRY003: Prefer explicit exception messages over extracted variables for readability (0 violations)
+#   SIM117: Prefer explicit nested with statements for clarity (0 violations)
+#   SIM105: Prefer explicit try/except over contextlib.suppress for visibility (0 violations)
 ignore = ["SIM105", "SIM117", "TRY003"]
 
 # Per-file ignores for specific patterns
@@ -49,6 +41,4 @@ ignore = ["SIM105", "SIM117", "TRY003"]
 "**/tests/**/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-# Match existing isort settings (Black-compatible)
-# Ruff's isort is Black-compatible by default
 lines-after-imports = 2

@@ -68,14 +68,6 @@ class JobUpload:
                 f"got '{self.upload_type}'"
             )
 
-    def is_job_upload(self) -> bool:
-        """Check if this is a job-level upload (not run-specific)."""
-        return self.context == "job"
-
-    def is_run_upload(self) -> bool:
-        """Check if this is a run-level upload."""
-        return self.context == "run"
-
     def to_dict(self) -> dict[str, Any]:
         """Serialize the upload to a dictionary for API responses."""
         result = {

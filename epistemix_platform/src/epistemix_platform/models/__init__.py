@@ -9,7 +9,6 @@ from .job_upload import JobUpload  # pants: no-infer-dep
 from .run import PodPhase, Run, RunStatus, RunStatusDetail  # pants: no-infer-dep
 from .upload_content import UploadContent, ZipFileEntry  # pants: no-infer-dep
 from .upload_location import UploadLocation  # pants: no-infer-dep
-from .user import User  # pants: no-infer-dep
 
 
 __all__ = [
@@ -22,7 +21,6 @@ __all__ = [
     "RunStatus",
     "RunStatusDetail",
     "PodPhase",
-    "User",
     "UploadLocation",
     "UploadContent",
     "ZipFileEntry",
