@@ -1,7 +1,3 @@
-"""
-Tests for submit_job use case.
-"""
-
 import base64
 import json
 from datetime import datetime
@@ -130,14 +126,8 @@ class TestSubmitRunsUseCase:
 
 
 class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
-    """
-    Integration tests for submit_runs use case with SQLAlchemy run repository.
-    This class assumes the repository is properly set up in the test environment.
-    """
-
     @pytest.fixture
     def job_repository(self, db_session):
-        """Create a job repository using the shared db_session fixture."""
         from epistemix_platform.mappers.job_mapper import JobMapper
         from epistemix_platform.repositories import SQLAlchemyJobRepository
 
@@ -146,13 +136,11 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
 
     @pytest.fixture
     def run_repository(self, db_session):
-        """Create a run repository using the shared db_session fixture."""
         run_mapper = RunMapper()
         return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 
     @pytest.fixture
     def upload_location_repository(self):
-        """Create a mock upload location repository."""
         repo = Mock(spec=IUploadLocationRepository)
         repo.get_upload_location.return_value = UploadLocation(
             url="https://example.com/presigned-url"
@@ -169,12 +157,10 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
         bearer_token,
         db_session,
     ):
-        # Create job first (required for JobS3Prefix)
         job = Job.create_new(user_id=123, tags=["test"])
         persisted_job = job_repository.save(job)
         db_session.commit()
 
-        # Update run_request with the actual job_id
         run_request["jobId"] = persisted_job.id
         run_requests = [run_request]
 
@@ -215,12 +201,10 @@ class TestSubmitRunsSQLAlchemyRunRepositoryIntegration:
         bearer_token,
         db_session,
     ):
-        # Create job first (required for JobS3Prefix)
         job = Job.create_new(user_id=123, tags=["test"])
         persisted_job = job_repository.save(job)
         db_session.commit()
 
-        # Update run_request with the actual job_id
         run_request["jobId"] = persisted_job.id
         run_requests = [run_request]
         submit_runs(

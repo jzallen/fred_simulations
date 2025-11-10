@@ -1,7 +1,3 @@
-"""
-Tests for the write_to_local use case.
-"""
-
 import pytest
 
 from epistemix_platform.models.upload_content import UploadContent
@@ -9,10 +5,7 @@ from epistemix_platform.use_cases.write_to_local import write_to_local
 
 
 class TestWriteToLocal:
-    """Test the write_to_local use case."""
-
     def test_write_text_content(self, tmp_path):
-        """Test writing text content to a file."""
         file_path = tmp_path / "test.txt"
         content = UploadContent.create_text("Hello, World!")
 
@@ -22,7 +15,6 @@ class TestWriteToLocal:
         assert file_path.read_text() == "Hello, World!"
 
     def test_write_json_content(self, tmp_path):
-        """Test writing JSON content to a file."""
         file_path = tmp_path / "test.json"
         json_content = '{"key": "value", "number": 42}'
         content = UploadContent.create_json(json_content)
@@ -33,7 +25,6 @@ class TestWriteToLocal:
         assert file_path.read_text() == json_content
 
     def test_write_zip_archive_content(self, tmp_path):
-        """Test writing ZIP archive content to a file."""
         from epistemix_platform.models.upload_content import ZipFileEntry
 
         file_path = tmp_path / "test.zip"
@@ -57,7 +48,6 @@ class TestWriteToLocal:
         assert file_path.read_bytes() == zip_bytes
 
     def test_create_parent_directories(self, tmp_path):
-        """Test that parent directories are created if they don't exist."""
         file_path = tmp_path / "nested" / "deep" / "test.txt"
         content = UploadContent.create_text("Nested content")
 
@@ -67,7 +57,6 @@ class TestWriteToLocal:
         assert file_path.read_text() == "Nested content"
 
     def test_overwrite_with_force(self, tmp_path):
-        """Test overwriting an existing file with force=True."""
         file_path = tmp_path / "test.txt"
         file_path.write_text("Original content")
 
@@ -77,7 +66,6 @@ class TestWriteToLocal:
         assert file_path.read_text() == "New content"
 
     def test_fail_without_force(self, tmp_path):
-        """Test that writing fails without force when file exists."""
         file_path = tmp_path / "test.txt"
         file_path.write_text("Existing content")
 
@@ -91,7 +79,6 @@ class TestWriteToLocal:
         assert file_path.read_text() == "Existing content"
 
     def test_invalid_file_path_type(self, tmp_path):
-        """Test that invalid file_path type raises ValueError."""
         content = UploadContent.create_text("Test content")
 
         with pytest.raises(ValueError) as exc_info:
@@ -100,7 +87,6 @@ class TestWriteToLocal:
         assert "file_path must be a Path object" in str(exc_info.value)
 
     def test_invalid_content_type(self, tmp_path):
-        """Test that invalid content type raises ValueError."""
         file_path = tmp_path / "test.txt"
 
         with pytest.raises(ValueError) as exc_info:

@@ -11,10 +11,7 @@ from epistemix_platform.use_cases.get_run_results import get_run_results
 
 
 class TestGetRunResults:
-    """Tests for get_run_results use case (batch operation)."""
-
     def test_returns_run_results_for_all_runs(self):
-        """Test that use case returns RunResults for all runs in a job."""
         # Arrange
         job = Job(
             id=100,
@@ -71,7 +68,6 @@ class TestGetRunResults:
         assert results[0].url == "https://presigned-url.s3.amazonaws.com?X-Amz-Expires=86400"
 
     def test_calls_repository_with_reconstructed_s3_urls(self):
-        """Test that use case reconstructs S3 URLs from JobS3Prefix."""
         # Arrange
         job = Job(
             id=100,
@@ -111,7 +107,7 @@ class TestGetRunResults:
             bucket_name="test-bucket",
         )
 
-        # Assert - verify S3 URL was reconstructed correctly
+        # Assert
         expected_url = (
             "https://test-bucket.s3.amazonaws.com/jobs/100/2025/11/08/205647/run_1_results.zip"
         )
@@ -121,7 +117,6 @@ class TestGetRunResults:
         )
 
     def test_returns_empty_list_for_job_with_no_runs(self):
-        """Test that use case returns empty list when job has no runs."""
         # Arrange
         job = Job(
             id=100,
@@ -152,7 +147,6 @@ class TestGetRunResults:
         mock_results_repo.get_download_url.assert_not_called()
 
     def test_uses_24_hour_expiration_by_default(self):
-        """Test that use case uses 24-hour (86400 seconds) expiration by default."""
         # Arrange
         job = Job(
             id=100,
@@ -197,7 +191,6 @@ class TestGetRunResults:
         assert call_args[1]["expiration_seconds"] == 86400
 
     def test_respects_custom_expiration_seconds(self):
-        """Test that use case respects custom expiration_seconds parameter."""
         # Arrange
         job = Job(
             id=100,
@@ -243,7 +236,6 @@ class TestGetRunResults:
         assert call_args[1]["expiration_seconds"] == 3600
 
     def test_raises_value_error_when_job_not_found(self):
-        """Test that use case raises ValueError when job doesn't exist."""
         # Arrange
         mock_job_repo = Mock()
         mock_job_repo.find_by_id.return_value = None

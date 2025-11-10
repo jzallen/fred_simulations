@@ -1,7 +1,3 @@
-"""
-Tests for the archive_uploads use case.
-"""
-
 from datetime import datetime, timedelta
 from unittest.mock import Mock, call, patch
 
@@ -15,8 +11,7 @@ from epistemix_platform.use_cases.archive_uploads import archive_uploads
 class TestArchiveUploadsUseCase:
     @pytest.fixture
     def mock_repository(self):
-        repo = Mock()  # Don't use spec since archive methods aren't in the interface yet
-        # Set default return values
+        repo = Mock()
         repo.archive_uploads.return_value = []
         repo.filter_by_age.return_value = []
         return repo
@@ -24,11 +19,8 @@ class TestArchiveUploadsUseCase:
     @pytest.fixture
     def sample_upload_locations(self):
         location1 = UploadLocation("https://s3.amazonaws.com/bucket/job1/file1.txt")
-
         location2 = UploadLocation("https://s3.amazonaws.com/bucket/job1/file2.txt")
-
         location3 = UploadLocation("https://s3.amazonaws.com/bucket/job2/file3.txt")
-
         return [location1, location2, location3]
 
     def test_returns_empty_list_when_no_upload_locations(self, mock_repository):
@@ -71,12 +63,10 @@ class TestArchiveUploadsUseCase:
         assert result == filtered
         mock_repository.archive_uploads.assert_not_called()
 
-        # Verify filter_by_age was called with correct params
         mock_repository.filter_by_age.assert_called_once()
         call_args = mock_repository.filter_by_age.call_args[0]
         assert call_args[0] == sample_upload_locations
 
-        # Check threshold is approximately 48 hours ago
         threshold = call_args[1]
         expected = datetime(2025, 1, 13, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
@@ -98,12 +88,10 @@ class TestArchiveUploadsUseCase:
         assert result == filtered
         mock_repository.archive_uploads.assert_not_called()
 
-        # Verify filter_by_age was called with correct params
         mock_repository.filter_by_age.assert_called_once()
         call_args = mock_repository.filter_by_age.call_args[0]
         assert call_args[0] == sample_upload_locations
 
-        # Check threshold is approximately 7 days ago
         threshold = call_args[1]
         expected = datetime(2025, 1, 8, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
@@ -118,14 +106,12 @@ class TestArchiveUploadsUseCase:
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             days_since_create=30,  # This should be ignored
-            hours_since_create=12,  # This should take precedence
+            hours_since_create=12,
         )
 
-        # Verify archive was called with hours-based threshold
         mock_repository.archive_uploads.assert_called_once()
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
 
-        # Should be 12 hours ago, not 30 days ago
         expected = datetime(2025, 1, 15, 2, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
 
@@ -143,7 +129,6 @@ class TestArchiveUploadsUseCase:
 
         assert result == sample_upload_locations[:2]
 
-        # Verify correct threshold computation (72 hours = 3 days ago)
         mock_repository.archive_uploads.assert_called_once()
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
         expected = datetime(2025, 1, 12, 14, 30, 0)
@@ -163,7 +148,6 @@ class TestArchiveUploadsUseCase:
 
         assert result == sample_upload_locations
 
-        # Verify correct threshold computation (14 days ago)
         mock_repository.archive_uploads.assert_called_once()
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
         expected = datetime(2025, 1, 1, 14, 30, 0)
@@ -187,7 +171,6 @@ class TestArchiveUploadsUseCase:
     def test_returns_repository_result_from_archive_uploads_unchanged(
         self, mock_repository, sample_upload_locations
     ):
-        # Return a subset in different order
         expected_result = [sample_upload_locations[2], sample_upload_locations[0]]
         mock_repository.archive_uploads.return_value = expected_result
 
@@ -196,7 +179,6 @@ class TestArchiveUploadsUseCase:
             upload_locations=sample_upload_locations,
         )
 
-        # Should return exactly what repository returned
         assert result is expected_result
         assert result == expected_result
 
@@ -216,7 +198,6 @@ class TestArchiveUploadsUseCase:
     def test_filter_by_age_called_once_with_expected_threshold_in_dry_run(
         self, mock_repository, sample_upload_locations
     ):
-        """Test dry run with threshold calls filter_by_age exactly once with correct params."""
         mock_repository.filter_by_age.return_value = sample_upload_locations[:1]
 
         archive_uploads(
@@ -226,7 +207,6 @@ class TestArchiveUploadsUseCase:
             dry_run=True,
         )
 
-        # Verify single call with correct params
         mock_repository.filter_by_age.assert_called_once()
         call_args = mock_repository.filter_by_age.call_args[0]
 
@@ -247,7 +227,6 @@ class TestArchiveUploadsUseCase:
             hours_since_create=24,
         )
 
-        # Verify single call with correct params
         mock_repository.archive_uploads.assert_called_once()
         call_args = mock_repository.archive_uploads.call_args
 
@@ -266,7 +245,6 @@ class TestArchiveUploadsUseCase:
             dry_run=True,
         )
 
-        # Check that expected log calls were made with DRY RUN content
         expected_calls = [
             call("DRY RUN: Archiving all provided uploads (3 locations provided)"),
             call("Dry run mode - checking what would be archived"),
@@ -285,7 +263,6 @@ class TestArchiveUploadsUseCase:
             upload_locations=sample_upload_locations,
         )
 
-        # Check that number of locations is logged
         expected_calls = [
             call("Archiving all provided uploads (3 locations provided)"),
             call("Successfully archived 2 uploads"),
@@ -302,7 +279,6 @@ class TestArchiveUploadsUseCase:
             dry_run=True,
         )
 
-        # Verify debug logs contain sanitized URLs for each location
         expected_debug_calls = [
             call(f"  Would archive: {location.get_sanitized_url()}")
             for location in sample_upload_locations
@@ -322,7 +298,6 @@ class TestArchiveUploadsUseCase:
             upload_locations=sample_upload_locations,
         )
 
-        # Verify debug logs contain sanitized URLs for archived items
         expected_debug_calls = [
             call(f"  Archived: {location.get_sanitized_url()}") for location in archived
         ]
@@ -341,7 +316,6 @@ class TestArchiveUploadsUseCase:
             hours_since_create=0,
         )
 
-        # Threshold should be current time (or very close to it)
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
         expected = datetime(2025, 1, 15, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
@@ -358,7 +332,6 @@ class TestArchiveUploadsUseCase:
             days_since_create=0,
         )
 
-        # Threshold should be current time
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
         expected = datetime(2025, 1, 15, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
@@ -373,7 +346,6 @@ class TestArchiveUploadsUseCase:
             )
         )
 
-        # Create list with duplicates
         locations_with_dupes = [location1, location1, location1]
 
         archive_uploads(
@@ -386,10 +358,8 @@ class TestArchiveUploadsUseCase:
     def test_raises_no_exception_when_repository_returns_empty_list(
         self, mock_repository, sample_upload_locations
     ):
-        """Test that empty repository result doesn't raise exception."""
         mock_repository.archive_uploads.return_value = []
 
-        # Should not raise any exception
         result = archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
@@ -400,24 +370,19 @@ class TestArchiveUploadsUseCase:
     def test_passes_through_timezone_agnostic_threshold_computation(
         self, mock_repository, sample_upload_locations
     ):
-        """Test that threshold computation doesn't depend on timezone."""
         mock_repository.archive_uploads.return_value = sample_upload_locations
 
-        # Test with current time (no freeze_time) - should work regardless of timezone
         archive_uploads(
             upload_repository=mock_repository,
             upload_locations=sample_upload_locations,
             hours_since_create=24,
         )
 
-        # Verify archive was called
         mock_repository.archive_uploads.assert_called_once()
         threshold = mock_repository.archive_uploads.call_args[1]["age_threshold"]
 
-        # Threshold should be approximately 24 hours ago from now
         now = datetime.now()
         expected_delta = timedelta(hours=24)
         actual_delta = now - threshold
 
-        # Allow for small timing differences during test execution
         assert abs((actual_delta - expected_delta).total_seconds()) < 2

@@ -15,7 +15,6 @@ from epistemix_platform.use_cases.get_runs import get_runs_by_job_id
 class TestGetRunsByJobIdUseCase:
     @pytest.fixture
     def run_repository(self):
-        """Mocked run repository for testing."""
         return Mock(spec=IRunRepository)
 
     def test_get_runs_by_job_id__returns_runs(self, run_repository):
@@ -54,7 +53,6 @@ def bearer_token():
 class TestGetRunsByIdUseCaseSQLAlchemyRunRepositoryIntegration:
     @pytest.fixture
     def run_repository(self, db_session):
-        """Create a run repository using the shared db_session fixture."""
         run_mapper = RunMapper()
         return SQLAlchemyRunRepository(run_mapper=run_mapper, get_db_session_fn=lambda: db_session)
 

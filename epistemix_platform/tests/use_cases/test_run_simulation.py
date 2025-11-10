@@ -1,9 +1,3 @@
-"""
-Tests for run_simulation use case.
-
-Tests the use case that orchestrates simulation execution via AWS Batch.
-"""
-
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
@@ -12,10 +6,7 @@ from epistemix_platform.use_cases.run_simulation import run_simulation
 
 
 class TestRunSimulationUseCase:
-    """Tests for run_simulation use case."""
-
     def test_run_simulation_submits_run_to_gateway(self):
-        """RED: Test that run_simulation submits run to simulation_runner gateway."""
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -38,7 +29,6 @@ class TestRunSimulationUseCase:
         mock_simulation_runner.submit_run.assert_called_once_with(run)
 
     def test_run_simulation_does_not_save_run_after_submit(self):
-        """Test that run_simulation does NOT save run after submit (AWS Batch is source of truth)."""
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -57,11 +47,10 @@ class TestRunSimulationUseCase:
             simulation_runner=mock_simulation_runner,
         )
 
-        # ASSERT - No repository involved anymore, just verify gateway called
+        # ASSERT
         mock_simulation_runner.submit_run.assert_called_once()
 
     def test_run_simulation_accepts_run_object_directly(self):
-        """Test that run_simulation accepts Run object directly (no repository lookup)."""
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -80,11 +69,10 @@ class TestRunSimulationUseCase:
             simulation_runner=mock_simulation_runner,
         )
 
-        # ASSERT - Run passed directly, no repository lookup needed
+        # ASSERT
         assert result is run
 
     def test_run_simulation_returns_run_unchanged(self):
-        """Test that run_simulation returns the run unchanged."""
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -105,10 +93,9 @@ class TestRunSimulationUseCase:
 
         # ASSERT
         assert result.id == run.id
-        assert result is run  # Same object, unmodified
+        assert result is run
 
     def test_run_simulation_logs_submission_info(self):
-        """Test that run_simulation logs job submission with natural key."""
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -127,6 +114,6 @@ class TestRunSimulationUseCase:
             simulation_runner=mock_simulation_runner,
         )
 
-        # ASSERT - Just verify the function completes successfully
+        # ASSERT
         assert result is run
         mock_simulation_runner.submit_run.assert_called_once_with(run)

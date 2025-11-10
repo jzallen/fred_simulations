@@ -1,7 +1,3 @@
-"""
-Tests for register_job use case.
-"""
-
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -15,7 +11,6 @@ from epistemix_platform.use_cases.register_job import register_job
 
 
 def create_bearer_token(user_id: int, scopes_hash: str = "test_hash") -> str:
-    """Helper function to create a valid bearer token for testing."""
     from epistemix_platform.models.user import UserToken
 
     return UserToken.generate_bearer_token(user_id, scopes_hash)
@@ -54,7 +49,6 @@ class TestRegisterJobUseCase:
         with pytest.raises(ValueError, match="User ID must be positive"):
             register_job(mock_repository, bearer_token, ["info_job"])
 
-        # Repository should not be called
         mock_repository.save.assert_not_called()
 
     def test_register_job__when_invalid_user_id_negative__raises_value_error(self, mock_repository):
@@ -62,7 +56,6 @@ class TestRegisterJobUseCase:
         with pytest.raises(ValueError, match="User ID must be positive"):
             register_job(mock_repository, bearer_token, ["info_job"])
 
-        # Repository should not be called
         mock_repository.save.assert_not_called()
 
     def test_register_job__when_empty_tags__raises_value_error(self, mock_repository):
@@ -70,28 +63,24 @@ class TestRegisterJobUseCase:
         with pytest.raises(ValueError, match="Tag must be a non-empty string"):
             register_job(mock_repository, bearer_token, [""])
 
-        # Repository should not be called for saving
         mock_repository.save.assert_not_called()
 
     def test_register_job__when_invalid_bearer_token__raises_value_error(self, mock_repository):
         with pytest.raises(ValueError, match="Invalid bearer token format"):
             register_job(mock_repository, "invalid_token", ["info_job"])
 
-        # Repository should not be called
         mock_repository.save.assert_not_called()
 
     def test_register_job__when_malformed_bearer_token__raises_value_error(self, mock_repository):
         with pytest.raises(ValueError, match="Failed to decode base64 token"):
             register_job(mock_repository, "Bearer not_base64", ["info_job"])
 
-        # Repository should not be called
         mock_repository.save.assert_not_called()
 
 
 class TestRegisterJobSQLAlchemyIntegration:
     @pytest.fixture
     def repository(self, db_session):
-        """Create a repository using the shared db_session fixture."""
         job_mapper = JobMapper()
         return SQLAlchemyJobRepository(job_mapper=job_mapper, get_db_session_fn=lambda: db_session)
 
@@ -100,9 +89,8 @@ class TestRegisterJobSQLAlchemyIntegration:
         bearer_token = create_bearer_token(456)
         job = register_job(repository, user_token_value=bearer_token, tags=["some_tag"])
 
-        # Assert
         expected_job = Job.create_persisted(
-            job_id=1,  # SQLAlchemy auto-increment starts at 1
+            job_id=1,
             user_id=456,
             tags=["some_tag"],
             status=JobStatus.CREATED,
@@ -111,6 +99,5 @@ class TestRegisterJobSQLAlchemyIntegration:
         )
         assert job == expected_job
 
-        # Verify job was actually persisted in database
         retrieved_job = repository.find_by_id(1)
         assert retrieved_job == job

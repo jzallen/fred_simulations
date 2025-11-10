@@ -1,7 +1,3 @@
-"""
-Tests for submit_job use case.
-"""
-
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -37,7 +33,6 @@ class TestSubmitJobUseCase:
 
     @pytest.fixture
     def created_job(self):
-        """Create a job in CREATED status for testing."""
         return Job(
             id=1,
             user_id=123,
@@ -93,20 +88,13 @@ class TestSubmitJobUseCase:
 
 
 class TestSubmitJobSLAlchemyJobRepositoryIntegration:
-    """
-    Integration tests for submit_job use case with SQLAlchemy job repository.
-    This class assumes the repository is properly set up in the test environment.
-    """
-
     @pytest.fixture
     def job_repository(self, db_session):
-        """Create a job repository using the shared db_session fixture."""
         job_mapper = JobMapper()
         return SQLAlchemyJobRepository(job_mapper=job_mapper, get_db_session_fn=lambda: db_session)
 
     @pytest.fixture
     def upload_location_repository(self):
-        """Create a mock upload location repository for integration tests."""
         repo = Mock(spec=IUploadLocationRepository)
         repo.get_upload_location.return_value = UploadLocation(
             url="https://s3.amazonaws.com/test-bucket/presigned-url"
@@ -118,12 +106,10 @@ class TestSubmitJobSLAlchemyJobRepositoryIntegration:
     ):
         job = Job.create_new(user_id=123, tags=["test"])
         persisted_job = job_repository.save(job)
-        # repository only flushes, commits are handled at app layer for global rollback handling
         db_session.commit()
         job_upload = JobUpload(context="job", upload_type="input", job_id=persisted_job.id)
         result = submit_job(job_repository, upload_location_repository, job_upload)
 
-        # Assert
         assert isinstance(result, UploadLocation)
         assert result.url == "https://s3.amazonaws.com/test-bucket/presigned-url"
 
