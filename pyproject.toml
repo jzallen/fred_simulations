@@ -39,8 +39,7 @@ select = ["E", "F", "I", "UP", "B", "C4", "SIM", "TRY", "ARG"]
 #   TRY003: long exception messages in raise statements
 #   SIM117: nested with statements that could be combined
 #   SIM105: try/except blocks that could use contextlib.suppress
-#   SIM103: if/else that could return condition directly
-ignore = ["SIM103", "SIM105", "SIM117", "TRY003"]
+ignore = ["SIM105", "SIM117", "TRY003"]
 
 # Per-file ignores for specific patterns
 [tool.ruff.lint.per-file-ignores]

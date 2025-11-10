@@ -198,10 +198,7 @@ def validate_parameter_constraints(
     import re
 
     pattern = param_def.get("AllowedPattern")
-    if pattern and not re.match(pattern, value):
-        return False
-
-    return True
+    return not pattern or re.match(pattern, value) is not None
 
 
 def assert_resource_has_properties(cdk_template: Template, resource_type: str, **properties):
