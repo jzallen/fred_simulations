@@ -184,10 +184,7 @@ def get_job_controller():
 
 def validate_headers(required_headers: list[str]) -> bool:
     """Validate that required headers are present in the request."""
-    for header in required_headers:
-        if header not in request.headers:
-            return False
-    return True
+    return all(header in request.headers for header in required_headers)
 
 
 def require_headers(*headers):
