@@ -6,7 +6,7 @@ Contains the unified model for handling presigned URLs for various upload scenar
 from dataclasses import dataclass, field
 
 
-@dataclass
+@dataclass(slots=True)
 class UploadLocation:
     """
     Represents a location for uploading content.

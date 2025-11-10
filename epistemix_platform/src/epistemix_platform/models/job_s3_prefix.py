@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from epistemix_platform.models.job import Job  # pants: no-infer-dep
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class JobS3Prefix:
     """
     Value object representing the S3 prefix for all job artifacts.

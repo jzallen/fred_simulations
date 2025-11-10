@@ -22,7 +22,7 @@ from epistemix_platform.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class PackagedResults:
     """
     Value object representing packaged simulation results.

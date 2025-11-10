@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-@dataclass
+@dataclass(slots=True)
 class UserToken:
     """
     User token model that handles bearer token parsing and validation.

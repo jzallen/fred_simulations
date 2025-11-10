@@ -17,7 +17,7 @@ class ContentType(Enum):
     BINARY = "binary"
 
 
-@dataclass
+@dataclass(slots=True)
 class ZipFileEntry:
     """Represents a file entry within a ZIP archive."""
 
@@ -34,7 +34,7 @@ class ZipFileEntry:
         return result
 
 
-@dataclass
+@dataclass(slots=True)
 class UploadContent:
     """
     Domain entity representing the content of an uploaded file.

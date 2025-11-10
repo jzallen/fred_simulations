@@ -29,7 +29,7 @@ class JobTag(Enum):
     DATA_JOB = "data_job"
 
 
-@dataclass
+@dataclass(slots=True)
 class Job:
     """
     Job domain entity representing a job in the Epistemix system.

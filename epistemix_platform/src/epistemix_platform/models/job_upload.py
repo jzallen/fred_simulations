@@ -9,7 +9,7 @@ from typing import Any
 from epistemix_platform.models.upload_location import UploadLocation
 
 
-@dataclass
+@dataclass(slots=True)
 class JobUpload:
     """
     Domain entity representing an upload associated with a job or run.

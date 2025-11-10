@@ -34,7 +34,7 @@ class PodPhase(Enum):
     UNKNOWN = "Unknown"
 
 
-@dataclass
+@dataclass(slots=True)
 class RunStatusDetail:
     """
     Detailed run status information from AWS Batch.
@@ -50,7 +50,7 @@ class RunStatusDetail:
     pod_phase: PodPhase
 
 
-@dataclass
+@dataclass(slots=True)
 class Run:
     """
     Run domain entity representing a run in the Epistemix system.
