@@ -166,11 +166,10 @@ class TCRHandler(FileSystemEventHandler):
                 return False
 
         except subprocess.TimeoutExpired:
-            self.logger.error(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
+            self.logger.exception(f"⏱️ Tests timed out after {self.config.test_timeout} seconds")
             return False
-        except Exception as e:
-            self.logger.error(f"🚨 Error running tests: {e}")
-            self.logger.debug("Exception details:", exc_info=True)
+        except Exception:
+            self.logger.exception("🚨 Error running tests")
             return False
 
     def _commit_changes(self, changed_file: Path):
@@ -287,9 +286,9 @@ def list_sessions(logger: logging.Logger):
             logger.info("No TCR sessions currently running")
 
     except FileNotFoundError:
-        logger.error("pgrep command not found. Please ensure procps is installed.")
-    except Exception as e:
-        logger.error(f"Error listing sessions: {e}")
+        logger.exception("pgrep command not found. Please ensure procps is installed.")
+    except Exception:
+        logger.exception("Error listing sessions")
 
 
 def stop_session(session_id: str, logger: logging.Logger):
@@ -330,15 +329,15 @@ def stop_session(session_id: str, logger: logging.Logger):
                 try:
                     subprocess.run(["kill", "-INT", pid], check=True)
                     logger.info(f"Sent SIGINT to process {pid} (session: {session_id})")
-                except subprocess.CalledProcessError as e:
-                    logger.error(f"Failed to stop process {pid}: {e}")
+                except subprocess.CalledProcessError:
+                    logger.exception(f"Failed to stop process {pid}")
         else:
             logger.error(f"No TCR session found with session_id: {session_id}")
 
     except FileNotFoundError:
-        logger.error("pgrep or kill command not found. Please ensure procps is installed.")
-    except Exception as e:
-        logger.error(f"Error stopping session: {e}")
+        logger.exception("pgrep or kill command not found. Please ensure procps is installed.")
+    except Exception:
+        logger.exception("Error stopping session")
 
 
 def main():

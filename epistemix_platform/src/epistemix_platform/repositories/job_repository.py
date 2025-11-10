@@ -87,8 +87,8 @@ class SQLAlchemyJobRepository:
                     f"Job {persisted_job.id} saved to database for user {persisted_job.user_id}"
                 )
 
-        except SQLAlchemyError as e:
-            logger.error(f"Database error saving job: {e}")
+        except SQLAlchemyError:
+            logger.exception("Database error saving job")
             raise
 
         return persisted_job
@@ -100,8 +100,8 @@ class SQLAlchemyJobRepository:
                 if job_record:
                     return self._job_mapper.record_to_domain(job_record)
                 return None
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding job {job_id}: {e}")
+        except SQLAlchemyError:
+            logger.exception(f"Database error finding job {job_id}")
             raise
 
     def find_by_user_id(self, user_id: int) -> list[Job]:
@@ -110,8 +110,8 @@ class SQLAlchemyJobRepository:
             with self._get_session() as session:
                 job_records = session.query(JobRecord).filter(JobRecord.user_id == user_id).all()
                 return [self._job_mapper.record_to_domain(record) for record in job_records]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding jobs for user {user_id}: {e}")
+        except SQLAlchemyError:
+            logger.exception(f"Database error finding jobs for user {user_id}")
             raise
 
     def find_by_status(self, status: JobStatus) -> list[Job]:
@@ -131,8 +131,8 @@ class SQLAlchemyJobRepository:
 
                 job_records = session.query(JobRecord).filter(JobRecord.status == db_status).all()
                 return [self._job_mapper.record_to_domain(record) for record in job_records]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding jobs with status {status}: {e}")
+        except SQLAlchemyError:
+            logger.exception(f"Database error finding jobs with status {status}")
             raise
 
     def find_all(self, limit: int | None = None, offset: int = 0) -> list[Job]:
@@ -149,8 +149,8 @@ class SQLAlchemyJobRepository:
 
                 job_records = query.all()
                 return [self._job_mapper.record_to_domain(record) for record in job_records]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding all jobs: {e}")
+        except SQLAlchemyError:
+            logger.exception("Database error finding all jobs")
             raise
 
     def exists(self, job_id: int) -> bool:
@@ -158,8 +158,8 @@ class SQLAlchemyJobRepository:
         try:
             with self._get_session() as session:
                 return session.query(JobRecord).filter(JobRecord.id == job_id).first() is not None
-        except SQLAlchemyError as e:
-            logger.error(f"Database error checking if job {job_id} exists: {e}")
+        except SQLAlchemyError:
+            logger.exception(f"Database error checking if job {job_id} exists")
             raise
 
     def delete(self, job_id: int) -> bool:
@@ -172,8 +172,8 @@ class SQLAlchemyJobRepository:
                     logger.info(f"Job {job_id} deleted from database")
                     return True
                 return False
-        except SQLAlchemyError as e:
-            logger.error(f"Database error deleting job {job_id}: {e}")
+        except SQLAlchemyError:
+            logger.exception(f"Database error deleting job {job_id}")
             raise
 
 
