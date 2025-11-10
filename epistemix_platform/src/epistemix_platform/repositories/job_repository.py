@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from epistemix_platform.models.job import Job, JobStatus
-from epistemix_platform.repositories.database import JobRecord, JobStatusEnum, get_db_session
+from epistemix_platform.repositories.database import JobRecord, JobStatusEnum
 from epistemix_platform.repositories.interfaces import IJobRepository
 
 
@@ -31,7 +31,7 @@ class SQLAlchemyJobRepository:
     """
 
     def __init__(
-        self, job_mapper: "JobMapper", get_db_session_fn: Callable[[], Session] = get_db_session
+        self, job_mapper: "JobMapper", get_db_session_fn: Callable[[], Session]
     ):
         """
         Initialize the repository with mapper dependency injection.

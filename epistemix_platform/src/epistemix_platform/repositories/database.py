@@ -337,6 +337,3 @@ def get_database_manager(database_url: str = None, config: "Config" = None) -> D
     return DatabaseManager(database_url, config)
 
 
-def get_db_session():
-    """Get a new database session."""
-    return get_database_manager().get_session()

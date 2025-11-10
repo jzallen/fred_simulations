@@ -105,7 +105,9 @@ def before_request():
     database_url = app.config["DATABASE_URL"]
     db_manager = get_database_manager(database_url)
 
-    # Ensure tables are created
+    # TODO: Remove create_tables() in favor of Alembic migrations for production
+    # Note: create_all() is idempotent - only creates tables that don't exist
+    # Safe for SQLite testing but should use proper migrations in production
     db_manager.create_tables()
 
     g.db_session = db_manager.get_session()

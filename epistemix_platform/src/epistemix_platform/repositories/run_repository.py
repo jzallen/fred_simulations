@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import Session
 
 from epistemix_platform.models.run import Run, RunStatus
-from epistemix_platform.repositories.database import RunRecord, get_db_session
+from epistemix_platform.repositories.database import RunRecord
 
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
 
     def __init__(
-        self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session] = get_db_session
+        self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session]
     ):
         """
         Initialize the repository with mapper dependency injection.

@@ -79,8 +79,6 @@ class TestS3UploadLocationRepository:
         # assert
         expected_expires_timestamp = int(current_time.timestamp()) + expiration_seconds
 
-        # ServerSideEncryption is NOT included as it's handled by bucket default encryption
-        # AWS may add additional security parameters to the query string
         assert isinstance(result, UploadLocation)
         assert (
             url == "https://test-bucket.s3.amazonaws.com/jobs/123/2025/01/01/120000/job_input.zip"
@@ -93,7 +91,6 @@ class TestS3UploadLocationRepository:
         assert param_dict.get("Expires") == str(expected_expires_timestamp)
 
         # Verify that generate_presigned_url was called WITH ServerSideEncryption parameter
-        # (encryption is signed into URL so clients don't need to send headers)
         s3_client.generate_presigned_url.assert_called_once()
         call_args = s3_client.generate_presigned_url.call_args
         assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256"
@@ -197,31 +194,6 @@ class TestS3UploadLocationRepository:
         with pytest.raises(ValueError, match="Failed to generate upload location"):
             repository.get_upload_location(job_upload, s3_prefix)
 
-    @freeze_time("2025-01-01 12:00:00")
-    def test_get_upload_location__presigned_url_includes_server_side_encryption(
-        self, repository, s3_stubber, s3_prefix
-    ):
-        # Arrange
-        s3_client, _ = s3_stubber
-        # Mock generate_presigned_url to capture the call
-        original_generate_presigned_url = s3_client.generate_presigned_url
-        s3_client.generate_presigned_url = Mock(wraps=original_generate_presigned_url)
-        job_upload = JobUpload(context="job", upload_type="input", job_id=123)
-
-        # Act
-        result = repository.get_upload_location(job_upload, s3_prefix)
-
-        # Assert
-        s3_client.generate_presigned_url.assert_called_once()
-        call_args = s3_client.generate_presigned_url.call_args
-
-        # Verify that generate_presigned_url WAS called with ServerSideEncryption parameter
-        # This is signed into the URL so clients don't need to send x-amz-server-side-encryption headers
-        assert call_args[1]["Params"]["ServerSideEncryption"] == "AES256", (
-            "ServerSideEncryption should be in presigned URL params (signed into URL) "
-            "so clients don't need to send x-amz-server-side-encryption headers."
-        )
-        assert isinstance(result, UploadLocation)
 
     @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__normal_filename__adds_timestamp_prefix(self, repository):

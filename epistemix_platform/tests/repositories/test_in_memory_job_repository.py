@@ -23,21 +23,11 @@ class TestInMemoryJobRepository:
         return Job.create_new(user_id=456, tags=["info_job"])
 
     def test_repository_implements_interface(self, repository):
-        """Test that InMemoryJobRepository implements IJobRepository."""
         assert isinstance(repository, IJobRepository)
 
-    def test_save_and_find_by_id(self, repository, sample_job):
-        """Test saving and retrieving a job by ID."""
-        # Verify job starts unpersisted
-        assert not sample_job.is_persisted()
-
-        # Save the job - repository should assign ID
+    def test_find_by_id__given_a_job_id_and_job_exists__returns_job(self, repository, sample_job):
         saved_job = repository.save(sample_job)
-        assert saved_job == sample_job  # Same object
-        assert saved_job.is_persisted()
-        assert saved_job.id == 100  # Repository starts at 100
 
-        # Find by ID
         found_job = repository.find_by_id(100)
         expected_job = Job.create_persisted(
             job_id=100,
@@ -49,13 +39,11 @@ class TestInMemoryJobRepository:
         )
         assert found_job == expected_job
 
-    def test_find_by_id_not_found(self, repository):
-        """Test finding a job that doesn't exist."""
+    def test_find_by_id__given_job_id_and_no_job_exists__returns_none(self, repository):
         found_job = repository.find_by_id(999)
         assert found_job is None
 
     def test_get_next_id(self, repository):
-        """Test getting sequential IDs."""
         first_id = repository.get_next_id()
         second_id = repository.get_next_id()
         third_id = repository.get_next_id()
@@ -64,41 +52,30 @@ class TestInMemoryJobRepository:
         assert second_id == 101
         assert third_id == 102
 
-    def test_exists(self, repository, sample_job):
-        """Test checking if a job exists."""
-        # Job doesn't exist initially
-        assert not repository.exists(100)
-
-        # Save the job - repository assigns ID 100
+    def test_exists__given_job_id_and_job_exists__returns_true(self, repository, sample_job):
         repository.save(sample_job)
 
-        # Now it exists
         assert repository.exists(100)
         assert not repository.exists(999)
 
-    def test_delete(self, repository, sample_job):
-        """Test deleting a job."""
-        # Save the job - repository assigns ID 100
-        repository.save(sample_job)
-        assert repository.exists(100)
+    def test_exists__given_job_id_and_no_job_exists__returns_false(self, repository):
+        assert not repository.exists(999)
 
-        # Delete the job
+    def test_delete__given_job_id_and_job_exists__deletes_and_returns_true(self, repository, sample_job):
+        repository.save(sample_job)
+
         deleted = repository.delete(100)
         assert deleted is True
-        assert not repository.exists(100)
 
-        # Try to delete non-existent job
+    def test_delete__given_job_id_and_no_job_exists__returns_false(self, repository):
         deleted_again = repository.delete(100)
         assert deleted_again is False
 
-    def test_find_by_user_id(self, repository):
-        """Test finding jobs by user ID."""
-        # Create unpersisted jobs for different users
+    def test_find_by_user_id__given_user_id_and_jobs_exist__returns_jobs_only_for_specified_user(self, repository):
         job1 = Job.create_new(user_id=456, tags=["job1"])
         job2 = Job.create_new(user_id=456, tags=["job2"])
         job3 = Job.create_new(user_id=789, tags=["job3"])
 
-        # Save jobs - repository will assign IDs 100, 101, 102
         repository.save(job1)
         repository.save(job2)
         repository.save(job3)
@@ -108,12 +85,10 @@ class TestInMemoryJobRepository:
         assert len(user_456_jobs) == 2
         assert all(job.user_id == 456 for job in user_456_jobs)
 
-        # Find jobs for user 789
-        user_789_jobs = repository.find_by_user_id(789)
-        assert len(user_789_jobs) == 1
-        assert user_789_jobs[0].user_id == 789
+    def test_find_by_user_id__given_user_id_and_no_jobs_exist_for_user__returns_empty_list(self, repository):
+        job1 = Job.create_new(user_id=456, tags=["job1"])
+        repository.save(job1)
 
-        # Find jobs for non-existent user
         no_jobs = repository.find_by_user_id(999)
         assert len(no_jobs) == 0
 

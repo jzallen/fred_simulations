@@ -81,6 +81,8 @@ def get_database_session():
     config_class = get_config()
     database_url = config_class.get_database_url()
     db_manager = get_database_manager(database_url)
+    # TODO: Remove create_tables() in favor of Alembic migrations for production
+    # Note: create_all() is idempotent - only creates tables that don't exist
     db_manager.create_tables()
     return db_manager.get_session()
 
