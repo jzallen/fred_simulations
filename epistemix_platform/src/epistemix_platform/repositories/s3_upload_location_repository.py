@@ -175,12 +175,12 @@ class S3UploadLocationRepository:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = f"S3 error ({error_code}): {e}"
             logger.exception(error_message)
-            raise ValueError(f"Failed to generate upload location: {error_message}")
+            raise ValueError(f"Failed to generate upload location: {error_message}") from e
 
         except (BotoCoreError, Exception) as e:
             error_message = f"Unexpected error generating pre-signed URL: {e}"
             logger.exception(error_message)
-            raise ValueError(error_message)
+            raise ValueError(error_message) from e
 
     def _generate_s3_key_from_upload(
         self, job_upload: "JobUpload", s3_prefix: "JobS3Prefix"
@@ -314,15 +314,15 @@ class S3UploadLocationRepository:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             error_message = f"S3 error ({error_code}): {e}"
             logger.exception(error_message)
-            raise ValueError(error_message)
+            raise ValueError(error_message) from e
         except NoCredentialsError as e:
             error_message = f"AWS credentials error: {e}"
             logger.exception(error_message)
-            raise ValueError(error_message)
+            raise ValueError(error_message) from e
         except Exception as e:
             error_message = f"Failed to read content: {e}"
             logger.exception(error_message)
-            raise ValueError(error_message)
+            raise ValueError(error_message) from e
 
     def _extract_s3_key_from_url(self, url: str) -> str | None:
         """

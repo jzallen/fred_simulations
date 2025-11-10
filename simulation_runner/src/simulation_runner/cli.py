@@ -124,14 +124,14 @@ def run(job_id: int, run_id: int | None):
         click.echo("=" * 60)
 
     except ConfigurationError as e:
-        raise click.ClickException(f"Configuration error: {e}")
+        raise click.ClickException(f"Configuration error: {e}") from e
     except WorkflowError as e:
-        raise click.ClickException(f"Workflow error: {e}")
+        raise click.ClickException(f"Workflow error: {e}") from e
     except SimulationRunnerError as e:
-        raise click.ClickException(f"Error: {e}")
+        raise click.ClickException(f"Error: {e}") from e
     except Exception as e:
         logger.exception("Unexpected error")
-        raise click.ClickException(f"Unexpected error: {e}")
+        raise click.ClickException(f"Unexpected error: {e}") from e
 
 
 @cli.command()
@@ -178,14 +178,14 @@ def validate(job_id: int, run_id: int | None):
         click.echo("=" * 60)
 
     except ConfigurationError as e:
-        raise click.ClickException(f"Configuration error: {e}")
+        raise click.ClickException(f"Configuration error: {e}") from e
     except ValidationError as e:
-        raise click.ClickException(f"Validation failed: {e}")
+        raise click.ClickException(f"Validation failed: {e}") from e
     except SimulationRunnerError as e:
-        raise click.ClickException(f"Error: {e}")
+        raise click.ClickException(f"Error: {e}") from e
     except Exception as e:
         logger.exception("Unexpected error")
-        raise click.ClickException(f"Unexpected error: {e}")
+        raise click.ClickException(f"Unexpected error: {e}") from e
 
 
 @cli.command()
@@ -222,10 +222,10 @@ def prepare(run_config: Path, input_fred: Path, output_fred: Path, verbose: bool
         click.echo(f"  FRED -p {result} -r {run_number} -d OUT")
 
     except FREDConfigError as e:
-        raise click.ClickException(f"Failed to prepare configuration: {e}")
+        raise click.ClickException(f"Failed to prepare configuration: {e}") from e
     except Exception as e:
         logger.exception("Unexpected error")
-        raise click.ClickException(f"Unexpected error: {e}")
+        raise click.ClickException(f"Unexpected error: {e}") from e
 
 
 @cli.command()
@@ -265,10 +265,10 @@ def download(job_id: int, output_dir: Path | None):
                 click.echo(f"  - {file.name} ({size_kb:.1f} KB)")
 
     except SimulationRunnerError as e:
-        raise click.ClickException(f"Download failed: {e}")
+        raise click.ClickException(f"Download failed: {e}") from e
     except Exception as e:
         logger.exception("Unexpected error")
-        raise click.ClickException(f"Unexpected error: {e}")
+        raise click.ClickException(f"Unexpected error: {e}") from e
 
 
 @cli.command()
@@ -307,7 +307,7 @@ def config():
             click.echo("✓ Configuration is valid")
 
     except ConfigurationError as e:
-        raise click.ClickException(f"Configuration error: {e}")
+        raise click.ClickException(f"Configuration error: {e}") from e
 
 
 if __name__ == "__main__":

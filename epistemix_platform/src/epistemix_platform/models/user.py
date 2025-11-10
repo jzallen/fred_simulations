@@ -122,12 +122,12 @@ class UserToken:
             )
 
         except (binascii.Error, UnicodeDecodeError) as e:
-            raise ValueError(f"Failed to decode base64 token: {e}")
+            raise ValueError(f"Failed to decode base64 token: {e}") from e
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse token JSON: {e}")
+            raise ValueError(f"Failed to parse token JSON: {e}") from e
         except (ValueError, TypeError) as e:
             if "invalid literal for int()" in str(e):
-                raise ValueError("Token contains invalid user_id or scopes_hash values")
+                raise ValueError("Token contains invalid user_id or scopes_hash values") from e
             raise
 
     def to_dict(self) -> dict[str, Any]:

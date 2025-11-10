@@ -60,7 +60,7 @@ def write_to_local(file_path: Path, content: UploadContent, force: bool = False)
             file_path.write_bytes(binary_data)
             logger.info(f"Wrote ZIP archive to {file_path} ({len(binary_data)} bytes)")
         except Exception as e:
-            raise OSError(f"Failed to write ZIP archive to {file_path}: {e}")
+            raise OSError(f"Failed to write ZIP archive to {file_path}: {e}") from e
 
     elif content.content_type == ContentType.BINARY:
         # For binary content, raw_content is hex-encoded preview
@@ -80,4 +80,4 @@ def write_to_local(file_path: Path, content: UploadContent, force: bool = False)
         except Exception as e:
             raise OSError(
                 f"Failed to write {content.content_type.value} content to {file_path}: {e}"
-            )
+            ) from e

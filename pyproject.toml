@@ -35,12 +35,14 @@ line-ending = "auto"
 # ARG: flake8-unused-arguments (detect unused function arguments)
 select = ["E", "F", "I", "UP", "B", "C4", "SIM", "TRY", "ARG"]
 
-# Ignore rules that conflict with Black or are too strict
-# E203: whitespace before ':' (conflicts with Black)
-# B904: exception chaining (requires careful review to avoid behavior changes)
-# SIM103, SIM105, SIM110, SIM117: simplify patterns (requires manual review for correctness)
-# TRY003: Avoid long exception messages (requires defining messages in exception classes)
-ignore = ["E203", "B904", "SIM103", "SIM105", "SIM110", "SIM117", "TRY003"]
+# Global ignores for rules with many violations that would require significant refactoring
+# Current violation counts (290 in src/, 4 in tests/):
+#   TRY003: long exception messages in raise statements
+#   SIM117: 4 violations - nested with statements that could be combined
+#   SIM105: 4 violations - try/except blocks that could use contextlib.suppress
+#   SIM110: 2 violations - for loops that could be replaced with all()
+#   SIM103: 2 violations - if/else that could return condition directly
+ignore = ["SIM103", "SIM105", "SIM110", "SIM117", "TRY003"]
 
 # Per-file ignores for specific patterns
 [tool.ruff.lint.per-file-ignores]

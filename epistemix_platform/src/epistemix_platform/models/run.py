@@ -304,6 +304,6 @@ class Run:
 
         try:
             is_match = bool(re.match(r_config_url, l_config_url))
-        except Exception:
-            raise ValueError(f"Mismatch between: {l_config_url} and {r_config_url}")
+        except Exception as err:
+            raise ValueError(f"Mismatch between: {l_config_url} and {r_config_url}") from err
         return left_dict == right_dict and is_match
