@@ -227,14 +227,12 @@ class JobController:
             or an error message (Failure)
         """
         try:
-            # Step 1: Create Run records in database
             runs = self._submit_runs(
                 run_requests=run_requests,
                 user_token_value=user_token_value,
                 epx_version=epx_version,
             )
 
-            # Step 2: Submit each run to AWS Batch (simulation_runner is REQUIRED)
             for run in runs:
                 self._run_simulation(run=run)
 
