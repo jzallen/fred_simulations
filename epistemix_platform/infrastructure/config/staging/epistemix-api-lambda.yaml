@@ -36,7 +36,6 @@ parameters:
   DBPort: !stack_output staging/rds-postgres.yaml::DBPort
   DBName: !stack_output staging/rds-postgres.yaml::DBName
   DBUser: "epistemixuser"
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
   # S3 bucket (dynamically resolved from epistemix-uploads-staging-stack)
   S3BucketName: !stack_output staging/s3-upload-bucket.yaml::BucketName
   MemorySize: 3008

@@ -1,9 +1,10 @@
 template:
   path: rds/rds-postgres.json
 
-# Layer 3: RDS depends on Secrets Manager for database password
-dependencies:
-  - dev/database-secrets.yaml
+# Layer 3: RDS uses CloudFormation dynamic reference to resolve password from Secrets Manager
+# Expects secret at path: /epistemix/{Environment}/database/password
+# No stack dependency needed - secret must exist before deployment
+dependencies: []
 
 parameters:
   # Network Configuration

@@ -1,9 +1,8 @@
 template:
   path: rds/rds-postgres.json
 
-# Layer 3: RDS depends on Secrets Manager for database password
-dependencies:
-  - staging/database-secrets.yaml
+# Layer 3: RDS has no dependencies (password managed manually in Secrets Manager)
+dependencies: []
 
 parameters:
   # Network Configuration

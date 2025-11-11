@@ -2,9 +2,9 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on RDS, S3, Secrets Manager, and shared VPC endpoint
+# Layer 4: Batch infrastructure depends on RDS, S3, and shared VPC endpoint
+# Note: Database secret must exist at /epistemix/dev/database/password
 dependencies:
-  - dev/database-secrets.yaml
   - dev/rds-postgres.yaml
   - dev/s3-upload-bucket.yaml
   - batch-vpc-endpoint.yaml
@@ -31,8 +31,10 @@ parameters:
     xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner@{}"
 
   # Database Configuration
-  # References the existing database-secrets stack (for Secrets Manager ARN)
-  DatabaseSecretArn: !stack_output dev/database-secrets.yaml::DatabasePasswordSecretArn
+  # Construct Secret ARN directly (secret must exist before deployment)
+  DatabaseSecretArn: !rcmd |
+    aws sts get-caller-identity --query Account --output text | \
+    xargs -I {} echo "arn:aws:secretsmanager:us-east-1:{}:secret:/epistemix/dev/database/password"
   # References the existing rds-postgres stack for connection details
   DatabaseEndpoint: !stack_output dev/rds-postgres.yaml::DBEndpoint
   DatabasePort: !stack_output dev/rds-postgres.yaml::DBPort

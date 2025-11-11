@@ -47,12 +47,16 @@ def test_template_has_description(template):
 
 def test_template_defines_required_parameters(template):
     """Template should define all required parameters."""
+    # DatabaseSecretArn removed - using IAM authentication instead
     required_params = {
         "Environment",
         "VpcId",
         "SubnetIds",
         "ECRRepositoryUri",
-        "DatabaseSecretArn",
+        "DatabaseEndpoint",
+        "DatabasePort",
+        "DatabaseName",
+        "DatabaseUsername",
         "UploadBucketName",
         "MaxvCpus",
         "LogRetentionDays",
@@ -346,11 +350,12 @@ def test_batch_job_role_has_secrets_manager_access(template):
 
 
 def test_job_definition_sets_required_environment_variables(template):
-    """Job definition should set FRED_HOME and other required env vars."""
+    """Job definition should set FRED_HOME and other required env vars with IAM auth."""
     job_def = template["Resources"]["BatchJobDefinition"]
     env_vars = job_def["Properties"]["ContainerProperties"]["Environment"]
 
     env_names = {e["Name"] for e in env_vars}
+    # Updated for IAM authentication - DATABASE_USER and DATABASE_PASSWORD replaced
     required_vars = {
         "FRED_HOME",
         "AWS_REGION",
@@ -358,12 +363,17 @@ def test_job_definition_sets_required_environment_variables(template):
         "DATABASE_HOST",
         "DATABASE_PORT",
         "DATABASE_NAME",
-        "DATABASE_USER",
-        "DATABASE_PASSWORD",
+        "USE_IAM_AUTH",
+        "DATABASE_IAM_USER",
         "ENVIRONMENT",
     }
 
     assert required_vars.issubset(env_names), f"Missing env vars: {required_vars - env_names}"
+
+    # Verify IAM auth is enabled
+    iam_auth_var = next((e for e in env_vars if e["Name"] == "USE_IAM_AUTH"), None)
+    assert iam_auth_var is not None, "USE_IAM_AUTH must be defined"
+    assert iam_auth_var["Value"] == "true", "USE_IAM_AUTH must be set to 'true'"
 
 
 def test_job_definition_has_timeout(template):

@@ -36,7 +36,7 @@ parameters:
   DBPort: !stack_output dev/rds-postgres.yaml::DBPort
   DBName: !stack_output dev/rds-postgres.yaml::DBName
   DBUser: "epistemixuser"
-  DBPassword: !environment_variable EPISTEMIX_DB_PASSWORD
+  # DB_PASSWORD resolved from Secrets Manager at deploy time using CloudFormation dynamic references
   # S3 bucket (dynamically resolved from epistemix-uploads-dev-stack)
   S3BucketName: !stack_output dev/s3-upload-bucket.yaml::BucketName
   MemorySize: 3008

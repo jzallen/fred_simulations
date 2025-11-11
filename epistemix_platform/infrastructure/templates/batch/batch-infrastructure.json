@@ -26,12 +26,6 @@
             "AllowedPattern": "^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/.+$",
             "ConstraintDescription": "Must be a valid ECR repository URI"
         },
-        "DatabaseSecretArn": {
-            "Type": "String",
-            "Description": "ARN of the Secrets Manager secret containing database credentials",
-            "AllowedPattern": "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:.+$",
-            "ConstraintDescription": "Must be a valid Secrets Manager ARN"
-        },
         "DatabaseEndpoint": {
             "Type": "String",
             "Description": "RDS database endpoint (hostname)"
@@ -229,21 +223,6 @@
                 ],
                 "Policies": [
                     {
-                        "PolicyName": "SecretsManagerAccess",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "secretsmanager:GetSecretValue"
-                                    ],
-                                    "Resource": {"Ref": "DatabaseSecretArn"}
-                                }
-                            ]
-                        }
-                    },
-                    {
                         "PolicyName": "CloudWatchLogsAccess",
                         "PolicyDocument": {
                             "Version": "2012-10-17",
@@ -321,6 +300,21 @@
                                             "Fn::Sub": "arn:aws:s3:::${UploadBucketName}/*"
                                         }
                                     ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "RDSIAMAuthPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "rds-db:connect",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
+                                    }
                                 }
                             ]
                         }
@@ -511,6 +505,10 @@
                             "Value": {"Ref": "UploadBucketName"}
                         },
                         {
+                            "Name": "USE_IAM_AUTH",
+                            "Value": "true"
+                        },
+                        {
                             "Name": "DATABASE_HOST",
                             "Value": {"Ref": "DatabaseEndpoint"}
                         },
@@ -523,14 +521,8 @@
                             "Value": {"Ref": "DatabaseName"}
                         },
                         {
-                            "Name": "DATABASE_USER",
-                            "Value": {"Ref": "DatabaseUsername"}
-                        },
-                        {
-                            "Name": "DATABASE_PASSWORD",
-                            "Value": {
-                                "Fn::Sub": "{{resolve:secretsmanager:${DatabaseSecretArn}:SecretString}}"
-                            }
+                            "Name": "DATABASE_IAM_USER",
+                            "Value": "epistemix_api"
                         },
                         {
                             "Name": "ENVIRONMENT",

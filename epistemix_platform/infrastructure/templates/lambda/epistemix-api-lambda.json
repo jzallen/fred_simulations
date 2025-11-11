@@ -55,12 +55,6 @@
       "Description": "RDS database username",
       "Default": "epistemixuser"
     },
-    "DBPassword": {
-      "Type": "String",
-      "Description": "RDS database password",
-      "NoEcho": true,
-      "MinLength": 8
-    },
     "S3BucketName": {
       "Type": "String",
       "Description": "S3 bucket name for file uploads",
@@ -223,6 +217,13 @@
                     "rds:DescribeDBClusters"
                   ],
                   "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "rds-db:connect",
+                  "Resource": {
+                    "Fn::Sub": "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
+                  }
                 }
               ]
             }
@@ -331,14 +332,11 @@
           "Variables": {
             "FLASK_APP": "epistemix_platform.app",
             "FLASK_ENV": {"Ref": "Environment"},
-            "DATABASE_URL": {
-              "Fn::Sub": "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}?sslmode=require"
-            },
-            "DB_HOST": {"Ref": "DBHost"},
-            "DB_PORT": {"Ref": "DBPort"},
-            "DB_NAME": {"Ref": "DBName"},
-            "DB_USER": {"Ref": "DBUser"},
-            "DB_PASSWORD": {"Ref": "DBPassword"},
+            "USE_IAM_AUTH": "true",
+            "DATABASE_HOST": {"Ref": "DBHost"},
+            "DATABASE_PORT": {"Ref": "DBPort"},
+            "DATABASE_NAME": {"Ref": "DBName"},
+            "DATABASE_IAM_USER": "epistemix_api",
             "S3_UPLOAD_BUCKET": {"Ref": "S3BucketName"},
             "ENVIRONMENT": {"Ref": "Environment"},
             "AWS_LWA_INVOKE_MODE": "buffered"

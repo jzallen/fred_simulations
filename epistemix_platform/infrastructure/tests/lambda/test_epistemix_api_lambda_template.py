@@ -36,15 +36,7 @@ class TestLambdaTemplate:
         assert template.get("AWSTemplateFormatVersion") == "2010-09-09"
 
     # Parameter Validation
-
-    def test_db_password_is_noecho(self, template: dict[str, Any]):
-        """DBPassword must have NoEcho to prevent exposure in console/API."""
-        assert template["Parameters"]["DBPassword"].get("NoEcho") is True
-
-    def test_db_password_has_minimum_length(self, template: dict[str, Any]):
-        """DBPassword must enforce minimum length >= 8."""
-        min_length = template["Parameters"]["DBPassword"].get("MinLength")
-        assert int(min_length) >= 8, f"DBPassword MinLength must be at least 8, got {min_length}"
+    # Note: DBPassword parameter removed - using IAM authentication instead
 
     def test_memory_size_within_valid_range(self, template: dict[str, Any]):
         """Memory size must be within AWS Lambda limits."""
@@ -130,36 +122,29 @@ class TestLambdaTemplate:
         assert "Environment" in func
         assert "Variables" in func["Environment"]
 
-    def test_database_password_in_environment_variables(self, template: dict[str, Any]):
-        """SECURITY CONCERN: DB_PASSWORD in environment variables.
+    def test_iam_authentication_environment_variables(self, template: dict[str, Any]):
+        """Lambda uses IAM authentication instead of password-based auth.
 
-        This test documents a known security anti-pattern. For production:
-        - Use AWS Secrets Manager with dynamic references
-        - Or use RDS IAM authentication
-        - Environment variables are visible in Lambda console
+        IAM authentication provides better security:
+        - Short-lived tokens (15 minutes) instead of static passwords
+        - No password exposure in environment variables
+        - Credentials managed by AWS IAM
         """
         func = template["Resources"]["LambdaFunction"]["Properties"]
         env_vars = func["Environment"]["Variables"]
 
-        # Document that password is in environment (anti-pattern for prod)
-        assert (
-            "DB_PASSWORD" in env_vars
-        ), "DB_PASSWORD found in environment (OK for dev, use Secrets Manager for prod)"
+        # Verify IAM auth is enabled
+        assert env_vars.get("USE_IAM_AUTH") == "true", "USE_IAM_AUTH must be enabled"
 
-        # At minimum, it should reference the NoEcho parameter
-        db_password = env_vars["DB_PASSWORD"]
-        assert "Ref" in db_password
-        assert db_password["Ref"] == "DBPassword"
+        # Verify IAM auth environment variables are present
+        assert "DATABASE_HOST" in env_vars, "DATABASE_HOST required for IAM auth"
+        assert "DATABASE_PORT" in env_vars, "DATABASE_PORT required for IAM auth"
+        assert "DATABASE_NAME" in env_vars, "DATABASE_NAME required for IAM auth"
+        assert "DATABASE_IAM_USER" in env_vars, "DATABASE_IAM_USER required for IAM auth"
 
-    def test_database_url_contains_password_reference(self, template: dict[str, Any]):
-        """DATABASE_URL should reference DBPassword parameter."""
-        func = template["Resources"]["LambdaFunction"]["Properties"]
-        env_vars = func["Environment"]["Variables"]
-
-        assert "DATABASE_URL" in env_vars
-        # Should use Fn::Sub with ${DBPassword}
-        db_url = env_vars["DATABASE_URL"]
-        assert "Fn::Sub" in db_url
+        # Verify password-based variables are NOT present (security improvement)
+        assert "DB_PASSWORD" not in env_vars, "DB_PASSWORD should not exist with IAM auth"
+        assert "DATABASE_URL" not in env_vars, "DATABASE_URL should not exist with IAM auth"
 
     # IAM Execution Role
 
@@ -288,12 +273,12 @@ class TestLambdaTemplate:
             ),
         )
 
-    def test_rds_policy_is_read_only(self, template, cdk_template_factory):
-        """RDS policy should only allow describe actions (read-only)."""
+    def test_rds_policy_has_iam_auth_permission(self, template, cdk_template_factory):
+        """RDS policy should allow IAM database authentication."""
 
         cdk_template = cdk_template_factory(template)
 
-        # Verify RDSAccessPolicy has only read-only permissions
+        # Verify RDSAccessPolicy has IAM auth permissions
         cdk_template.has_resource_properties(
             "AWS::IAM::Role",
             Match.object_like(
@@ -306,6 +291,7 @@ class TestLambdaTemplate:
                                     "PolicyDocument": {
                                         "Statement": Match.array_with(
                                             [
+                                                # Describe permissions for metadata
                                                 Match.object_like(
                                                     {
                                                         "Effect": "Allow",
@@ -313,9 +299,23 @@ class TestLambdaTemplate:
                                                             "rds:DescribeDBInstances",
                                                             "rds:DescribeDBClusters",
                                                         ],
-                                                        "Resource": "*",  # Describe actions are safe with *
+                                                        "Resource": "*",
                                                     }
-                                                )
+                                                ),
+                                                # IAM authentication permission
+                                                Match.object_like(
+                                                    {
+                                                        "Effect": "Allow",
+                                                        "Action": "rds-db:connect",
+                                                        "Resource": Match.object_like(
+                                                            {
+                                                                "Fn::Sub": Match.string_like_regexp(
+                                                                    r".*rds-db:.*:dbuser:\*\/\*"
+                                                                )
+                                                            }
+                                                        ),
+                                                    }
+                                                ),
                                             ]
                                         )
                                     },

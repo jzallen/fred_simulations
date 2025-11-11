@@ -2,9 +2,8 @@ template:
   type: file
   path: batch/batch-infrastructure.json
 
-# Layer 4: Batch infrastructure depends on RDS, S3, Secrets Manager, and shared VPC endpoint
+# Layer 4: Batch infrastructure depends on RDS, S3, and shared VPC endpoint
 dependencies:
-  - staging/database-secrets.yaml
   - staging/rds-postgres.yaml
   - staging/s3-upload-bucket.yaml
   - batch-vpc-endpoint.yaml
@@ -31,13 +30,11 @@ parameters:
     xargs -I {} echo "170692816356.dkr.ecr.us-east-1.amazonaws.com/fred-simulation-runner@{}"
 
   # Database Configuration
-  # References the existing database-secrets stack (for Secrets Manager ARN)
-  DatabaseSecretArn: !stack_output staging/database-secrets.yaml::DatabasePasswordSecretArn
-  # References the existing rds-postgres stack for connection details
+  # IAM authentication is used - no password needed
   DatabaseEndpoint: !stack_output staging/rds-postgres.yaml::DBEndpoint
   DatabasePort: !stack_output staging/rds-postgres.yaml::DBPort
   DatabaseName: !stack_output staging/rds-postgres.yaml::DBName
-  DatabaseUsername: epistemixuser  # From rds-postgres.yaml config
+  DatabaseUsername: epistemixuser
 
   # S3 Buckets
   # Upload bucket is used for BOTH uploads and results (same bucket)

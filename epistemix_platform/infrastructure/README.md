@@ -39,6 +39,7 @@ Developer → SSM Session Manager → Bastion (VPC) → RDS (Private)
 - Poetry package manager
 - Docker (for building container images)
 - AWS Session Manager plugin (for RDS access)
+- **AWS Secrets Manager secret** containing the database password at path `/epistemix/{Environment}/database/password`
 
 ## Installation
 
@@ -93,14 +94,43 @@ infrastructure/
 
 ## Quick Start Deployment
 
-### 1. Set Environment Variables
+### 1. Create Database Password Secret (One-Time Setup)
+
+The infrastructure expects a database password to exist in AWS Secrets Manager. Create it once manually:
 
 ```bash
-export EPISTEMIX_DB_PASSWORD="your-secure-password"
+# Create the secret in AWS Secrets Manager
+aws secretsmanager create-secret \
+  --name "/epistemix/dev/database/password" \
+  --description "RDS database password for Epistemix Platform" \
+  --secret-string "your-secure-password-here" \
+  --region us-east-1
+
+# For production:
+# aws secretsmanager create-secret \
+#   --name "/epistemix/production/database/password" \
+#   --description "RDS database password for Epistemix Platform" \
+#   --secret-string "your-production-password" \
+#   --region us-east-1
+```
+
+**Note**: Both RDS and Lambda stacks use CloudFormation dynamic references (`{{resolve:secretsmanager:...}}`) to retrieve the password at deployment time. You don't need to pass the password as a parameter - CloudFormation reads it directly from Secrets Manager.
+
+To update the password later:
+```bash
+aws secretsmanager update-secret \
+  --secret-id "/epistemix/dev/database/password" \
+  --secret-string "new-secure-password" \
+  --region us-east-1
+```
+
+### 2. Set Environment Variables
+
+```bash
 export DEVELOPER_IP="$(curl -s ifconfig.me)/32"
 ```
 
-### 2. Deploy Core Infrastructure
+### 3. Deploy Core Infrastructure
 
 ```bash
 cd epistemix_platform/infrastructure
