@@ -85,7 +85,7 @@ class TestRegisterJobSQLAlchemyIntegration:
         return SQLAlchemyJobRepository(job_mapper=job_mapper, get_db_session_fn=lambda: db_session)
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_register_job_persists_job_to_database(self, repository):
+    def test_register_job__with_valid_bearer_token__persists_job_to_database(self, repository):
         bearer_token = create_bearer_token(456)
         job = register_job(repository, user_token_value=bearer_token, tags=["some_tag"])
 

@@ -6,7 +6,7 @@ from epistemix_platform.use_cases.run_simulation import run_simulation
 
 
 class TestRunSimulationUseCase:
-    def test_run_simulation_submits_run_to_gateway(self):
+    def test_run_simulation__with_valid_run__submits_run_to_gateway(self):
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -28,7 +28,7 @@ class TestRunSimulationUseCase:
         # ASSERT
         mock_simulation_runner.submit_run.assert_called_once_with(run)
 
-    def test_run_simulation_does_not_save_run_after_submit(self):
+    def test_run_simulation__after_submitting__does_not_save_run(self):
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -50,7 +50,7 @@ class TestRunSimulationUseCase:
         # ASSERT
         mock_simulation_runner.submit_run.assert_called_once()
 
-    def test_run_simulation_accepts_run_object_directly(self):
+    def test_run_simulation__when_given_run_object__accepts_run_directly(self):
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -72,7 +72,7 @@ class TestRunSimulationUseCase:
         # ASSERT
         assert result is run
 
-    def test_run_simulation_returns_run_unchanged(self):
+    def test_run_simulation__after_submission__returns_run_unchanged(self):
         # ARRANGE
         mock_simulation_runner = Mock()
 
@@ -95,7 +95,7 @@ class TestRunSimulationUseCase:
         assert result.id == run.id
         assert result is run
 
-    def test_run_simulation_logs_submission_info(self):
+    def test_run_simulation__when_submitting__logs_submission_info(self):
         # ARRANGE
         mock_simulation_runner = Mock()
 

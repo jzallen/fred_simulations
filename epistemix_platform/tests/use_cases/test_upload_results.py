@@ -72,7 +72,7 @@ def results_dir(tmp_path):
 
 
 class TestUploadResults:
-    def test_successfully_upload_results_for_completed_simulation(
+    def test_upload_results__with_valid_run_and_results__uploads_successfully(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -135,7 +135,7 @@ class TestUploadResults:
             == "https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
         )
 
-    def test_upload_fails_when_run_does_not_exist(
+    def test_upload_results__when_run_not_found__raises_value_error(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -166,7 +166,7 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_not_called()
         mock_run_repository.save.assert_not_called()
 
-    def test_upload_fails_when_results_directory_is_empty(
+    def test_upload_results__when_results_directory_empty__raises_invalid_results_error(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -205,7 +205,7 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_not_called()
         mock_run_repository.save.assert_not_called()
 
-    def test_upload_fails_when_results_directory_does_not_exist(
+    def test_upload_results__when_results_directory_not_found__raises_invalid_results_error(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -242,7 +242,7 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_not_called()
         mock_run_repository.save.assert_not_called()
 
-    def test_upload_succeeds_but_database_update_fails(
+    def test_upload_results__when_database_update_fails__raises_results_metadata_error(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -290,7 +290,7 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_called_once()
         mock_run_repository.save.assert_called_once()
 
-    def test_server_side_upload_uses_iam_credentials_not_presigned_urls(
+    def test_upload_results__when_uploading__uses_iam_credentials_not_presigned_urls(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -376,7 +376,7 @@ class TestUploadResultsWithJobS3Prefix:
             request={"some": "data"},
         )
 
-    def test_fetch_job_and_create_prefix_from_job_created_at(
+    def test_upload_results__when_uploading__fetches_job_and_creates_prefix_from_job_created_at(
         self,
         mock_run_repository,
         mock_job_repository,
@@ -434,7 +434,7 @@ class TestUploadResultsWithJobS3Prefix:
         assert prefix.job_id == 12
         assert prefix.timestamp == datetime(2025, 10, 23, 21, 15, 0)
 
-    def test_multiple_runs_use_same_job_timestamp(
+    def test_upload_results__when_multiple_runs__use_same_job_timestamp(
         self,
         mock_run_repository,
         mock_job_repository,

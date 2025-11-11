@@ -23,7 +23,7 @@ class TestArchiveUploadsUseCase:
         location3 = UploadLocation("https://s3.amazonaws.com/bucket/job2/file3.txt")
         return [location1, location2, location3]
 
-    def test_returns_empty_list_when_no_upload_locations(self, mock_repository):
+    def test_archive_uploads__when_no_upload_locations__returns_empty_list(self, mock_repository):
         result = archive_uploads(
             upload_repository=mock_repository,
             upload_locations=[],
@@ -33,7 +33,7 @@ class TestArchiveUploadsUseCase:
         mock_repository.archive_uploads.assert_not_called()
         mock_repository.filter_by_age.assert_not_called()
 
-    def test_dry_run_without_age_threshold_returns_original_list_and_skips_repo_calls(
+    def test_archive_uploads__when_dry_run_without_threshold__returns_original_list_and_skips_archive(
         self, mock_repository, sample_upload_locations
     ):
         result = archive_uploads(
@@ -47,7 +47,7 @@ class TestArchiveUploadsUseCase:
         mock_repository.filter_by_age.assert_not_called()
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_dry_run_with_hours_threshold_uses_filter_by_age_and_skips_archive_uploads(
+    def test_archive_uploads__when_dry_run_with_hours_threshold__uses_filter_by_age_and_skips_archive(
         self, mock_repository, sample_upload_locations
     ):
         filtered = sample_upload_locations[:2]
@@ -72,7 +72,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_dry_run_with_days_threshold_uses_filter_by_age_and_skips_archive_uploads(
+    def test_archive_uploads__when_dry_run_with_days_threshold__uses_filter_by_age_and_skips_archive(
         self, mock_repository, sample_upload_locations
     ):
         filtered = sample_upload_locations[:1]
@@ -97,7 +97,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_hours_threshold_takes_precedence_over_days_when_both_provided(
+    def test_archive_uploads__when_both_thresholds_provided__hours_takes_precedence(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations
@@ -116,7 +116,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_archive_path_calls_repository_with_computed_hours_threshold(
+    def test_archive_uploads__when_hours_threshold_provided__calls_repository_with_computed_threshold(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations[:2]
@@ -135,7 +135,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_archive_path_calls_repository_with_computed_days_threshold(
+    def test_archive_uploads__when_days_threshold_provided__calls_repository_with_computed_threshold(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations
@@ -153,7 +153,7 @@ class TestArchiveUploadsUseCase:
         expected = datetime(2025, 1, 1, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
 
-    def test_archive_path_with_no_threshold_calls_repository_with_none_age(
+    def test_archive_uploads__when_no_threshold_provided__calls_repository_with_none_age(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations
@@ -168,7 +168,7 @@ class TestArchiveUploadsUseCase:
             sample_upload_locations, age_threshold=None
         )
 
-    def test_returns_repository_result_from_archive_uploads_unchanged(
+    def test_archive_uploads__when_archiving__returns_repository_result_unchanged(
         self, mock_repository, sample_upload_locations
     ):
         expected_result = [sample_upload_locations[2], sample_upload_locations[0]]
@@ -182,7 +182,7 @@ class TestArchiveUploadsUseCase:
         assert result is expected_result
         assert result == expected_result
 
-    def test_filter_by_age_not_called_in_dry_run_when_no_threshold(
+    def test_archive_uploads__when_dry_run_without_threshold__does_not_call_filter_by_age(
         self, mock_repository, sample_upload_locations
     ):
         result = archive_uploads(
@@ -195,7 +195,7 @@ class TestArchiveUploadsUseCase:
         mock_repository.filter_by_age.assert_not_called()
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_filter_by_age_called_once_with_expected_threshold_in_dry_run(
+    def test_archive_uploads__when_dry_run_with_threshold__calls_filter_by_age_once(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.filter_by_age.return_value = sample_upload_locations[:1]
@@ -216,7 +216,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_archive_uploads_called_once_with_expected_threshold_in_non_dry_run(
+    def test_archive_uploads__when_non_dry_run__calls_archive_uploads_once(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations
@@ -236,7 +236,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @patch("epistemix_platform.use_cases.archive_uploads.logger")
-    def test_logs_include_dry_run_prefix_when_dry_run_true(
+    def test_archive_uploads__when_dry_run_true__logs_include_dry_run_prefix(
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         archive_uploads(
@@ -253,7 +253,7 @@ class TestArchiveUploadsUseCase:
         mock_logger.info.assert_has_calls(expected_calls)
 
     @patch("epistemix_platform.use_cases.archive_uploads.logger")
-    def test_logs_report_number_of_locations_provided(
+    def test_archive_uploads__when_archiving__logs_report_number_of_locations(
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations[:2]
@@ -270,7 +270,7 @@ class TestArchiveUploadsUseCase:
         mock_logger.info.assert_has_calls(expected_calls)
 
     @patch("epistemix_platform.use_cases.archive_uploads.logger")
-    def test_logs_sanitized_urls_for_each_location_in_dry_run(
+    def test_archive_uploads__when_dry_run__logs_sanitized_urls_for_each_location(
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         archive_uploads(
@@ -287,7 +287,7 @@ class TestArchiveUploadsUseCase:
         mock_logger.debug.assert_has_calls(expected_debug_calls)
 
     @patch("epistemix_platform.use_cases.archive_uploads.logger")
-    def test_logs_sanitized_urls_for_each_location_in_archive_path(
+    def test_archive_uploads__when_archiving__logs_sanitized_urls_for_each_location(
         self, mock_logger, mock_repository, sample_upload_locations
     ):
         archived = sample_upload_locations[:2]
@@ -305,7 +305,7 @@ class TestArchiveUploadsUseCase:
         mock_logger.debug.assert_has_calls(expected_debug_calls)
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_handles_zero_hours_threshold_as_now_boundary(
+    def test_archive_uploads__when_zero_hours_threshold__uses_now_boundary(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = []
@@ -321,7 +321,7 @@ class TestArchiveUploadsUseCase:
         assert abs((threshold - expected).total_seconds()) < 1
 
     @freeze_time("2025-01-15 14:30:00")
-    def test_handles_zero_days_threshold_as_today_boundary(
+    def test_archive_uploads__when_zero_days_threshold__uses_today_boundary(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = []
@@ -336,7 +336,7 @@ class TestArchiveUploadsUseCase:
         expected = datetime(2025, 1, 15, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
 
-    def test_duplicate_locations_are_deduplicated_in_repository_call(self, mock_repository):
+    def test_archive_uploads__when_duplicate_locations__deduplicates_in_repository_call(self, mock_repository):
         location1 = UploadLocation(
             url=(
                 "https://s3.amazonaws.com/bucket/file.txt?"
@@ -355,7 +355,7 @@ class TestArchiveUploadsUseCase:
 
         mock_repository.archive_uploads.assert_called_once_with([location1], age_threshold=None)
 
-    def test_raises_no_exception_when_repository_returns_empty_list(
+    def test_archive_uploads__when_repository_returns_empty__raises_no_exception(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = []
@@ -367,7 +367,7 @@ class TestArchiveUploadsUseCase:
 
         assert result == []
 
-    def test_passes_through_timezone_agnostic_threshold_computation(
+    def test_archive_uploads__when_computing_threshold__uses_timezone_agnostic_computation(
         self, mock_repository, sample_upload_locations
     ):
         mock_repository.archive_uploads.return_value = sample_upload_locations

@@ -11,7 +11,7 @@ from epistemix_platform.use_cases.get_run_results import get_run_results
 
 
 class TestGetRunResults:
-    def test_returns_run_results_for_all_runs(self):
+    def test_get_run_results__with_multiple_runs__returns_run_results_for_all_runs(self):
         # Arrange
         job = Job(
             id=100,
@@ -67,7 +67,7 @@ class TestGetRunResults:
         assert results[1].run_id == 2
         assert results[0].url == "https://presigned-url.s3.amazonaws.com?X-Amz-Expires=86400"
 
-    def test_calls_repository_with_reconstructed_s3_urls(self):
+    def test_get_run_results__when_fetching_results__calls_repository_with_reconstructed_s3_urls(self):
         # Arrange
         job = Job(
             id=100,
@@ -116,7 +116,7 @@ class TestGetRunResults:
             expiration_seconds=86400,
         )
 
-    def test_returns_empty_list_for_job_with_no_runs(self):
+    def test_get_run_results__when_job_has_no_runs__returns_empty_list(self):
         # Arrange
         job = Job(
             id=100,
@@ -146,7 +146,7 @@ class TestGetRunResults:
         assert results == []
         mock_results_repo.get_download_url.assert_not_called()
 
-    def test_uses_24_hour_expiration_by_default(self):
+    def test_get_run_results__when_no_expiration_specified__uses_24_hour_expiration(self):
         # Arrange
         job = Job(
             id=100,
@@ -190,7 +190,7 @@ class TestGetRunResults:
         call_args = mock_results_repo.get_download_url.call_args
         assert call_args[1]["expiration_seconds"] == 86400
 
-    def test_respects_custom_expiration_seconds(self):
+    def test_get_run_results__when_custom_expiration_provided__uses_custom_expiration_seconds(self):
         # Arrange
         job = Job(
             id=100,
@@ -235,7 +235,7 @@ class TestGetRunResults:
         call_args = mock_results_repo.get_download_url.call_args
         assert call_args[1]["expiration_seconds"] == 3600
 
-    def test_raises_value_error_when_job_not_found(self):
+    def test_get_run_results__when_job_not_found__raises_value_error(self):
         # Arrange
         mock_job_repo = Mock()
         mock_job_repo.find_by_id.return_value = None
