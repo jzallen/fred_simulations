@@ -30,9 +30,7 @@ class SQLAlchemyJobRepository:
     It provides the same interface as the in-memory repository but with persistent storage.
     """
 
-    def __init__(
-        self, job_mapper: "JobMapper", get_db_session_fn: Callable[[], Session]
-    ):
+    def __init__(self, job_mapper: "JobMapper", get_db_session_fn: Callable[[], Session]):
         """
         Initialize the repository with mapper dependency injection.
 

@@ -194,7 +194,6 @@ class TestS3UploadLocationRepository:
         with pytest.raises(ValueError, match="Failed to generate upload location"):
             repository.get_upload_location(job_upload, s3_prefix)
 
-
     @freeze_time("2025-01-15 14:30:45")
     def test_generate_s3_key__normal_filename__adds_timestamp_prefix(self, repository):
         result = repository._generate_s3_key("test-file.txt")
@@ -613,7 +612,7 @@ class TestDummyS3UploadLocationRepository:
 class TestCreateUploadLocationRepository:
     """Test cases for the factory method."""
 
-    @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
+    @patch("epistemix_platform.utils.s3_client.boto3.client")
     def test_create_upload_location_repository__testing_env__returns_dummy(self, mock_boto3_client):
         """Test that TESTING environment returns DummyS3UploadLocationRepository."""
         repository = create_upload_location_repository(env="TESTING")
@@ -623,7 +622,7 @@ class TestCreateUploadLocationRepository:
         # boto3 should not be called for testing environment
         mock_boto3_client.assert_not_called()
 
-    @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
+    @patch("epistemix_platform.utils.s3_client.boto3.client")
     def test_create_upload_location_repository__testing_env_with_custom_url(
         self, _mock_boto3_client
     ):
@@ -634,7 +633,7 @@ class TestCreateUploadLocationRepository:
         assert isinstance(repository, DummyS3UploadLocationRepository)
         assert repository.test_url == custom_url
 
-    @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
+    @patch("epistemix_platform.utils.s3_client.boto3.client")
     def test_create_upload_location_repository__production_env__returns_s3(self, mock_boto3_client):
         """Test that PRODUCTION environment returns S3UploadLocationRepository."""
         mock_boto3_client.return_value.meta.region_name = "us-east-1"
@@ -652,7 +651,7 @@ class TestCreateUploadLocationRepository:
         with pytest.raises(ValueError, match="bucket_name is required for PRODUCTION environment"):
             create_upload_location_repository(env="PRODUCTION")
 
-    @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
+    @patch("epistemix_platform.utils.s3_client.boto3.client")
     def test_create_upload_location_repository__development_env__returns_s3(
         self, mock_boto3_client
     ):
@@ -666,7 +665,7 @@ class TestCreateUploadLocationRepository:
         assert isinstance(repository, S3UploadLocationRepository)
         assert repository.bucket_name == "dev-bucket"
 
-    @patch("epistemix_platform.repositories.s3_upload_location_repository.boto3.client")
+    @patch("epistemix_platform.utils.s3_client.boto3.client")
     def test_create_upload_location_repository__unknown_env__returns_s3(self, mock_boto3_client):
         """Test that unknown environment defaults to S3UploadLocationRepository."""
         mock_boto3_client.return_value.meta.region_name = "eu-west-1"

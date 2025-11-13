@@ -252,7 +252,9 @@ class TestJobControllerDownloadForceFlag:
         assert not is_successful(result)
         assert result.failure() == "No uploads found for job 999"
 
-    def test_download_job_uploads__when_filename_extraction_fails__uses_default_filename(self, service):
+    def test_download_job_uploads__when_filename_extraction_fails__uses_default_filename(
+        self, service
+    ):
         # Create upload with URL that has no filename
         upload = JobUpload(
             context="job",
@@ -280,7 +282,9 @@ class TestJobControllerDownloadForceFlag:
             expected_file = temp_path / "job_1_input.zip"
             assert expected_file.exists()
 
-    def test_download_job_uploads__when_individual_file_fails__continues_with_other_files(self, service):
+    def test_download_job_uploads__when_individual_file_fails__continues_with_other_files(
+        self, service
+    ):
         upload1 = JobUpload(
             context="job",
             upload_type="input",

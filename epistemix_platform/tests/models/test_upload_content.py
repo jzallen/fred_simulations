@@ -26,9 +26,7 @@ class TestUploadContentIsText:
     def test_is_text_returns_false_for_zip_archive(self):
         entries = [ZipFileEntry(name="file.txt", size=100, compressed_size=50)]
         content = UploadContent.create_zip_archive(
-            binary_content=b"fake zip data",
-            entries=entries,
-            summary="1 file"
+            binary_content=b"fake zip data", entries=entries, summary="1 file"
         )
 
         assert content.is_text() is False
@@ -40,9 +38,7 @@ class TestUploadContentIsArchive:
     def test_is_archive_returns_true_for_zip_content(self):
         entries = [ZipFileEntry(name="file.txt", size=100, compressed_size=50)]
         content = UploadContent.create_zip_archive(
-            binary_content=b"fake zip data",
-            entries=entries,
-            summary="1 file"
+            binary_content=b"fake zip data", entries=entries, summary="1 file"
         )
 
         assert content.is_archive() is True
@@ -128,7 +124,7 @@ class TestUploadContentCreateJson:
         assert content.zip_entries is None
 
     def test_create_json_with_array(self):
-        json_str = '[1, 2, 3, 4]'
+        json_str = "[1, 2, 3, 4]"
         content = UploadContent.create_json(json_str)
 
         assert content.content_type == ContentType.JSON
@@ -171,14 +167,12 @@ class TestUploadContentCreateZipArchive:
     def test_create_zip_archive_encodes_binary_as_base64(self):
         entries = [
             ZipFileEntry(name="file1.txt", size=100, compressed_size=50),
-            ZipFileEntry(name="file2.txt", size=200, compressed_size=100)
+            ZipFileEntry(name="file2.txt", size=200, compressed_size=100),
         ]
         binary_data = b"fake zip content"
 
         content = UploadContent.create_zip_archive(
-            binary_content=binary_data,
-            entries=entries,
-            summary="2 files"
+            binary_content=binary_data, entries=entries, summary="2 files"
         )
 
         assert content.content_type == ContentType.ZIP_ARCHIVE
@@ -190,9 +184,7 @@ class TestUploadContentCreateZipArchive:
     def test_create_zip_archive_with_single_entry(self):
         entries = [ZipFileEntry(name="single.txt", size=50, compressed_size=25)]
         content = UploadContent.create_zip_archive(
-            binary_content=b"data",
-            entries=entries,
-            summary="1 file"
+            binary_content=b"data", entries=entries, summary="1 file"
         )
 
         assert len(content.zip_entries) == 1
@@ -201,16 +193,11 @@ class TestUploadContentCreateZipArchive:
     def test_create_zip_archive_preserves_entry_details(self):
         entries = [
             ZipFileEntry(
-                name="important.txt",
-                size=1024,
-                compressed_size=512,
-                preview="First 100 chars..."
+                name="important.txt", size=1024, compressed_size=512, preview="First 100 chars..."
             )
         ]
         content = UploadContent.create_zip_archive(
-            binary_content=b"zip data",
-            entries=entries,
-            summary="1 file with preview"
+            binary_content=b"zip data", entries=entries, summary="1 file with preview"
         )
 
         assert content.zip_entries[0].name == "important.txt"
@@ -235,7 +222,7 @@ class TestUploadContentRepr:
     def test_repr_for_zip_archive_includes_file_count(self):
         entries = [
             ZipFileEntry(name="file1.txt", size=100, compressed_size=50),
-            ZipFileEntry(name="file2.txt", size=200, compressed_size=100)
+            ZipFileEntry(name="file2.txt", size=200, compressed_size=100),
         ]
         # Create directly to avoid get_size() encoding issue with base64
         content = UploadContent(
@@ -243,7 +230,7 @@ class TestUploadContentRepr:
             raw_content="fake_base64_data",
             encoding="utf-8",  # Use utf-8 to avoid encoding issue in get_size()
             zip_entries=entries,
-            summary="2 files"
+            summary="2 files",
         )
 
         assert repr(content) == "UploadContent(type=zip_archive, 16 bytes, 2 files)"
@@ -253,7 +240,7 @@ class TestUploadContentRepr:
         content = UploadContent(
             content_type=ContentType.BINARY,
             raw_content="deadbeef",
-            encoding="utf-8"  # Use utf-8 to avoid encoding issue in get_size()
+            encoding="utf-8",  # Use utf-8 to avoid encoding issue in get_size()
         )
 
         assert repr(content) == "UploadContent(type=binary, 8 bytes)"

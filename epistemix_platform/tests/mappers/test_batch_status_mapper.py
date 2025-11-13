@@ -8,7 +8,6 @@ from epistemix_platform.models.run import PodPhase, RunStatus
 
 
 class TestBatchStatusToRunStatus:
-
     def test_submitted_maps_to_queued(self):
         batch_status = "SUBMITTED"
         result = BatchStatusMapper.batch_status_to_run_status(batch_status)
@@ -51,7 +50,6 @@ class TestBatchStatusToRunStatus:
 
 
 class TestBatchStatusToPodPhase:
-
     def test_submitted_maps_to_pending(self):
         batch_status = "SUBMITTED"
         result = BatchStatusMapper.batch_status_to_pod_phase(batch_status)
@@ -94,7 +92,6 @@ class TestBatchStatusToPodPhase:
 
 
 class TestPodPhaseToRunStatus:
-
     def test_pending_maps_to_queued(self):
         pod_phase = PodPhase.PENDING
         result = BatchStatusMapper.pod_phase_to_run_status(pod_phase)

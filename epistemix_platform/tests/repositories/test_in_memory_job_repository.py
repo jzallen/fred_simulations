@@ -61,7 +61,9 @@ class TestInMemoryJobRepository:
     def test_exists__given_job_id_and_no_job_exists__returns_false(self, repository):
         assert not repository.exists(999)
 
-    def test_delete__given_job_id_and_job_exists__deletes_and_returns_true(self, repository, sample_job):
+    def test_delete__given_job_id_and_job_exists__deletes_and_returns_true(
+        self, repository, sample_job
+    ):
         repository.save(sample_job)
 
         deleted = repository.delete(100)
@@ -71,7 +73,9 @@ class TestInMemoryJobRepository:
         deleted_again = repository.delete(100)
         assert deleted_again is False
 
-    def test_find_by_user_id__given_user_id_and_jobs_exist__returns_jobs_only_for_specified_user(self, repository):
+    def test_find_by_user_id__given_user_id_and_jobs_exist__returns_jobs_only_for_specified_user(
+        self, repository
+    ):
         job1 = Job.create_new(user_id=456, tags=["job1"])
         job2 = Job.create_new(user_id=456, tags=["job2"])
         job3 = Job.create_new(user_id=789, tags=["job3"])
@@ -85,7 +89,9 @@ class TestInMemoryJobRepository:
         assert len(user_456_jobs) == 2
         assert all(job.user_id == 456 for job in user_456_jobs)
 
-    def test_find_by_user_id__given_user_id_and_no_jobs_exist_for_user__returns_empty_list(self, repository):
+    def test_find_by_user_id__given_user_id_and_no_jobs_exist_for_user__returns_empty_list(
+        self, repository
+    ):
         job1 = Job.create_new(user_id=456, tags=["job1"])
         repository.save(job1)
 

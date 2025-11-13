@@ -2,10 +2,10 @@ from datetime import datetime
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from freezegun import freeze_time
 
 from epistemix_platform.models.run import Run, RunStatus
-from epistemix_platform.services import PackagedResults
-from epistemix_platform.use_cases.upload_results import upload_results
+from epistemix_platform.use_cases.upload_results import PackagedResults, upload_results
 
 
 @pytest.fixture
@@ -20,11 +20,6 @@ def mock_results_packager():
 
 @pytest.fixture
 def mock_results_repository():
-    return Mock()
-
-
-@pytest.fixture
-def mock_time_provider():
     return Mock()
 
 
@@ -72,13 +67,13 @@ def results_dir(tmp_path):
 
 
 class TestUploadResults:
+    @freeze_time("2025-10-23 20:00:00")
     def test_upload_results__with_valid_run_and_results__uploads_successfully(
         self,
         mock_run_repository,
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         completed_run,
         results_dir,
@@ -96,7 +91,6 @@ class TestUploadResults:
         mock_results_repository.upload_results.return_value = Mock(
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
         )
-        mock_time_provider.now_utc.return_value = fixed_time
 
         # Act
         results_url = upload_results(
@@ -104,7 +98,6 @@ class TestUploadResults:
             job_repository=mock_job_repository,
             results_packager=mock_results_packager,
             results_repository=mock_results_repository,
-            time_provider=mock_time_provider,
             job_id=123,
             run_id=1,
             results_dir=results_dir,
@@ -119,8 +112,6 @@ class TestUploadResults:
         assert call_args.kwargs["job_id"] == 123
         assert call_args.kwargs["run_id"] == 1
         assert call_args.kwargs["zip_content"] == b"fake zip content"
-
-        mock_time_provider.now_utc.assert_called_once()
 
         assert (
             completed_run.results_url
@@ -141,7 +132,6 @@ class TestUploadResults:
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         results_dir,
     ):
@@ -156,7 +146,6 @@ class TestUploadResults:
                 job_repository=mock_job_repository,
                 results_packager=mock_results_packager,
                 results_repository=mock_results_repository,
-                time_provider=mock_time_provider,
                 job_id=123,
                 run_id=999,
                 results_dir=results_dir,
@@ -172,7 +161,6 @@ class TestUploadResults:
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         completed_run,
         tmp_path,
@@ -196,7 +184,6 @@ class TestUploadResults:
                 job_repository=mock_job_repository,
                 results_packager=mock_results_packager,
                 results_repository=mock_results_repository,
-                time_provider=mock_time_provider,
                 job_id=123,
                 run_id=1,
                 results_dir=empty_dir,
@@ -211,7 +198,6 @@ class TestUploadResults:
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         completed_run,
         tmp_path,
@@ -233,7 +219,6 @@ class TestUploadResults:
                 job_repository=mock_job_repository,
                 results_packager=mock_results_packager,
                 results_repository=mock_results_repository,
-                time_provider=mock_time_provider,
                 job_id=123,
                 run_id=1,
                 results_dir=nonexistent_dir,
@@ -242,13 +227,13 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_not_called()
         mock_run_repository.save.assert_not_called()
 
+    @freeze_time("2025-10-23 20:00:00")
     def test_upload_results__when_database_update_fails__raises_results_metadata_error(
         self,
         mock_run_repository,
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         completed_run,
         results_dir,
@@ -258,7 +243,6 @@ class TestUploadResults:
 
         mock_job_repository.find_by_id.return_value = sample_job
 
-        fixed_time = datetime(2025, 10, 23, 20, 0, 0)
         mock_run_repository.find_by_id.return_value = completed_run
         mock_results_packager.package_directory.return_value = PackagedResults(
             zip_content=b"fake zip", file_count=1, total_size_bytes=10, directory_name="RUN4"
@@ -266,7 +250,6 @@ class TestUploadResults:
         mock_results_repository.upload_results.return_value = Mock(
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
         )
-        mock_time_provider.now_utc.return_value = fixed_time
         mock_run_repository.save.side_effect = Exception("Database connection lost")
 
         # Act & Assert
@@ -276,7 +259,6 @@ class TestUploadResults:
                 job_repository=mock_job_repository,
                 results_packager=mock_results_packager,
                 results_repository=mock_results_repository,
-                time_provider=mock_time_provider,
                 job_id=123,
                 run_id=1,
                 results_dir=results_dir,
@@ -290,20 +272,19 @@ class TestUploadResults:
         mock_results_repository.upload_results.assert_called_once()
         mock_run_repository.save.assert_called_once()
 
+    @freeze_time("2025-10-23 20:00:00")
     def test_upload_results__when_uploading__uses_iam_credentials_not_presigned_urls(
         self,
         mock_run_repository,
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         completed_run,
         results_dir,
     ):
         # Arrange
         mock_job_repository.find_by_id.return_value = sample_job
-        fixed_time = datetime(2025, 10, 23, 20, 0, 0)
         mock_run_repository.find_by_id.return_value = completed_run
         mock_results_packager.package_directory.return_value = PackagedResults(
             zip_content=b"packaged content",
@@ -315,7 +296,6 @@ class TestUploadResults:
             url="https://epistemix-uploads-staging.s3.amazonaws.com/results/job_123/run_1.zip"
         )
         mock_results_repository.upload_results.return_value = upload_location_mock
-        mock_time_provider.now_utc.return_value = fixed_time
 
         # Act
         upload_results(
@@ -323,7 +303,6 @@ class TestUploadResults:
             job_repository=mock_job_repository,
             results_packager=mock_results_packager,
             results_repository=mock_results_repository,
-            time_provider=mock_time_provider,
             job_id=123,
             run_id=1,
             results_dir=results_dir,
@@ -376,13 +355,13 @@ class TestUploadResultsWithJobS3Prefix:
             request={"some": "data"},
         )
 
+    @freeze_time("2025-10-23 21:20:00")
     def test_upload_results__when_uploading__fetches_job_and_creates_prefix_from_job_created_at(
         self,
         mock_run_repository,
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         sample_run,
         results_dir,
@@ -392,7 +371,7 @@ class TestUploadResultsWithJobS3Prefix:
 
         from epistemix_platform.models.job_s3_prefix import JobS3Prefix  # pants: no-infer-dep
         from epistemix_platform.models.upload_location import UploadLocation
-        from epistemix_platform.services import PackagedResults
+        from epistemix_platform.use_cases.upload_results import PackagedResults
 
         mock_run_repository.find_by_id.return_value = sample_run
         mock_job_repository.find_by_id.return_value = sample_job
@@ -405,8 +384,6 @@ class TestUploadResultsWithJobS3Prefix:
         mock_results_repository.upload_results.return_value = UploadLocation(
             url="https://bucket.s3.amazonaws.com/jobs/12/2025/10/23/211500/run_4_results.zip"
         )
-        fixed_time = datetime(2025, 10, 23, 21, 20, 0)
-        mock_time_provider.now_utc.return_value = fixed_time
 
         # Act
         from epistemix_platform.use_cases.upload_results import upload_results
@@ -416,7 +393,6 @@ class TestUploadResultsWithJobS3Prefix:
             job_repository=mock_job_repository,  # NEW parameter
             results_packager=mock_results_packager,
             results_repository=mock_results_repository,
-            time_provider=mock_time_provider,
             job_id=12,
             run_id=4,
             results_dir=results_dir,
@@ -434,13 +410,13 @@ class TestUploadResultsWithJobS3Prefix:
         assert prefix.job_id == 12
         assert prefix.timestamp == datetime(2025, 10, 23, 21, 15, 0)
 
+    @freeze_time("2025-10-23 21:20:00")
     def test_upload_results__when_multiple_runs__use_same_job_timestamp(
         self,
         mock_run_repository,
         mock_job_repository,
         mock_results_packager,
         mock_results_repository,
-        mock_time_provider,
         sample_job,
         results_dir,
     ):
@@ -449,8 +425,7 @@ class TestUploadResultsWithJobS3Prefix:
 
         from epistemix_platform.models.run import Run, RunStatus
         from epistemix_platform.models.upload_location import UploadLocation
-        from epistemix_platform.services import PackagedResults
-        from epistemix_platform.use_cases.upload_results import upload_results
+        from epistemix_platform.use_cases.upload_results import PackagedResults, upload_results
 
         run_4 = Run(
             id=4,
@@ -479,7 +454,6 @@ class TestUploadResultsWithJobS3Prefix:
         mock_results_repository.upload_results.return_value = UploadLocation(
             url="https://example.com/file.zip"
         )
-        mock_time_provider.now_utc.return_value = datetime(2025, 10, 23, 21, 20, 0)
 
         # Act
         upload_results(
@@ -487,7 +461,6 @@ class TestUploadResultsWithJobS3Prefix:
             job_repository=mock_job_repository,
             results_packager=mock_results_packager,
             results_repository=mock_results_repository,
-            time_provider=mock_time_provider,
             job_id=12,
             run_id=4,
             results_dir=results_dir,
@@ -498,7 +471,6 @@ class TestUploadResultsWithJobS3Prefix:
             job_repository=mock_job_repository,
             results_packager=mock_results_packager,
             results_repository=mock_results_repository,
-            time_provider=mock_time_provider,
             job_id=12,
             run_id=5,
             results_dir=results_dir,

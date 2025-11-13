@@ -336,7 +336,9 @@ class TestArchiveUploadsUseCase:
         expected = datetime(2025, 1, 15, 14, 30, 0)
         assert abs((threshold - expected).total_seconds()) < 1
 
-    def test_archive_uploads__when_duplicate_locations__deduplicates_in_repository_call(self, mock_repository):
+    def test_archive_uploads__when_duplicate_locations__deduplicates_in_repository_call(
+        self, mock_repository
+    ):
         location1 = UploadLocation(
             url=(
                 "https://s3.amazonaws.com/bucket/file.txt?"

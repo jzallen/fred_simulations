@@ -11,13 +11,14 @@ all error messages before logging or raising exceptions.
 
 import logging
 import re
+from typing import Any
 
-import boto3
 from botocore.exceptions import ClientError
 
 from epistemix_platform.exceptions import ResultsStorageError
 from epistemix_platform.models.job_s3_prefix import JobS3Prefix
 from epistemix_platform.models.upload_location import UploadLocation
+from epistemix_platform.utils.s3_client import create_s3_client
 
 
 logger = logging.getLogger(__name__)
@@ -43,16 +44,32 @@ class S3ResultsRepository:
         jobs/123/2025/10/23/211500/run_4_results.zip
     """
 
-    def __init__(self, s3_client: boto3.client, bucket_name: str):
+    def __init__(
+        self,
+        bucket_name: str,
+        region_name: str | None = None,
+        s3_client: Any | None = None,
+    ):
         """
         Initialize S3 results repository.
 
+        Uses AWS default credential chain for authentication, which looks for credentials in:
+        1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        2. AWS credentials file (~/.aws/credentials)
+        3. AWS config file (~/.aws/config)
+        4. IAM roles for EC2 instances
+        5. IAM roles for containers (ECS, EKS)
+        6. AWS SSO
+
         Args:
-            s3_client: Configured boto3 S3 client (with IAM credentials)
             bucket_name: S3 bucket name for results storage
+            region_name: AWS region name (optional, will use default region from config/environment)
+            s3_client: Optional S3 client instance (for testing).
+                If not provided, creates a new one via create_s3_client().
         """
-        self.s3_client = s3_client
         self.bucket_name = bucket_name
+        self.s3_client = create_s3_client(region_name=region_name, s3_client=s3_client)
+        logger.info(f"S3ResultsRepository configured for bucket: {bucket_name}")
 
     def upload_results(
         self, job_id: int, run_id: int, zip_content: bytes, s3_prefix: JobS3Prefix
@@ -159,7 +176,8 @@ class S3ResultsRepository:
                 ExpiresIn=expiration_seconds,
             )
             logger.info(
-                f"Generated presigned download URL for {object_key}, expires in {expiration_seconds}s"
+                f"Generated presigned download URL for {object_key}, "
+                f"expires in {expiration_seconds}s"
             )
         except ClientError as e:
             sanitized_message = self._sanitize_credentials(str(e))
@@ -275,7 +293,8 @@ class S3ResultsRepository:
         """
         message = error_message
 
-        # Pattern 1: AWS Access Key IDs (20 chars). Common prefixes: AKIA, ASIA, AGPA, AIDA, AROA, ANPA
+        # Pattern 1: AWS Access Key IDs (20 chars).
+        # Common prefixes: AKIA, ASIA, AGPA, AIDA, AROA, ANPA
         # Example: AKIAIOSFODNN7EXAMPLE -> [REDACTED_KEY]
         # Example: ASIAIOSFODNN7EXAMPLE -> [REDACTED_KEY]
         message = re.sub(

@@ -307,7 +307,9 @@ class TestJobController:
         service._get_job_uploads.assert_called_once_with(job_id=1)
         service._read_upload_content.assert_called_once_with(upload.location)
 
-    def test_get_job_uploads__when_no_exceptions__returns_success_result_with_content(self, service):
+    def test_get_job_uploads__when_no_exceptions__returns_success_result_with_content(
+        self, service
+    ):
         upload = JobUpload(
             context="job",
             upload_type="input",
@@ -384,7 +386,9 @@ class TestJobController:
             {"run_id": 2, "url": "https://s3.amazonaws.com/bucket/results2.zip"},
         ]
 
-    def test_get_run_results_download__when_value_error_raised__returns_failure_result(self, service):
+    def test_get_run_results_download__when_value_error_raised__returns_failure_result(
+        self, service
+    ):
         service._get_run_results.side_effect = ValueError("Invalid job ID")
 
         result = service.get_run_results_download(job_id=999, bucket_name="test-bucket")
@@ -400,7 +404,9 @@ class TestJobController:
         assert not is_successful(result)
         assert "Failed to generate download URLs" in result.failure()
 
-    def test_archive_job_uploads__given_job_id_and_days_since_create_with_dry_run_true__calls_internal_archive_uploads_use_case(self, service):
+    def test_archive_job_uploads__given_job_id_and_days_since_create_with_dry_run_true__calls_internal_archive_uploads_use_case(
+        self, service
+    ):
         # Setup mock uploads with proper UploadLocation
         mock_location = UploadLocation(url="http://example.com/file.txt")
         mock_upload = JobUpload(
@@ -418,7 +424,9 @@ class TestJobController:
             dry_run=True,
         )
 
-    def test_archive_job_uploads__when_no_exceptions__returns_success_result_with_archived_locations(self, service):
+    def test_archive_job_uploads__when_no_exceptions__returns_success_result_with_archived_locations(
+        self, service
+    ):
         result = service.archive_job_uploads(job_id=1)
         expected_locations = [
             UploadLocation("http://s3.amazonaws.com/bucket/job1/file1.txt").to_sanitized_dict(),

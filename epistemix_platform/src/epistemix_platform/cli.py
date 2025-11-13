@@ -30,14 +30,10 @@ from epistemix_platform.mappers.run_mapper import RunMapper
 from epistemix_platform.repositories.database import get_database_manager
 from epistemix_platform.repositories.job_repository import SQLAlchemyJobRepository
 from epistemix_platform.repositories.run_repository import SQLAlchemyRunRepository
-from epistemix_platform.repositories.s3_results_repository import S3ResultsRepository
-from epistemix_platform.repositories.s3_upload_location_repository import (
-    create_s3_client,
-    create_upload_location_repository,
-)
 from epistemix_platform.use_cases.get_job import get_job
 from epistemix_platform.use_cases.get_runs import get_runs_by_job_id
 from epistemix_platform.use_cases.list_jobs import list_jobs
+from epistemix_platform.utils.get_default_job_controller import create_job_controller
 
 
 # Load configuration from ~/.epistemix/cli.env if it exists
@@ -63,7 +59,8 @@ def get_config():
     Returns:
         Config class instance (DevelopmentConfig, StagingConfig, or ProductionConfig)
     """
-    # Check ENVIRONMENT first (matches Sceptre stack groups), then FLASK_ENV for backward compatibility
+    # Check ENVIRONMENT first (matches Sceptre stack groups),
+    # then FLASK_ENV for backward compatibility
     env_name = os.getenv("ENVIRONMENT") or os.getenv("FLASK_ENV", "development")
     return config.get(env_name, config["default"])
 
@@ -99,43 +96,16 @@ def get_job_controller() -> JobController:
     """
     # Get configuration class
     config_class = get_config()
-    environment = config_class.ENVIRONMENT
-    bucket_name = config_class.S3_UPLOAD_BUCKET
-    region_name = config_class.AWS_REGION
 
     # Get database session
     session = get_database_session()
 
-    def session_factory():
-        return session
-
-    # Create repositories with mappers
-    job_mapper = JobMapper()
-    run_mapper = RunMapper()
-    job_repository = SQLAlchemyJobRepository(job_mapper, session_factory)
-    run_repository = SQLAlchemyRunRepository(run_mapper, session_factory)
-
-    # Create upload location repository
-    upload_location_repository = create_upload_location_repository(
-        env=environment, bucket_name=bucket_name, region_name=region_name
-    )
-
-    # Create S3 results repository (reuses create_s3_client for consistency)
-    s3_client = create_s3_client(region_name=region_name)
-    results_repository = S3ResultsRepository(s3_client, bucket_name)
-
-    # Create simulation runner gateway (REQUIRED)
-    from epistemix_platform.gateways.simulation_runner import AWSBatchSimulationRunner
-
-    simulation_runner = AWSBatchSimulationRunner.create(environment=environment, region=region_name)
-
-    # Create and return JobController
-    return JobController.create_with_repositories(
-        job_repository=job_repository,
-        run_repository=run_repository,
-        upload_location_repository=upload_location_repository,
-        results_repository=results_repository,
-        simulation_runner=simulation_runner,
+    # Create and return JobController using shared factory
+    return create_job_controller(
+        session_factory=lambda: session,
+        environment=config_class.ENVIRONMENT,
+        bucket_name=config_class.S3_UPLOAD_BUCKET,
+        region_name=config_class.AWS_REGION,
     )
 
 

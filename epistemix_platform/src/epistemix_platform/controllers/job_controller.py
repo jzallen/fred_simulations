@@ -19,8 +19,6 @@ from epistemix_platform.repositories import (
     IUploadLocationRepository,
 )
 from epistemix_platform.repositories.interfaces import IResultsRepository
-from epistemix_platform.services.results_packager import FredResultsPackager
-from epistemix_platform.services.time_provider import SystemTimeProvider
 from epistemix_platform.use_cases.archive_uploads import create_archive_uploads
 from epistemix_platform.use_cases.get_job_uploads import create_get_job_uploads
 from epistemix_platform.use_cases.get_run_results import get_run_results
@@ -121,9 +119,7 @@ class JobController:
         service._upload_results = create_upload_results(
             run_repository,
             job_repository,
-            FredResultsPackager(),
             results_repository,
-            SystemTimeProvider(),
         )
         service._run_simulation = create_run_simulation(simulation_runner)
         service._update_run_status = create_update_run_status(simulation_runner, run_repository)

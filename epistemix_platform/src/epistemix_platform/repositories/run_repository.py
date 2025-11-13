@@ -18,9 +18,7 @@ if TYPE_CHECKING:
 class SQLAlchemyRunRepository:
     """SQLAlchemy implementation of the IRunRepository interface."""
 
-    def __init__(
-        self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session]
-    ):
+    def __init__(self, run_mapper: "RunMapper", get_db_session_fn: Callable[[], Session]):
         """
         Initialize the repository with mapper dependency injection.
 

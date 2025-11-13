@@ -67,7 +67,9 @@ class TestGetRunResults:
         assert results[1].run_id == 2
         assert results[0].url == "https://presigned-url.s3.amazonaws.com?X-Amz-Expires=86400"
 
-    def test_get_run_results__when_fetching_results__calls_repository_with_reconstructed_s3_urls(self):
+    def test_get_run_results__when_fetching_results__calls_repository_with_reconstructed_s3_urls(
+        self,
+    ):
         # Arrange
         job = Job(
             id=100,

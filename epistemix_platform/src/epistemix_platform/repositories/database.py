@@ -335,5 +335,3 @@ def get_database_manager(database_url: str = None, config: "Config" = None) -> D
         DatabaseManager instance
     """
     return DatabaseManager(database_url, config)
-
-

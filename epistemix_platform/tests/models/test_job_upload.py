@@ -86,12 +86,7 @@ class TestJobUploadToSanitizedDict:
         location = UploadLocation(
             url="https://s3.amazonaws.com/bucket/jobs/12/config.json?AWSAccessKeyId=XXX&Signature=YYY"
         )
-        upload = JobUpload(
-            context="job",
-            upload_type="config",
-            job_id=12,
-            location=location
-        )
+        upload = JobUpload(context="job", upload_type="config", job_id=12, location=location)
 
         result = upload.to_sanitized_dict()
 
@@ -103,30 +98,17 @@ class TestJobUploadToSanitizedDict:
         assert "?" not in result["location"]["url"]
 
     def test_to_sanitized_dict_sanitizes_query_parameters(self):
-        location = UploadLocation(
-            url="https://example.com/file.json?secret=token123&key=value"
-        )
-        upload = JobUpload(
-            context="job",
-            upload_type="config",
-            job_id=12,
-            location=location
-        )
+        location = UploadLocation(url="https://example.com/file.json?secret=token123&key=value")
+        upload = JobUpload(context="job", upload_type="config", job_id=12, location=location)
 
         result = upload.to_sanitized_dict()
 
         assert result["location"]["url"] == "https://example.com/file.json"
 
     def test_to_sanitized_dict_with_run_context(self):
-        location = UploadLocation(
-            url="https://s3.amazonaws.com/bucket/runs/4/output.csv"
-        )
+        location = UploadLocation(url="https://s3.amazonaws.com/bucket/runs/4/output.csv")
         upload = JobUpload(
-            context="run",
-            upload_type="output",
-            job_id=12,
-            run_id=4,
-            location=location
+            context="run", upload_type="output", job_id=12, run_id=4, location=location
         )
 
         result = upload.to_sanitized_dict()
@@ -136,9 +118,7 @@ class TestJobUploadToSanitizedDict:
             "uploadType": "output",
             "jobId": 12,
             "runId": 4,
-            "location": {
-                "url": "https://s3.amazonaws.com/bucket/runs/4/output.csv"
-            }
+            "location": {"url": "https://s3.amazonaws.com/bucket/runs/4/output.csv"},
         }
 
 
@@ -169,15 +149,8 @@ class TestJobUploadRepr:
         assert "run_id=4" in repr_str
 
     def test_repr_with_location(self):
-        location = UploadLocation(
-            url="https://s3.amazonaws.com/bucket/file.json"
-        )
-        upload = JobUpload(
-            context="job",
-            upload_type="config",
-            job_id=12,
-            location=location
-        )
+        location = UploadLocation(url="https://s3.amazonaws.com/bucket/file.json")
+        upload = JobUpload(context="job", upload_type="config", job_id=12, location=location)
 
         repr_str = repr(upload)
 
@@ -185,15 +158,9 @@ class TestJobUploadRepr:
         assert "location=https://s3.amazonaws.com/bucket/file.json" in repr_str
 
     def test_repr_with_run_id_and_location(self):
-        location = UploadLocation(
-            url="https://example.com/output.csv"
-        )
+        location = UploadLocation(url="https://example.com/output.csv")
         upload = JobUpload(
-            context="run",
-            upload_type="output",
-            job_id=12,
-            run_id=4,
-            location=location
+            context="run", upload_type="output", job_id=12, run_id=4, location=location
         )
 
         repr_str = repr(upload)

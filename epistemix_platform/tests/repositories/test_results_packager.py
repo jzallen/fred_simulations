@@ -73,16 +73,16 @@ from epistemix_platform.exceptions import (
     InvalidResultsDirectoryError,
     ResultsPackagingError,
 )
-from epistemix_platform.services import FredResultsPackager, PackagedResults
+from epistemix_platform.use_cases.upload_results import PackagedResults, _FredResultsPackager
 
 
 class TestFredResultsPackager:
-    """Test suite for FredResultsPackager service."""
+    """Test suite for _FredResultsPackager (internal implementation)."""
 
     @pytest.fixture
     def packager(self):
-        """Create a FredResultsPackager instance."""
-        return FredResultsPackager()
+        """Create a _FredResultsPackager instance."""
+        return _FredResultsPackager()
 
     @pytest.fixture
     def single_run_dir(self, tmp_path):

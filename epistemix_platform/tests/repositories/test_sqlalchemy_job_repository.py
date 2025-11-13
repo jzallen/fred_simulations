@@ -48,7 +48,9 @@ class TestSQLAlchemyJobRepository:
         assert saved_job == expected_job
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_save__given_job_model_and_job_already_persisted__updates_existing_job(self, repository, sample_job):
+    def test_save__given_job_model_and_job_already_persisted__updates_existing_job(
+        self, repository, sample_job
+    ):
         # Arrange - First create and save a job
         saved_job = repository.save(sample_job)
         original_id = saved_job.id
@@ -76,7 +78,9 @@ class TestSQLAlchemyJobRepository:
         assert updated_job == expected_job
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_find_by_id__given_job_id_and_job_exists__returns_existing_job(self, repository, sample_job):
+    def test_find_by_id__given_job_id_and_job_exists__returns_existing_job(
+        self, repository, sample_job
+    ):
         # Arrange - First create and save a job
         saved_job = repository.save(sample_job)
         job_id = saved_job.id
@@ -105,7 +109,9 @@ class TestSQLAlchemyJobRepository:
         assert found_job is None
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_find_by_id__given_job_id_and_job_exists_with_updated_data__returns_job_with_updated_data(self, repository, sample_job):
+    def test_find_by_id__given_job_id_and_job_exists_with_updated_data__returns_job_with_updated_data(
+        self, repository, sample_job
+    ):
         # Arrange - Create, save, and update a job
         saved_job = repository.save(sample_job)
         job_id = saved_job.id
@@ -154,7 +160,9 @@ class TestSQLAlchemyJobRepository:
         for job in user_123_jobs:
             assert job.user_id == 123
 
-    def test_find_by_user_id__given_user_id_and_no_jobs_exist_for_user__returns_empty_list(self, repository):
+    def test_find_by_user_id__given_user_id_and_no_jobs_exist_for_user__returns_empty_list(
+        self, repository
+    ):
         # Sanity Check - no jobs exist initially
         with repository._get_session() as session:
             assert session.query(JobRecord).count() == 0
@@ -166,7 +174,9 @@ class TestSQLAlchemyJobRepository:
         assert user_jobs == []
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_find_by_status__given_status_and_jobs_exist__returns_jobs_with_specified_status(self, repository):
+    def test_find_by_status__given_status_and_jobs_exist__returns_jobs_with_specified_status(
+        self, repository
+    ):
         """Test that find_by_status() returns all jobs with the specified status."""
         new_job = Job.create_new(user_id=123, tags=[])
 
@@ -185,7 +195,9 @@ class TestSQLAlchemyJobRepository:
         submitted_jobs = repository.find_by_status(JobStatus.SUBMITTED)
         assert submitted_jobs == [submitted_job]
 
-    def test_find_by_status__given_status_and_no_jobs_exist_with_status__returns_empty_list(self, repository):
+    def test_find_by_status__given_status_and_no_jobs_exist_with_status__returns_empty_list(
+        self, repository
+    ):
         """Test that find_by_status() returns empty list when no jobs have the specified status."""
         # Arrange - Create a job with CREATED status
         job = Job.create_new(user_id=123, tags=[])
@@ -198,7 +210,9 @@ class TestSQLAlchemyJobRepository:
         assert completed_jobs == []
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_find_by_status__given_status_and_jobs_exist_across_different_users__returns_jobs_across_different_users(self, repository):
+    def test_find_by_status__given_status_and_jobs_exist_across_different_users__returns_jobs_across_different_users(
+        self, repository
+    ):
         """Test that find_by_status() returns jobs from different users with the same status."""
         # Arrange - Create jobs for different users with the same status
         user1_job = Job.create_new(user_id=123, tags=["user1"])
@@ -276,7 +290,9 @@ class TestSQLAlchemyJobRepository:
         assert user_jobs_after_deletion == [saved_job1, saved_job3]
 
     @freeze_time("2025-01-01 12:00:00")
-    def test_delete__given_existing_job_id__can_be_called_multiple_times_safely(self, repository, sample_job):
+    def test_delete__given_existing_job_id__can_be_called_multiple_times_safely(
+        self, repository, sample_job
+    ):
         # Arrange - Create and save a job
         saved_job = repository.save(sample_job)
         job_id = saved_job.id
