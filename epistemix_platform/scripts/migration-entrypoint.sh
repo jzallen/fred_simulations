@@ -6,6 +6,9 @@ set -e
 
 echo "=== Epistemix Database Migration Runner ==="
 
+# Set PYTHONPATH early to allow Python imports
+export PYTHONPATH="/fred_simulations/epistemix_platform/src:/fred_simulations/epistemix_platform:$PYTHONPATH"
+
 # Bootstrap configuration from .env file or AWS Parameter Store
 echo "Loading configuration via bootstrap module..."
 python3 -c "from epistemix_platform.bootstrap import bootstrap_config; bootstrap_config()"
@@ -38,9 +41,6 @@ echo "Database is available!"
 
 # Change to the epistemix_platform directory
 cd /fred_simulations/epistemix_platform
-
-# Set PYTHONPATH to include the src directory
-export PYTHONPATH="/fred_simulations/epistemix_platform/src:/fred_simulations/epistemix_platform:$PYTHONPATH"
 
 # Run the command passed to the container, or default to showing migration status
 if [ $# -eq 0 ]; then
